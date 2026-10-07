@@ -1,0 +1,14 @@
+Nooklin Photos is a photo and video gallery that stays on your device. It requests no internet permission, has no telemetry and does not use Google Play Services.
+
+Features:
+- Photo and video grid with a full-screen viewer
+- Albums, favorites, screenshots, videos and panoramas
+- Recently Deleted with 30-day expiry
+- Hidden folder locked with your biometric or PIN
+- Basic editor (rotate, flip)
+- Info sheet with EXIF data
+- Search by file name
+- Optional on-device People and Pets grouping, off by default
+- Light, dark or system theme
+
+Open source under GPL-3.0.

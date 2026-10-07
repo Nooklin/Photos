@@ -1,0 +1,8 @@
+<resources>
+    <!-- Same theme as values/themes.xml, dark-mode splash background only.
+         See that file for why these attributes are here at all. -->
+    <style name="Theme.NooklinPhotos" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenBackground">#1C1B1F</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+    </style>
+</resources>

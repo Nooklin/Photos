@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <!--
+      Simple checkmark-in-circle. Notification small icons must be a flat
+      white silhouette on transparent (the system status bar ignores any
+      other color and re-tints it anyway), unlike the app's launcher icon
+      or any in-app Material icon, which is why this can't just reuse
+      Icons.Filled.CheckCircle from Compose, that's not a drawable
+      resource, and notification icons specifically require one.
+    -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z M12,20 C7.59,20 4,16.41 4,12 C4,7.59 7.59,4 12,4 C16.41,4 20,7.59 20,12 C20,16.41 16.41,20 12,20 Z M16.59,7.58 L10,14.17 L7.41,11.59 L6,13 L10,17 L18,9 Z" />
+</vector>

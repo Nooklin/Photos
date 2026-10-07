@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Nooklin Photos</string>
+
+    <string name="notification_channel_scan_complete_name">Library scan</string>
+    <string name="notification_channel_scan_complete_description">Notifies when a background photo library scan finishes</string>
+    <string name="notification_scan_complete_title">Library scan complete</string>
+    <plurals name="notification_scan_complete_body">
+        <item quantity="one">%d photo scanned</item>
+        <item quantity="other">%d photos scanned</item>
+    </plurals>
+</resources>

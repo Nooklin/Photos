@@ -1,0 +1,23 @@
+<resources>
+    <!-- Minimal launch theme. Compose owns the real UI theming via NooklinTheme -
+         see ui/theme/DesignSystem.kt.
+
+         windowSplashScreen* below are the native Android 12+ (API 31) splash
+         screen attributes — minSdk is already 33, so every supported device
+         has this natively, no androidx.core:core-splashscreen dependency
+         needed (that library exists only to backport this behavior to
+         pre-API-31 devices).
+
+         Without these, the OS-mandated splash screen (every app gets one on
+         API 31+, it can't be turned off) falls back to a plain white
+         background with the raw launcher icon centered on it — this just
+         gives it a themed background instead of the unstyled default. It
+         can only follow the SYSTEM's light/dark setting (see values-night),
+         not this app's own in-app Light/Dark/Black theme preference — that
+         preference lives in DataStore, which isn't readable yet at the
+         point the OS decides which splash to show. -->
+    <style name="Theme.NooklinPhotos" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenBackground">#FFFBFE</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+    </style>
+</resources>
