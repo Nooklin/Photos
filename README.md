@@ -4,6 +4,10 @@ A privacy-first, open-source photo gallery for Android. No Google Play Services,
 
 Part of the Nooklin FOSS Android suite. License: GPL-3.0.
 
+## Download
+
+Get the latest APK from the [Releases](../../releases) page.
+
 ## Privacy
 
 - The app requests no internet permission, so it cannot send anything off the device.
@@ -42,14 +46,6 @@ Some features do nothing until you set them up:
 - Panoramas are detected by aspect ratio, which is a heuristic.
 - Scrolling in very large libraries (10k+ photos) has not been tested yet.
 - Release builds are not minified (R8 is off).
-
-## Build
-
-Requires Android Studio with JDK 17 or newer, Android 13 (API 33) or newer to run.
-
-    .\gradlew assembleDebug
-
-For a signed release, copy `keystore.properties.example` to `keystore.properties`, fill it in, then run `.\gradlew assembleRelease`. Never commit the keystore or `keystore.properties`.
 
 ## Verify a release APK
 
