@@ -92,7 +92,7 @@ For a signed release, copy `keystore.properties.example` to `keystore.properties
 
     apksigner verify --print-certs photos-v1.0.0.apk
 
-Compare the certificate SHA-256 with the value in the release notes, and check the file hash with `Get-FileHash photos-v1.0.0.apk` (PowerShell) or `sha256sum photos-v1.0.0.apk`.
+Compare the certificate SHA-256 with the value in the release notes, and check the file hash with `Get-FileHash photos-v1.1.0.apk` (PowerShell) or `sha256sum photos-v1.1.0.apk`.
 
 ## Issues and feature requests
 
