@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -23,7 +27,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.nooklin.photos.data.local.ShareStripOptions
+import org.nooklin.photos.data.local.StripCategory
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Turning sharing back on is confirmed first, turning it off is the protective direction
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +39,8 @@ import org.nooklin.photos.ui.common.ConfirmDeleteDialog
 fun SettingsExifScreen(
     removeExifOnShare: Boolean,
     onRemoveExifOnShareChange: (Boolean) -> Unit,
+    stripOptions: ShareStripOptions,
+    onStripOptionChange: (StripCategory, Boolean) -> Unit,
     sharingDisabled: Boolean,
     onSharingDisabledChange: (Boolean) -> Unit,
     onBack: () -> Unit
@@ -40,10 +50,10 @@ fun SettingsExifScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Sharing", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_sharing), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -51,10 +61,10 @@ fun SettingsExifScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             SettingsGroup(
-                "Sharing",
+                appString(R.string.common_sharing),
                 listOf({
                     SettingsToggleRow(
-                        "Disable Sharing",
+                        appString(R.string.settings_exif_disable_sharing),
                         sharingDisabled,
                         Icons.Filled.Share,
                         onCheckedChange = { turningOn ->
@@ -68,26 +78,43 @@ fun SettingsExifScreen(
                 })
             )
             Text(
-                "On by default. Turns off the ability to share photos out of this app entirely, keeping Nooklin Photos a closed, private space with no way to send anything elsewhere. Turn this off if you want to be able to share photos.",
+                appString(R.string.settings_exif_on_by_default_turns_off),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
 
             SettingsGroup(
-                "Exif Data",
-                listOf({ SettingsToggleRow("Remove Exif Data When Sharing", removeExifOnShare, Icons.Filled.LocationOff, onCheckedChange = onRemoveExifOnShareChange) })
+                appString(R.string.settings_exif_exif_data),
+                listOf({ SettingsToggleRow(appString(R.string.settings_exif_remove_exif_data_when_sharing), removeExifOnShare, Icons.Filled.LocationOff, onCheckedChange = onRemoveExifOnShareChange) })
             )
             Text(
-                "When on (the default), sharing a photo strips its Exif data, including GPS location, camera make/model, and capture settings, before handing it to another app. When off, the original file is shared as-is, Exif data intact.",
+                appString(R.string.settings_exif_when_on_the_default_sharing),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
+
+            // What is removed, only while Remove Exif data is on
+            if (removeExifOnShare) {
+                SettingsGroup(
+                    appString(R.string.settings_exif_what_to_remove),
+                    listOf(
+                        { SettingsToggleRow(appString(R.string.settings_exif_strip_location), stripOptions.location, Icons.Filled.LocationOn, onCheckedChange = { onStripOptionChange(StripCategory.LOCATION, it) }) },
+                        { SettingsToggleRow(appString(R.string.settings_exif_strip_camera), stripOptions.camera, Icons.Filled.CameraAlt, onCheckedChange = { onStripOptionChange(StripCategory.CAMERA, it) }) },
+                        { SettingsToggleRow(appString(R.string.settings_exif_strip_date_time), stripOptions.dateTime, Icons.Filled.Schedule, onCheckedChange = { onStripOptionChange(StripCategory.DATE_TIME, it) }) },
+                        { SettingsToggleRow(appString(R.string.settings_exif_strip_description), stripOptions.description, Icons.Filled.Description, onCheckedChange = { onStripOptionChange(StripCategory.DESCRIPTION, it) }) }
+                    )
+                )
+                Text(
+                    appString(R.string.settings_exif_what_to_remove_help),
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+                )
+            }
         }
     }
 
     if (showEnableSharingConfirm) {
         ConfirmDeleteDialog(
-            title = "Enable Sharing?",
-            text = "This turns sharing back on for the whole app. Photos will be shareable to other apps again.",
-            confirmLabel = "Enable Sharing",
+            title = appString(R.string.settings_exif_enable_sharing),
+            text = appString(R.string.settings_exif_this_turns_sharing_back_on),
+            confirmLabel = appString(R.string.settings_exif_enable_sharing_2),
             onConfirm = {
                 showEnableSharingConfirm = false
                 onSharingDisabledChange(false)

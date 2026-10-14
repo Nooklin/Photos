@@ -29,6 +29,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,10 +72,10 @@ fun SettingsNotificationsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Notifications", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_notifications), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -81,10 +83,10 @@ fun SettingsNotificationsScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             SettingsGroup(
-                "Notifications",
+                appString(R.string.common_notifications),
                 listOf({
                     SettingsToggleRow(
-                        "Library Scan Complete",
+                        appString(R.string.settings_notifications_library_scan_complete),
                         scanCompleteNotificationEnabled,
                         icon = Icons.Filled.Notifications,
                         onCheckedChange = { enabled ->
@@ -94,13 +96,12 @@ fun SettingsNotificationsScreen(
                 })
             )
             Text(
-                "Notifies you when a Machine Learning library scan finishes. Requires notifications to be allowed for this app.",
+                appString(R.string.settings_notifications_notifies_you_when_a_machine),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
             if (showPermissionDeniedNotice) {
                 Text(
-                    "Notification permission was denied. You can grant it from this app's " +
-                        "system Settings page if you change your mind.",
+                    appString(R.string.settings_notifications_notification_permission_was_denied_you),
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
                 )
             }

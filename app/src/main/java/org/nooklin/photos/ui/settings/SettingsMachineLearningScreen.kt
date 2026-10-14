@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.sp
 import org.nooklin.photos.data.local.MlTag
 import org.nooklin.photos.ml.PhotoAnalysisScanner
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Content scrolls: with all tag rows it overflows a typical screen
 private fun iconFor(tag: MlTag): ImageVector = when (tag) {
@@ -68,10 +70,10 @@ fun SettingsMachineLearningScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Machine Learning", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_machine_learning), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -84,10 +86,10 @@ fun SettingsMachineLearningScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             SettingsGroup(
-                "Machine Learning",
+                appString(R.string.common_machine_learning),
                 listOf({
                     SettingsToggleRow(
-                        label = "Use machine learning",
+                        label = appString(R.string.settings_machine_learning_use_machine_learning),
                         checked = mlEnabled,
                         icon = Icons.Filled.Psychology,
                         onCheckedChange = { turningOn ->
@@ -102,7 +104,7 @@ fun SettingsMachineLearningScreen(
                 })
             )
             Text(
-                "Machine learning takes place entirely on your device. No data is ever shared.",
+                appString(R.string.settings_machine_learning_machine_learning_takes_place_entirely),
                 color = Color.Gray,
                 fontSize = 13.sp,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
@@ -110,7 +112,7 @@ fun SettingsMachineLearningScreen(
 
             if (mlEnabled) {
                 SettingsGroup(
-                    "Tags to scan",
+                    appString(R.string.settings_machine_learning_tags_to_scan),
                     MlTag.entries.filter { it != MlTag.PETS }.map { tag ->
                         {
                             Column {
@@ -125,9 +127,9 @@ fun SettingsMachineLearningScreen(
                     }
                 )
 
-                SettingsSectionTitle("Scan")
+                SettingsSectionTitle(appString(R.string.settings_machine_learning_scan))
                 Text(
-                    "Scans your library on this device only, checking each photo for the tags turned on above. Already-analyzed photos are skipped unless they've changed.",
+                    appString(R.string.settings_machine_learning_scans_your_library_on_this),
                     color = Color.Gray,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
@@ -137,11 +139,11 @@ fun SettingsMachineLearningScreen(
                     enabled = hasScannableTag && !scanning,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 ) {
-                    Text(if (scanning) "Scanning..." else "Scan Library")
+                    Text(if (scanning) appString(R.string.settings_machine_learning_scanning) else appString(R.string.settings_machine_learning_scan_library))
                 }
                 if (!hasScannableTag) {
                     Text(
-                        "Turn on at least one tag above to scan.",
+                        appString(R.string.settings_machine_learning_turn_on_at_least_one),
                         color = Color.Gray,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
@@ -153,7 +155,7 @@ fun SettingsMachineLearningScreen(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
                     )
                     Text(
-                        "${scanProgress.processed} / ${scanProgress.total}",
+                        appString(R.string.settings_machine_learning_text, scanProgress.processed, scanProgress.total),
                         color = Color.Gray,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(start = 16.dp)
@@ -161,16 +163,16 @@ fun SettingsMachineLearningScreen(
                 }
                 if (scanProgress != null && scanProgress.done && scanProgress.total > 0) {
                     Text(
-                        "Scan complete.",
+                        appString(R.string.settings_machine_learning_scan_complete),
                         color = Color.Gray,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(start = 16.dp, top = 8.dp)
                     )
                 }
 
-                SettingsSectionTitle("Reset")
+                SettingsSectionTitle(appString(R.string.common_reset))
                 Text(
-                    "Clears everything detected so far on this device. Use this if a previous scan tagged things incorrectly, then run Scan Library again.",
+                    appString(R.string.settings_machine_learning_clears_everything_detected_so_far),
                     color = Color.Gray,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
@@ -180,7 +182,7 @@ fun SettingsMachineLearningScreen(
                     enabled = !scanning,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 ) {
-                    Text("Clear analysis data")
+                    Text(appString(R.string.settings_machine_learning_clear_analysis_data))
                 }
             }
 
@@ -190,10 +192,9 @@ fun SettingsMachineLearningScreen(
 
     if (showDisableConfirm) {
         ConfirmDeleteDialog(
-            title = "Turn off machine learning?",
-            text = "Everything detected so far will be permanently deleted from this device, " +
-                "not just hidden. You'll need to scan again if you turn this back on.",
-            confirmLabel = "Turn Off",
+            title = appString(R.string.settings_machine_learning_turn_off_machine_learning),
+            text = appString(R.string.settings_machine_learning_everything_detected_so_far_will),
+            confirmLabel = appString(R.string.common_turn_off),
             onConfirm = {
                 showDisableConfirm = false
                 // Delete before the toggle flips, so ML never reads "off" while stale tags remain
@@ -206,9 +207,9 @@ fun SettingsMachineLearningScreen(
 
     if (showClearConfirm) {
         ConfirmDeleteDialog(
-            title = "Clear analysis data?",
-            text = "Everything detected so far will be permanently deleted from this device. You'll need to scan again afterward.",
-            confirmLabel = "Clear",
+            title = appString(R.string.settings_machine_learning_clear_analysis_data_2),
+            text = appString(R.string.settings_machine_learning_everything_detected_so_far_will_2),
+            confirmLabel = appString(R.string.settings_machine_learning_clear),
             onConfirm = {
                 showClearConfirm = false
                 onClearAnalysisData()

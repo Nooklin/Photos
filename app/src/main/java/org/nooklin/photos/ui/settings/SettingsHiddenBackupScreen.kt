@@ -33,6 +33,8 @@ import org.nooklin.photos.ui.hidden.HiddenExportProgress
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Hidden files live in app-private storage, which Android deletes on uninstall. This export is the only way to keep a copy.
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +57,7 @@ fun SettingsHiddenBackupScreen(
         if (uri == null) return@rememberLauncherForActivityResult
         statusMessage = null
         onExportFlat(uri) { success ->
-            statusMessage = if (success) "Export complete." else "Export failed. Nothing was overwritten."
+            statusMessage = if (success) appString(R.string.settings_hidden_backup_export_complete) else appString(R.string.settings_hidden_backup_export_failed_nothing_was_overwritten)
         }
     }
 
@@ -65,17 +67,17 @@ fun SettingsHiddenBackupScreen(
         if (uri == null) return@rememberLauncherForActivityResult
         statusMessage = null
         onExportOrganized(uri) { success ->
-            statusMessage = if (success) "Export complete." else "Export failed. Nothing was overwritten."
+            statusMessage = if (success) appString(R.string.settings_hidden_backup_export_complete) else appString(R.string.settings_hidden_backup_export_failed_nothing_was_overwritten)
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Hidden Photos Backup", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_hidden_photos_backup), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -83,51 +85,48 @@ fun SettingsHiddenBackupScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             Text(
-                "Photos are stored in this app's private storage, and are permanently " +
-                    "deleted if this app is uninstalled, that's what keeps them hidden from " +
-                    "every other app, but it also means nothing preserves them automatically. " +
-                    "Export a copy here before uninstalling or switching devices.",
+                appString(R.string.settings_hidden_backup_photos_are_stored_in_this),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
             SettingsGroup(
-                "Export All",
+                appString(R.string.settings_hidden_backup_export_all),
                 listOf({
-                    SettingsNavRow("Export All Hidden Photos (.zip)", Icons.Filled.FolderZip) {
+                    SettingsNavRow(appString(R.string.settings_hidden_backup_export_all_hidden_photos_zip), Icons.Filled.FolderZip) {
                         statusMessage = null
                         flatLauncher.launch("nooklin-hidden-backup-$timestamp.zip")
                     }
                 })
             )
             Text(
-                "The simplest, fastest option: every hidden photo goes into one flat zip file, ready to unpack anywhere.",
+                appString(R.string.settings_hidden_backup_the_simplest_fastest_option_every),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
             SettingsGroup(
-                "Export Organized by Album",
+                appString(R.string.settings_hidden_backup_export_organized_by_album),
                 listOf({
-                    SettingsNavRow("Export Organized by Album (.zip)", Icons.Filled.Photo) {
+                    SettingsNavRow(appString(R.string.settings_hidden_backup_export_organized_by_album_zip), Icons.Filled.Photo) {
                         statusMessage = null
                         organizedLauncher.launch("nooklin-hidden-backup-organized-$timestamp.zip")
                     }
                 })
             )
             Text(
-                "Keeps which Hidden Album each photo was in, organized into folders inside the zip. Takes a little longer to build than a flat export.",
+                appString(R.string.settings_hidden_backup_keeps_which_hidden_album_each),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
             SettingsGroup(
-                "Export Selected Photos",
+                appString(R.string.settings_hidden_backup_export_selected_photos),
                 listOf({
-                    SettingsNavRow("Export Selected Photos (.zip)", Icons.Filled.Checklist) {
+                    SettingsNavRow(appString(R.string.settings_hidden_backup_export_selected_photos_zip), Icons.Filled.Checklist) {
                         statusMessage = null
                         onNavigateToSelectExport()
                     }
                 })
             )
             Text(
-                "Pick a specific subset of hidden photos to export, rather than everything at once.",
+                appString(R.string.settings_hidden_backup_pick_a_specific_subset_of),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
             if (progress != null) {
@@ -138,7 +137,7 @@ fun SettingsHiddenBackupScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(
-                            "Exporting ${progress.done} of ${progress.total}…",
+                            appString(R.string.settings_hidden_backup_exporting_of, progress.done, progress.total),
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     } else {

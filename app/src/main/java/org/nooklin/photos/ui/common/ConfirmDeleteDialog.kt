@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @Composable
 fun ConfirmDeleteDialog(
@@ -22,7 +24,7 @@ fun ConfirmDeleteDialog(
     text: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    confirmLabel: String = "Delete",
+    confirmLabel: String = appString(R.string.common_delete),
     containerColor: Color = GlassPill.adaptivePopupBackground,
     contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
@@ -47,7 +49,7 @@ fun ConfirmDeleteDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(appString(R.string.common_cancel)) }
         }
     )
 }

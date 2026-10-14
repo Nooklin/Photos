@@ -8,6 +8,10 @@ Features:
 - Basic editor (rotate, flip)
 - Info sheet with EXIF data
 - Search by file name
+- Years, Months, All timeline and a calendar view
+- Duplicates review (optional, on-device)
+- Share, print or set as wallpaper, with a choice of what metadata is removed
+- English and Dutch
 - Optional on-device People and Pets grouping, off by default
 - Light, dark or system theme
 

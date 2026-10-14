@@ -1,16 +1,21 @@
 package org.nooklin.photos.data
 
+import androidx.annotation.StringRes
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
+
 // Only categories with a real signal, no Live/Selfie/Portrait/Burst
-enum class MediaCategory(val label: String) {
-    VIDEOS("Videos"),
-    PANORAMAS("Panoramas"),
-    SCREENSHOTS("Screenshots"),
-    SCREEN_RECORDINGS("Screen Recordings"),
-    SLOW_MOTION("Slow Motion"),
-    RAW("RAW"),
-    FAVORITES("Favourites"),
-    RECENTLY_SAVED("Recently Saved"),
-    DUPLICATES("Duplicates")
+enum class MediaCategory(@StringRes val labelRes: Int) {
+    VIDEOS(R.string.common_videos),
+    PANORAMAS(R.string.common_panoramas),
+    SCREENSHOTS(R.string.common_screenshots),
+    SCREEN_RECORDINGS(R.string.common_screen_recordings),
+    SLOW_MOTION(R.string.common_slow_motion),
+    RAW(R.string.media_category_raw),
+    FAVORITES(R.string.media_category_favourites),
+    RECENTLY_SAVED(R.string.common_recently_saved),
+    DUPLICATES(R.string.media_category_duplicates);
+    val label: String get() = appString(labelRes)
 }
 
 private const val RECENTLY_SAVED_WINDOW_MILLIS = 30L * 24 * 60 * 60 * 1000

@@ -74,6 +74,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.abs
+import org.nooklin.photos.appString
 
 private const val MIN_CLIP_MS = 500f
 
@@ -155,10 +156,10 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
         containerColor = screenBackground,
         topBar = {
             TopAppBar(
-                title = { Text("Edit", color = chromeColor, fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_edit), color = chromeColor, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !saving) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel", tint = chromeColor)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_cancel), tint = chromeColor)
                     }
                 },
                 actions = {
@@ -172,13 +173,13 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                                     scope.launch {
                                         VideoTrims.set(preferences, item.uri, null)
                                         VideoPrewarm.clear()
-                                        Toast.makeText(context, "Trim reset, the whole video plays again.", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, appString(R.string.video_trim_trim_reset_the_whole_video), Toast.LENGTH_LONG).show()
                                         onSaved()
                                     }
                                 }
                                 .padding(horizontal = 14.dp, vertical = 6.dp)
                         ) {
-                            Text("Reset", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                            Text(appString(R.string.common_reset), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 },
@@ -228,7 +229,7 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                 ) {
                     Icon(
                         if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        contentDescription = if (isPlaying) appString(R.string.common_pause) else appString(R.string.common_play),
                         tint = chromeColor
                     )
                 }
@@ -258,15 +259,15 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                             }
                         )
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Start ${formatClock(range.start.toLong())}", color = chromeColor.copy(alpha = 0.7f), fontSize = 13.sp)
-                            Text("Length ${formatClock((range.endInclusive - range.start).toLong())}", color = chromeColor.copy(alpha = 0.7f), fontSize = 13.sp)
-                            Text("End ${formatClock(range.endInclusive.toLong())}", color = chromeColor.copy(alpha = 0.7f), fontSize = 13.sp)
+                            Text(appString(R.string.video_trim_start, formatClock(range.start.toLong())), color = chromeColor.copy(alpha = 0.7f), fontSize = 13.sp)
+                            Text(appString(R.string.video_trim_length, formatClock((range.endInclusive - range.start).toLong())), color = chromeColor.copy(alpha = 0.7f), fontSize = 13.sp)
+                            Text(appString(R.string.video_trim_end, formatClock(range.endInclusive.toLong())), color = chromeColor.copy(alpha = 0.7f), fontSize = 13.sp)
                         }
                     }
                 }
             } else if (loadFailed) {
                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    Text("This video can't be edited.", color = chromeColor, textAlign = TextAlign.Center)
+                    Text(appString(R.string.video_trim_this_video_can_t_be), color = chromeColor, textAlign = TextAlign.Center)
                 }
             } else {
                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
@@ -282,8 +283,8 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                 } else {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         listOf(
-                            Triple(Icons.Filled.Check, "Save Video", false),
-                            Triple(Icons.Filled.ContentCut, "Save Video as New Clip", true)
+                            Triple(Icons.Filled.Check, appString(R.string.video_trim_save_video), false),
+                            Triple(Icons.Filled.ContentCut, appString(R.string.video_trim_save_video_as_new_clip), true)
                         ).forEach { (icon, label, asNewClip) ->
                             Column(
                                 Modifier
@@ -296,10 +297,10 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                                                 val clip = VideoClipExporter.export(context, item.uri, range.start.toLong(), range.endInclusive.toLong())
                                                 saving = false
                                                 if (clip != null) {
-                                                    Toast.makeText(context, "Saved as a new clip. It can start a little before the chosen start.", Toast.LENGTH_LONG).show()
+                                                    Toast.makeText(context, appString(R.string.video_trim_saved_as_a_new_clip), Toast.LENGTH_LONG).show()
                                                     onSaved()
                                                 } else {
-                                                    Toast.makeText(context, "Could not save the clip.", Toast.LENGTH_LONG).show()
+                                                    Toast.makeText(context, appString(R.string.video_trim_could_not_save_the_clip), Toast.LENGTH_LONG).show()
                                                 }
                                             }
                                         } else {
@@ -310,7 +311,7 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                                                 VideoPrewarm.clear()
                                                 Toast.makeText(
                                                     context,
-                                                    if (trim == null) "Video saved." else "Video saved. The file is unchanged, you can reset the trim here at any time.",
+                                                    if (trim == null) appString(R.string.video_trim_video_saved) else appString(R.string.video_trim_video_saved_the_file_is),
                                                     Toast.LENGTH_LONG
                                                 ).show()
                                                 onSaved()

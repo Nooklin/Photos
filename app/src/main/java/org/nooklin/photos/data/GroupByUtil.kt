@@ -5,6 +5,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // dateAdded is in seconds
 fun groupLabel(item: MediaItem, groupBy: GroupBy): String = dateGroupLabel(item.dateAdded * 1000L, groupBy)
@@ -48,7 +50,7 @@ private class DateLabeler(private val groupBy: GroupBy) {
                 week == 1 && month == Calendar.DECEMBER -> cal.get(Calendar.YEAR) + 1
                 else -> cal.get(Calendar.YEAR)
             }
-            "Week $week, $yearForWeek"
+            appString(R.string.group_by_util_week_1_s_2_s, week, yearForWeek)
         }
         else -> format!!.format(Date(millis))
     }

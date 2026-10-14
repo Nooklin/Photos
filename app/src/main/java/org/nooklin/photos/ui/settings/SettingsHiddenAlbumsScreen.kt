@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Display-only: turning it off deletes nothing
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,10 +36,10 @@ fun SettingsHiddenAlbumsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Hidden Albums", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_hidden_albums), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -45,22 +47,19 @@ fun SettingsHiddenAlbumsScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             SettingsGroup(
-                "Hidden Albums",
-                listOf({ SettingsToggleRow("Show Hidden Albums", hiddenAlbumsEnabled, Icons.Filled.PhotoAlbum, onCheckedChange = onHiddenAlbumsEnabledChange) })
+                appString(R.string.common_hidden_albums),
+                listOf({ SettingsToggleRow(appString(R.string.common_show_hidden_albums), hiddenAlbumsEnabled, Icons.Filled.PhotoAlbum, onCheckedChange = onHiddenAlbumsEnabledChange) })
             )
             Text(
                 AnnotatedString.fromHtml(
-                    "When Off: Hidden Albums section is <b>not</b> shown in the Hidden Section. " +
-                        "Your hidden albums and everything in them are not deleted or changed in " +
-                        "any way, they're only hidden from view."
+                    appString(R.string.settings_hidden_albums_when_off_hidden_albums_section)
                 ),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 AnnotatedString.fromHtml(
-                    "When On: Hidden Albums section is <b>shown</b> in the Hidden Section. " +
-                        "Turning this back on makes them reappear exactly as you left them."
+                    appString(R.string.settings_hidden_albums_when_on_hidden_albums_section)
                 ),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
             )

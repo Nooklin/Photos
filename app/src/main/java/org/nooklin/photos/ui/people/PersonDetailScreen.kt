@@ -24,6 +24,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PhotoAlbum
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -60,9 +65,13 @@ import androidx.compose.ui.platform.LocalContext
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.ui.albums.AlbumWithPreview
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.GlassPillTextField
 import org.nooklin.photos.ui.common.PillListRow
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // A person's photos: rename like an album, select-mode actions like DiscoveredDetailScreen
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -117,7 +126,7 @@ fun PersonDetailScreen(
                 title = {
                     if (!isNamed) {
                         Text(
-                            "$displayName · Tap to name",
+                            appString(R.string.person_detail_tap_to_name, displayName),
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable { showRenameDialog = true }
                         )
@@ -127,15 +136,17 @@ fun PersonDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
                     if (isSelecting) {
                         Box {
-                            IconButton(onClick = { actionsMenuExpanded = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "More")
-                            }
+                            CircleIconButton(
+                                icon = Icons.Filled.MoreVert,
+                                contentDescription = appString(R.string.common_more),
+                                onClick = { actionsMenuExpanded = true }
+                            )
                             DropdownMenu(
                                 expanded = actionsMenuExpanded,
                                 onDismissRequest = { actionsMenuExpanded = false },
@@ -144,7 +155,8 @@ fun PersonDetailScreen(
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                     DropdownMenuItem(
-                                        text = { Text("Favorite") },
+                                        text = { Text(appString(R.string.common_favorite)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             photos.filter { it.id in selectedIds }.forEach { onToggleFavorite(it) }
@@ -152,14 +164,16 @@ fun PersonDetailScreen(
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Add to Album") },
+                                        text = { Text(appString(R.string.common_add_to_album)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.PhotoAlbum) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             showAddToAlbumDialog = true
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Remove from this person") },
+                                        text = { Text(appString(R.string.person_detail_remove_from_this_person)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.RemoveCircleOutline) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             val faceIds = selectedIds.flatMap { facesByMediaId[it].orEmpty() }
@@ -168,7 +182,8 @@ fun PersonDetailScreen(
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Move to Recycle Bin", color = GlassPill.destructiveText) },
+                                        text = { Text(appString(R.string.common_move_to_recycle_bin), color = GlassPill.destructiveText) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.Delete) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             showDeleteConfirm = true
@@ -177,16 +192,18 @@ fun PersonDetailScreen(
                                 }
                             }
                         }
-                        IconButton(onClick = { exitSelection() }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
-                        }
+                        CircleIconButton(
+                            icon = Icons.Filled.Close,
+                            contentDescription = appString(R.string.common_cancel_selection),
+                            onClick = { exitSelection() }
+                        )
                     } else {
-                        IconButton(onClick = { isSelecting = true }) {
-                            Icon(Icons.Filled.CheckCircle, contentDescription = "Select")
-                        }
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "More options")
-                        }
+                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
+                        CircleIconButton(
+                            icon = Icons.Filled.MoreVert,
+                            contentDescription = appString(R.string.common_more_options),
+                            onClick = { menuExpanded = true }
+                        )
                         DropdownMenu(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false },
@@ -195,14 +212,14 @@ fun PersonDetailScreen(
                         ) {
                             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                 DropdownMenuItem(
-                                    text = { Text("Rename") },
+                                    text = { Text(appString(R.string.common_rename)) },
                                     onClick = {
                                         menuExpanded = false
                                         showRenameDialog = true
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Merge with...") },
+                                    text = { Text(appString(R.string.person_detail_merge_with)) },
                                     onClick = {
                                         menuExpanded = false
                                         showMergeDialog = true
@@ -220,7 +237,7 @@ fun PersonDetailScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No photos here")
+                Text(appString(R.string.common_no_photos_here))
             }
         } else {
             LazyVerticalGrid(
@@ -260,7 +277,7 @@ fun PersonDetailScreen(
                         if (isSelecting && selected) {
                             Icon(
                                 imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = "Selected",
+                                contentDescription = appString(R.string.common_selected),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
                             )
@@ -279,7 +296,7 @@ fun PersonDetailScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Name this person") },
+            title = { Text(appString(R.string.person_detail_name_this_person)) },
             text = {
                 GlassPillTextField(
                     value = newName,
@@ -294,11 +311,11 @@ fun PersonDetailScreen(
                         showRenameDialog = false
                     }
                 ) {
-                    Text("Save")
+                    Text(appString(R.string.common_save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showRenameDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
@@ -310,10 +327,10 @@ fun PersonDetailScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Merge with...") },
+            title = { Text(appString(R.string.person_detail_merge_with)) },
             text = {
                 if (otherPeople.isEmpty()) {
-                    Text("No other people to merge with yet.")
+                    Text(appString(R.string.person_detail_no_other_people_to_merge))
                 } else {
                     Column {
                         otherPeople.forEach { entry ->
@@ -331,7 +348,7 @@ fun PersonDetailScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showMergeDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showMergeDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
@@ -343,10 +360,10 @@ fun PersonDetailScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Add to Album") },
+            title = { Text(appString(R.string.common_add_to_album)) },
             text = {
                 if (existingAlbums.isEmpty()) {
-                    Text("No albums yet. Create one from the Albums screen first.")
+                    Text(appString(R.string.common_no_albums_yet_create_one))
                 } else {
                     Column {
                         existingAlbums.forEach { album ->
@@ -363,7 +380,7 @@ fun PersonDetailScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
@@ -371,13 +388,13 @@ fun PersonDetailScreen(
     if (showDeleteConfirm) {
         val count = selectedIds.size
         ConfirmDeleteDialog(
-            title = "Move to Recycle Bin?",
+            title = appString(R.string.common_move_to_recycle_bin_2),
             text = if (count == 1) {
-                "This photo will be deleted from the library. It will be in Recently Deleted for 30 days."
+                appString(R.string.common_this_photo_will_be_deleted)
             } else {
-                "These photos will be deleted from the library. They will be in Recently Deleted for 30 days."
+                appString(R.string.common_these_photos_will_be_deleted)
             },
-            confirmLabel = if (count == 1) "Delete 1 Photo" else "Delete $count Photos",
+            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
             onConfirm = {
                 showDeleteConfirm = false
                 photos.filter { it.id in selectedIds }.forEach { onMoveToRecycleBin(it) }

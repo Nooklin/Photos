@@ -36,6 +36,15 @@ import org.nooklin.photos.data.local.AppFont
 import org.nooklin.photos.data.local.AppThemeMode
 import org.nooklin.photos.data.local.ContrastColor
 import org.nooklin.photos.ui.theme.fontFamilyFor
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
+import android.app.LocaleManager
+import android.os.LocaleList
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,13 +57,17 @@ fun SettingsAppearanceScreen(
     onAppFontChange: (AppFont) -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val localeManager = remember { context.getSystemService(LocaleManager::class.java) }
+    var languageTags by remember { mutableStateOf(localeManager.applicationLocales.toLanguageTags()) }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Appearance", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_appearance), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -62,23 +75,43 @@ fun SettingsAppearanceScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             SettingsGroup(
-                "Theme",
+                appString(R.string.settings_appearance_theme),
                 listOf(
-                    AppThemeMode.SYSTEM to "Follow System",
-                    AppThemeMode.LIGHT to "Light",
-                    AppThemeMode.DARK to "Dark",
-                    AppThemeMode.BLACK to "Black"
+                    AppThemeMode.SYSTEM to appString(R.string.settings_appearance_follow_system),
+                    AppThemeMode.LIGHT to appString(R.string.settings_appearance_light),
+                    AppThemeMode.DARK to appString(R.string.settings_appearance_dark),
+                    AppThemeMode.BLACK to appString(R.string.settings_appearance_black)
                 ).map { (mode, label) ->
                     { SettingsRadioRow(label, themeMode == mode) { onThemeModeChange(mode) } }
                 }
             )
             Text(
-                "Black uses a true black background everywhere (better battery life on OLED screens), with a dark grey tint on cards for contrast.",
+                appString(R.string.settings_appearance_black_uses_a_true_black),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
 
             SettingsGroup(
-                "Font",
+                appString(R.string.settings_appearance_language),
+                listOf(
+                    "" to appString(R.string.settings_appearance_follow_system),
+                    "en" to "English",
+                    "nl" to "Nederlands"
+                ).map { (tag, label) ->
+                    {
+                        SettingsRadioRow(label, if (tag.isEmpty()) languageTags.isEmpty() else languageTags.startsWith(tag)) {
+                            languageTags = tag
+                            localeManager.applicationLocales = LocaleList.forLanguageTags(tag)
+                        }
+                    }
+                }
+            )
+            Text(
+                appString(R.string.settings_appearance_language_explanation),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+            )
+
+            SettingsGroup(
+                appString(R.string.settings_appearance_font),
                 listOf(
                     AppFont.SYSTEM_DEFAULT to AppFont.SYSTEM_DEFAULT.label,
                     AppFont.WORK_SANS to AppFont.WORK_SANS.label
@@ -88,7 +121,7 @@ fun SettingsAppearanceScreen(
             )
 
             SettingsGroup(
-                "Contrast Color",
+                appString(R.string.settings_appearance_contrast_color),
                 listOf({
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
@@ -105,7 +138,7 @@ fun SettingsAppearanceScreen(
                 })
             )
             Text(
-                "Tints buttons, accents, and pill and popup backgrounds throughout the app, in both light and dark mode.",
+                appString(R.string.settings_appearance_tints_buttons_accents_and_pill),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
         }
@@ -142,7 +175,7 @@ private fun ContrastColorSwatch(option: ContrastColor, selected: Boolean, onClic
         if (selected) {
             Icon(
                 imageVector = Icons.Filled.Check,
-                contentDescription = "Selected",
+                contentDescription = appString(R.string.common_selected),
                 tint = if (option.color != null) Color.White else MaterialTheme.colorScheme.onSurface
             )
         }

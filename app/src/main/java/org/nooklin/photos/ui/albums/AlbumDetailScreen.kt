@@ -1,5 +1,10 @@
 package org.nooklin.photos.ui.albums
 
+import org.nooklin.photos.ui.common.rememberGroupSelection
+import org.nooklin.photos.ui.common.groupSelectionTitle
+import org.nooklin.photos.ui.common.GroupSelectionActions
+import org.nooklin.photos.ui.common.GroupSelectableCell
+import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
 import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
 import org.nooklin.photos.ui.common.cellAspectRatio
@@ -13,7 +18,6 @@ import org.nooklin.photos.ui.common.zoomSource
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,6 +33,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CallMerge
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -71,9 +79,12 @@ import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.ui.common.prefetchScreenTierImage
 import androidx.compose.ui.platform.LocalContext
 import org.nooklin.photos.data.MediaItem
+import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.GlassPillTextField
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +92,7 @@ fun AlbumDetailScreen(
     albumName: String,
     photos: List<MediaItem>,
     gridColumns: Int,
+    groupActions: GroupActions? = null,
     onBack: () -> Unit,
     onItemClick: (MediaItem, Rect, ImageBitmap?) -> Unit,
     onRename: (String) -> Unit,
@@ -98,6 +110,7 @@ fun AlbumDetailScreen(
     val backdropGraphicsLayer = rememberGraphicsLayer()
     val coroutineScope = rememberCoroutineScope()
 
+    val selection = rememberGroupSelection()
     val albumGridState = rememberLazyGridState()
     ScrollToPendingZoomKey(
         lazyIndexOf = { key -> photos.indexOfFirst { it.id == key }.takeIf { it >= 0 } },
@@ -113,23 +126,32 @@ fun AlbumDetailScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text(albumName, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.width(6.dp))
-                        Text("${photos.size} items", color = Color.Gray, fontSize = 13.sp)
+                        if (selection.isSelecting) {
+                            Text(groupSelectionTitle(selection, albumName), fontWeight = FontWeight.Bold)
+                        } else {
+                            Text(albumName, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.width(6.dp))
+                            Text(appString(R.string.common_items, photos.size), color = Color.Gray, fontSize = 13.sp)
+                        }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
-                    IconButton(onClick = onAddPhotos) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add photos")
-                    }
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More options")
-                    }
+                    if (groupActions != null && photos.isNotEmpty()) GroupSelectionActions(selection, photos, groupActions)
+                    CircleIconButton(
+                        icon = Icons.Filled.Add,
+                        contentDescription = appString(R.string.common_add_photos),
+                        onClick = onAddPhotos
+                    )
+                    CircleIconButton(
+                        icon = Icons.Filled.MoreVert,
+                        contentDescription = appString(R.string.common_more_options),
+                        onClick = { menuExpanded = true }
+                    )
                     DropdownMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false },
@@ -138,21 +160,24 @@ fun AlbumDetailScreen(
                     ) {
                         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                             DropdownMenuItem(
-                                text = { Text("Rename") },
+                                text = { Text(appString(R.string.common_rename)) },
+                                leadingIcon = { MenuIcon(Icons.Filled.Edit) },
                                 onClick = {
                                     menuExpanded = false
                                     showRenameDialog = true
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Merge into...") },
+                                text = { Text(appString(R.string.common_merge_into)) },
+                                leadingIcon = { MenuIcon(Icons.Filled.CallMerge) },
                                 onClick = {
                                     menuExpanded = false
                                     onMergeRequested()
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Delete Album", color = GlassPill.destructiveText) },
+                                text = { Text(appString(R.string.common_delete_album), color = GlassPill.destructiveText) },
+                                leadingIcon = { MenuIcon(Icons.Filled.Delete) },
                                 onClick = {
                                     menuExpanded = false
                                     showDeleteAlbumConfirm = true
@@ -169,7 +194,7 @@ fun AlbumDetailScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No photos in this album")
+                Text(appString(R.string.album_detail_no_photos_in_this_album))
             }
         } else {
             LazyVerticalGrid(
@@ -182,22 +207,24 @@ fun AlbumDetailScreen(
             ) {
                 items(photos.size, key = { photos[it].id }) { index ->
                     val item = photos[index]
-                    GridThumbnail(
-                        uri = item.uri,
-                        dateModified = item.dateModified,
+                    GroupSelectableCell(
+                        selection = if (groupActions != null) selection else null,
+                        id = item.id,
                         modifier = Modifier
                             .aspectRatio(if (cols == 1) item.cellAspectRatio() else 1f)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .zoomSource(item.id)
-                            .clickable {
-                                prefetchScreenTierImage(context, item)
-                                coroutineScope.launch {
-                                    val backdrop = runCatching { backdropGraphicsLayer.toImageBitmap() }.getOrNull()
-                                    onItemClick(item, (ZoomSources.boundsOf(item.id) ?: Rect.Zero), backdrop)
-                                }
+                            .zoomSource(item.id),
+                        onClick = {
+                            prefetchScreenTierImage(context, item)
+                            coroutineScope.launch {
+                                val backdrop = runCatching { backdropGraphicsLayer.toImageBitmap() }.getOrNull()
+                                onItemClick(item, (ZoomSources.boundsOf(item.id) ?: Rect.Zero), backdrop)
                             }
-                    )
+                        }
+                    ) {
+                        GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = Modifier.fillMaxSize())
+                    }
                 }
             }
         }
@@ -205,9 +232,9 @@ fun AlbumDetailScreen(
 
     if (showDeleteAlbumConfirm) {
         ConfirmDeleteDialog(
-            title = "Delete this album?",
-            text = "The photos stay in your library. Only the album is removed.",
-            confirmLabel = "Delete Album",
+            title = appString(R.string.common_delete_this_album),
+            text = appString(R.string.album_detail_the_photos_stay_in_your),
+            confirmLabel = appString(R.string.common_delete_album),
             onConfirm = {
                 showDeleteAlbumConfirm = false
                 onDeleteAlbum()
@@ -224,7 +251,7 @@ fun AlbumDetailScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Rename Album") },
+            title = { Text(appString(R.string.album_detail_rename_album)) },
             text = {
                 GlassPillTextField(
                     value = newName,
@@ -239,11 +266,11 @@ fun AlbumDetailScreen(
                         showRenameDialog = false
                     }
                 ) {
-                    Text("Rename")
+                    Text(appString(R.string.common_rename))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showRenameDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }

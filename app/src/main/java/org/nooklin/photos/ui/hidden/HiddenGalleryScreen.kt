@@ -36,6 +36,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PhotoAlbum
+import androidx.compose.material.icons.filled.Visibility
+import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Check
@@ -81,12 +86,16 @@ import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
 import org.nooklin.photos.ui.MediaFilter
 import org.nooklin.photos.ui.SortOrder
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.GlassPillTextField
 import org.nooklin.photos.ui.common.PillListRow
 import org.nooklin.photos.ui.common.dragToSelect
 import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Reached from Home, re-auth required each visit. Select mode mirrors the main Library.
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -103,7 +112,7 @@ fun HiddenGalleryScreen(
     onAddToAlbum: (albumId: Long, item: HiddenItem) -> Unit,
     onCreateAlbum: (name: String, onCreated: (Long) -> Unit) -> Unit,
     onBack: () -> Unit,
-    title: String = "Hidden Library",
+    title: String = appString(R.string.common_hidden_library),
     showFilterMenu: Boolean = false,
     filter: MediaFilter = MediaFilter.ALL,
     onFilterChange: (MediaFilter) -> Unit = {},
@@ -157,7 +166,7 @@ fun HiddenGalleryScreen(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
@@ -165,7 +174,7 @@ fun HiddenGalleryScreen(
                         Box {
                             CircleIconButton(
                                 icon = Icons.Filled.FilterList,
-                                contentDescription = "Filter",
+                                contentDescription = appString(R.string.common_filter),
                                 onClick = { filterMenuExpanded = true }
                             )
                             DropdownMenu(
@@ -176,7 +185,7 @@ fun HiddenGalleryScreen(
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                     DropdownMenuItem(
-                                        text = { Text("All") },
+                                        text = { Text(appString(R.string.common_all)) },
                                         trailingIcon = {
                                             if (filter == MediaFilter.ALL) {
                                                 Icon(Icons.Filled.Check, contentDescription = null)
@@ -185,7 +194,7 @@ fun HiddenGalleryScreen(
                                         onClick = { onFilterChange(MediaFilter.ALL) }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Favorites") },
+                                        text = { Text(appString(R.string.common_favorites)) },
                                         trailingIcon = {
                                             if (filter == MediaFilter.FAVORITES) {
                                                 Icon(Icons.Filled.Check, contentDescription = null)
@@ -194,7 +203,7 @@ fun HiddenGalleryScreen(
                                         onClick = { onFilterChange(MediaFilter.FAVORITES) }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Videos") },
+                                        text = { Text(appString(R.string.common_videos)) },
                                         trailingIcon = {
                                             if (filter == MediaFilter.VIDEOS) {
                                                 Icon(Icons.Filled.Check, contentDescription = null)
@@ -203,7 +212,7 @@ fun HiddenGalleryScreen(
                                         onClick = { onFilterChange(MediaFilter.VIDEOS) }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Screenshots") },
+                                        text = { Text(appString(R.string.common_screenshots)) },
                                         trailingIcon = {
                                             if (!hideScreenshots) {
                                                 Icon(Icons.Filled.Check, contentDescription = null)
@@ -213,7 +222,7 @@ fun HiddenGalleryScreen(
                                     )
                                     HorizontalDivider()
                                     DropdownMenuItem(
-                                        text = { Text("Newest First") },
+                                        text = { Text(appString(R.string.common_newest_first)) },
                                         trailingIcon = {
                                             if (sortOrder == SortOrder.NEWEST_FIRST) {
                                                 Icon(Icons.Filled.Check, contentDescription = null)
@@ -222,7 +231,7 @@ fun HiddenGalleryScreen(
                                         onClick = { onSortOrderChange(SortOrder.NEWEST_FIRST) }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Oldest First") },
+                                        text = { Text(appString(R.string.common_oldest_first)) },
                                         trailingIcon = {
                                             if (sortOrder == SortOrder.OLDEST_FIRST) {
                                                 Icon(Icons.Filled.Check, contentDescription = null)
@@ -238,7 +247,7 @@ fun HiddenGalleryScreen(
                         Box {
                             CircleIconButton(
                                 icon = Icons.Filled.MoreVert,
-                                contentDescription = "More",
+                                contentDescription = appString(R.string.common_more),
                                 onClick = { actionsMenuExpanded = true }
                             )
                             DropdownMenu(
@@ -249,7 +258,8 @@ fun HiddenGalleryScreen(
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                     DropdownMenuItem(
-                                        text = { Text("Favorite") },
+                                        text = { Text(appString(R.string.common_favorite)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             items.filter { it.file.name in selectedNames }.forEach { onToggleFavorite(it) }
@@ -257,7 +267,8 @@ fun HiddenGalleryScreen(
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Unhide") },
+                                        text = { Text(appString(R.string.common_unhide)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.Visibility) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             items.filter { it.file.name in selectedNames }.forEach { onUnhide(it) }
@@ -265,14 +276,16 @@ fun HiddenGalleryScreen(
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Add to Album") },
+                                        text = { Text(appString(R.string.common_add_to_album)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.PhotoAlbum) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             showAddToAlbumDialog = true
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Move to Recycle Bin", color = GlassPill.destructiveText) },
+                                        text = { Text(appString(R.string.common_move_to_recycle_bin), color = GlassPill.destructiveText) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.Delete) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             showDeleteConfirm = true
@@ -283,11 +296,11 @@ fun HiddenGalleryScreen(
                         }
                         CircleIconButton(
                             icon = Icons.Filled.Close,
-                            contentDescription = "Cancel selection",
+                            contentDescription = appString(R.string.common_cancel_selection),
                             onClick = { exitSelection() }
                         )
                     } else {
-                        PillButton(text = "Select", onClick = { isSelecting = true })
+                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
                 }
             )
@@ -298,7 +311,7 @@ fun HiddenGalleryScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No hidden items")
+                Text(appString(R.string.hidden_gallery_no_hidden_items))
             }
             return@Scaffold
         }
@@ -456,7 +469,7 @@ fun HiddenGalleryScreen(
                             if (isSelecting && selected) {
                                 Icon(
                                     imageVector = Icons.Filled.CheckCircle,
-                                    contentDescription = "Selected",
+                                    contentDescription = appString(R.string.common_selected),
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
                                 )
@@ -471,13 +484,13 @@ fun HiddenGalleryScreen(
     if (showDeleteConfirm) {
         val count = selectedNames.size
         ConfirmDeleteDialog(
-            title = "Move to Recycle Bin?",
+            title = appString(R.string.common_move_to_recycle_bin_2),
             text = if (count == 1) {
-                "This photo will be deleted from the library. It will be in Recently Deleted for 30 days."
+                appString(R.string.common_this_photo_will_be_deleted)
             } else {
-                "These photos will be deleted from the library. They will be in Recently Deleted for 30 days."
+                appString(R.string.common_these_photos_will_be_deleted)
             },
-            confirmLabel = if (count == 1) "Delete 1 Photo" else "Delete $count Photos",
+            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
             onConfirm = {
                 showDeleteConfirm = false
                 items.filter { it.file.name in selectedNames }.forEach { onMoveToRecycleBin(it) }
@@ -495,17 +508,17 @@ fun HiddenGalleryScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Add to Hidden Album") },
+            title = { Text(appString(R.string.common_add_to_hidden_album)) },
             text = {
                 Column {
                     // With no hidden albums the dialog lets you create one right here, like the regular Add to Album
                     GlassPillTextField(
                         value = newAlbumName,
                         onValueChange = { newAlbumName = it },
-                        placeholder = "New album name"
+                        placeholder = appString(R.string.common_new_album_name)
                     )
                     if (existingAlbums.isNotEmpty()) {
-                        Text("Or choose existing:", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                        Text(appString(R.string.common_or_choose_existing), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                         existingAlbums.forEach { album ->
                             PillListRow(
                                 label = album.name,
@@ -530,10 +543,10 @@ fun HiddenGalleryScreen(
                         showAddToAlbumDialog = false
                         exitSelection()
                     }
-                ) { Text("Create & Add") }
+                ) { Text(appString(R.string.common_create_add)) }
             },
             dismissButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
@@ -578,7 +591,7 @@ private fun HiddenGridCell(
         if (isSelecting && isSelected) {
             Icon(
                 imageVector = Icons.Filled.CheckCircle,
-                contentDescription = "Selected",
+                contentDescription = appString(R.string.common_selected),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
             )
@@ -586,38 +599,3 @@ private fun HiddenGridCell(
     }
 }
 
-@Composable
-private fun CircleIconButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    Box(
-        Modifier
-            .padding(4.dp)
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(GlassPill.adaptiveGlassBackground)
-            .border(GlassPill.adaptiveBorder, CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription = contentDescription)
-    }
-}
-
-/** Same glass background+border as CircleIconButton, for text labels (Select) instead of a single icon. */
-@Composable
-private fun PillButton(text: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .padding(4.dp)
-            .clip(GlassPill.shape)
-            .background(GlassPill.adaptiveGlassBackground)
-            .border(GlassPill.adaptiveBorder, GlassPill.shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Text(text)
-    }
-}

@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,10 +44,10 @@ fun AlbumMergeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Merge into...", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_merge_into), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -55,7 +57,7 @@ fun AlbumMergeScreen(
             items(otherAlbums, key = { it.id }) { album ->
                 ListItem(
                     headlineContent = { Text(album.name) },
-                    supportingContent = { Text("${album.itemCount} items") },
+                    supportingContent = { Text(appString(R.string.common_items, album.itemCount)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { pendingTarget = album }
@@ -71,20 +73,20 @@ fun AlbumMergeScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Merge albums?") },
+            title = { Text(appString(R.string.album_merge_merge_albums)) },
             text = {
-                Text("Merge \"$sourceAlbumName\" into \"${target.name}\"? This can't be undone.")
+                Text(appString(R.string.album_merge_merge_into_this_can_t, sourceAlbumName, target.name))
             },
             confirmButton = {
                 TextButton(onClick = {
                     onMerge(target.id)
                     pendingTarget = null
                 }) {
-                    Text("Merge")
+                    Text(appString(R.string.album_merge_merge))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingTarget = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingTarget = null }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }

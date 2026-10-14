@@ -93,6 +93,8 @@ import org.nooklin.photos.ui.common.aspectRatioOrUnknown
 import org.nooklin.photos.ui.common.zoomPagerBounds
 import org.nooklin.photos.ui.common.ZoomableImage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import org.nooklin.photos.ui.common.SharePreparingDialog
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -112,6 +114,8 @@ import org.nooklin.photos.ui.common.VideoPrewarm
 import org.nooklin.photos.ui.common.videoUriOf
 import org.nooklin.photos.ui.common.prefetchScreenTierImage
 import kotlinx.coroutines.delay
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -181,6 +185,13 @@ fun PhotoViewerScreen(
     // Keyed on the page index, a new photo gets a fresh unzoomed state
     var metadata by remember { mutableStateOf<PhotoMetadata?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var preparingJob by remember { mutableStateOf<Job?>(null) }
+    if (preparingJob != null) {
+        SharePreparingDialog(onCancel = {
+            preparingJob?.cancel()
+            preparingJob = null
+        })
+    }
     var showAddToAlbumDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentItem) { metadata = null }
@@ -240,13 +251,13 @@ fun PhotoViewerScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { coroutineScope.launch { animateBackOut() } }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = chromeColor)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back), tint = chromeColor)
                     }
                 },
                 actions = {
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = chromeColor)
+                            Icon(Icons.Filled.MoreVert, contentDescription = appString(R.string.common_more), tint = chromeColor)
                         }
                         DropdownMenu(
                             expanded = menuExpanded,
@@ -256,14 +267,14 @@ fun PhotoViewerScreen(
                         ) {
                             CompositionLocalProvider(LocalContentColor provides chromeColor) {
                                 DropdownMenuItem(
-                                    text = { Text("Add to Album") },
+                                    text = { Text(appString(R.string.common_add_to_album)) },
                                     onClick = {
                                         menuExpanded = false
                                         showAddToAlbumDialog = true
                                     }
                                 )
                                 if (hideEnabled) DropdownMenuItem(
-                                    text = { Text("Hide") },
+                                    text = { Text(appString(R.string.common_hide)) },
                                     onClick = {
                                         menuExpanded = false
                                         currentItem?.let {
@@ -274,17 +285,19 @@ fun PhotoViewerScreen(
                                 )
                                 if (shareEnabled) {
                                     DropdownMenuItem(
-                                        text = { Text("Copy") },
+                                        text = { Text(appString(R.string.photo_viewer_copy)) },
                                         onClick = {
                                             menuExpanded = false
                                             currentItem?.let { item ->
-                                                coroutineScope.launch {
+                                                preparingJob = coroutineScope.launch {
                                                     val copyUri = withContext(Dispatchers.IO) {
-                                                        createExifStrippedShareUri(context, item, removeExifOnShare)
+                                                        val running = coroutineContext[Job]
+                                                        createExifStrippedShareUri(context, item, removeExifOnShare) { running?.isActive == false }
                                                     }
+                                                    preparingJob = null
                                                     if (copyUri != null) {
                                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                                        clipboard.setPrimaryClip(ClipData.newUri(context.contentResolver, "Photo", copyUri))
+                                                        clipboard.setPrimaryClip(ClipData.newUri(context.contentResolver, appString(R.string.photo_viewer_photo), copyUri))
                                                     }
                                                 }
                                             }
@@ -292,7 +305,7 @@ fun PhotoViewerScreen(
                                     )
                                 }
                                 DropdownMenuItem(
-                                    text = { Text("Duplicate") },
+                                    text = { Text(appString(R.string.photo_viewer_duplicate)) },
                                     onClick = {
                                         menuExpanded = false
                                         currentItem?.let { item ->
@@ -329,15 +342,17 @@ fun PhotoViewerScreen(
                         if (shareEnabled) {
                             ViewerCircleButton(
                                 icon = Icons.Filled.IosShare,
-                                contentDescription = "Share",
+                                contentDescription = appString(R.string.common_share),
                                 backgroundColor = toolbarBackground,
                                 border = toolbarBorder,
                                 tint = chromeColor,
                                 onClick = {
-                                    coroutineScope.launch {
+                                    preparingJob = coroutineScope.launch {
                                         val shareUri = withContext(Dispatchers.IO) {
-                                            createExifStrippedShareUri(context, item, removeExifOnShare)
+                                            val running = coroutineContext[Job]
+                                            createExifStrippedShareUri(context, item, removeExifOnShare) { running?.isActive == false }
                                         }
+                                        preparingJob = null
                                         // Fails closed: if stripping fails, never share the original with its EXIF/GPS
                                         if (shareUri != null) {
                                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -371,22 +386,22 @@ fun PhotoViewerScreen(
                                         } else {
                                             Icons.Filled.FavoriteBorder
                                         },
-                                        contentDescription = "Favorite",
+                                        contentDescription = appString(R.string.common_favorite),
                                         tint = chromeColor
                                     )
                                 }
                                 IconButton(onClick = { showInfo = true }) {
-                                    Icon(Icons.Filled.Info, contentDescription = "Info", tint = chromeColor)
+                                    Icon(Icons.Filled.Info, contentDescription = appString(R.string.common_info), tint = chromeColor)
                                 }
                                 IconButton(onClick = { onEdit(item) }) {
-                                    Icon(Icons.Filled.Tune, contentDescription = "Edit", tint = chromeColor)
+                                    Icon(Icons.Filled.Tune, contentDescription = appString(R.string.common_edit), tint = chromeColor)
                                 }
                             }
                         }
 
                         ViewerCircleButton(
                             icon = Icons.Filled.Delete,
-                            contentDescription = "Move to recycle bin",
+                            contentDescription = appString(R.string.common_move_to_recycle_bin_3),
                             backgroundColor = toolbarBackground,
                             border = toolbarBorder,
                             tint = chromeColor,
@@ -553,9 +568,9 @@ fun PhotoViewerScreen(
 
             if (showTrashConfirm && currentItem != null) {
                 ConfirmDeleteDialog(
-                    title = "Move to Recycle Bin?",
-                    text = "This photo will be deleted from the library. It will be in Recently Deleted for 30 days.",
-                    confirmLabel = "Delete 1 Photo",
+                    title = appString(R.string.common_move_to_recycle_bin_2),
+                    text = appString(R.string.common_this_photo_will_be_deleted),
+                    confirmLabel = appString(R.string.common_delete_photo),
                     containerColor = popupBackground,
                     contentColor = chromeColor,
                     onConfirm = {
@@ -587,16 +602,16 @@ private fun AddToAlbumDialog(
         containerColor = backgroundColor,
         titleContentColor = contentColor,
         textContentColor = contentColor,
-        title = { Text("Add to Album") },
+        title = { Text(appString(R.string.common_add_to_album)) },
         text = {
             Column {
                 GlassPillTextField(
                     value = newAlbumName,
                     onValueChange = { newAlbumName = it },
-                    placeholder = "New album name"
+                    placeholder = appString(R.string.common_new_album_name)
                 )
                 if (existingAlbums.isNotEmpty()) {
-                    Text("Or choose existing:", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                    Text(appString(R.string.common_or_choose_existing), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                     LazyColumn {
                         items(existingAlbums, key = { it.id }) { album ->
                             PillListRow(
@@ -614,11 +629,11 @@ private fun AddToAlbumDialog(
                 onClick = { if (newAlbumName.isNotBlank()) onConfirmNew(newAlbumName) },
                 enabled = newAlbumName.isNotBlank()
             ) {
-                Text("Add")
+                Text(appString(R.string.photo_viewer_add))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(appString(R.string.common_cancel)) }
         }
     )
 }

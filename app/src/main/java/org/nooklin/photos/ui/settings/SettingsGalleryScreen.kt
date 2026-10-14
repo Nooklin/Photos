@@ -28,6 +28,8 @@ import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
 import org.nooklin.photos.data.local.MAX_LIBRARY_PREVIEW_ROWS
 import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
 import org.nooklin.photos.data.local.MIN_LIBRARY_PREVIEW_ROWS
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Group by only applies in Square mode, the staggered grid has no section header
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,17 +48,17 @@ fun SettingsGalleryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gallery", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_gallery), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-            SettingsSectionTitle("Photo Grid Size")
+            SettingsSectionTitle(appString(R.string.settings_gallery_photo_grid_size))
             Row(
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -70,7 +72,7 @@ fun SettingsGalleryScreen(
                 }
             }
 
-            SettingsSectionTitle("Home Library Preview Rows")
+            SettingsSectionTitle(appString(R.string.settings_gallery_home_library_preview_rows))
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -87,34 +89,34 @@ fun SettingsGalleryScreen(
                 }
             }
             Text(
-                "How many rows of thumbnails Home's Library section shows before \"See Full Library\".",
+                appString(R.string.settings_gallery_how_many_rows_of_thumbnails),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
             )
 
             SettingsGroup(
-                "Ratio",
+                appString(R.string.settings_gallery_ratio),
                 listOf(
-                    GridStyle.SQUARE to "Square",
-                    GridStyle.ORIGINAL to "Aspect"
+                    GridStyle.SQUARE to appString(R.string.settings_gallery_square),
+                    GridStyle.ORIGINAL to appString(R.string.settings_gallery_aspect)
                 ).map { (style, label) ->
                     { SettingsRadioRow(label, gridStyle == style) { onGridStyleChange(style) } }
                 }
             )
 
             SettingsGroup(
-                "Group by",
+                appString(R.string.settings_gallery_group_by),
                 listOf(
-                    GroupBy.NONE to "None",
-                    GroupBy.DAY to "Day",
-                    GroupBy.WEEK to "Week",
-                    GroupBy.MONTH to "Month",
-                    GroupBy.YEAR to "Year"
+                    GroupBy.NONE to appString(R.string.settings_gallery_none),
+                    GroupBy.DAY to appString(R.string.settings_gallery_day),
+                    GroupBy.WEEK to appString(R.string.settings_gallery_week),
+                    GroupBy.MONTH to appString(R.string.settings_gallery_month),
+                    GroupBy.YEAR to appString(R.string.settings_gallery_year)
                 ).map { (mode, label) ->
                     { SettingsRadioRow(label, groupBy == mode) { onGroupByChange(mode) } }
                 }
             )
             Text(
-                "Applies to the full Library grid in Square ratio mode only.",
+                appString(R.string.settings_gallery_applies_to_the_full_library),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
             )
         }

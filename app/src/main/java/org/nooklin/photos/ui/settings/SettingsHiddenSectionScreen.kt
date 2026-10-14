@@ -22,6 +22,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,10 +37,10 @@ fun SettingsHiddenSectionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Hidden Section", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_hidden_section), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -46,28 +48,28 @@ fun SettingsHiddenSectionScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             SettingsGroup(
-                "Hidden Section",
+                appString(R.string.common_hidden_section),
                 listOf({ 
-                    SettingsToggleRow("Enable Hidden Section", hiddenSectionEnabled, Icons.Filled.Lock, onCheckedChange = onHiddenSectionEnabledChange) 
+                    SettingsToggleRow(appString(R.string.settings_hidden_section_enable_hidden_section), hiddenSectionEnabled, Icons.Filled.Lock, onCheckedChange = onHiddenSectionEnabledChange) 
                 })
             )
             if (hiddenSectionEnabled) {
                 Text(
-                    "When disabling Hidden Section, all data in the Hidden Section will remain there. Nothing is deleted and will be visible again after enabling Hidden Section again.",
+                    appString(R.string.settings_hidden_section_when_disabling_hidden_section_all),
                     modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp)
                 )
                 SettingsGroup(
-                    "Hidden Section Settings",
+                    appString(R.string.settings_hidden_section_hidden_section_settings),
                     listOf(
-                        { SettingsNavRow("Hidden Albums", Icons.Filled.PhotoAlbum) { onNavigate("hiddenalbums") } },
-                        { SettingsNavRow("Hidden Image Sharing", Icons.Filled.Share) { onNavigate("hiddensharing") } },
+                        { SettingsNavRow(appString(R.string.common_hidden_albums), Icons.Filled.PhotoAlbum) { onNavigate("hiddenalbums") } },
+                        { SettingsNavRow(appString(R.string.common_hidden_image_sharing), Icons.Filled.Share) { onNavigate("hiddensharing") } },
                         {
                             SettingsNavRow(
-                                if (hiddenPinSet) "Extra PIN (On)" else "Extra PIN (Off)",
+                                if (hiddenPinSet) appString(R.string.settings_hidden_section_extra_pin_on) else appString(R.string.settings_hidden_section_extra_pin_off),
                                 Icons.Filled.Password
                             ) { onNavigate("hiddensection/hidden_pin") }
                         },
-                        { SettingsNavRow("Hidden Photos Backup", Icons.Filled.CloudUpload) { onNavigate("hiddenbackup") } }
+                        { SettingsNavRow(appString(R.string.common_hidden_photos_backup), Icons.Filled.CloudUpload) { onNavigate("hiddenbackup") } }
                     )
                 )
             }

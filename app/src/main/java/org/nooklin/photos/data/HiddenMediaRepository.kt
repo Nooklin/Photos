@@ -40,7 +40,8 @@ data class HiddenItem(
     val isScreenRecording: Boolean = false,
     val width: Int? = null,
     val height: Int? = null,
-    val mimeType: String? = null
+    val mimeType: String? = null,
+    val deletedAt: Long? = null
 )
 
 data class HiddenAlbumWithPreview(
@@ -197,7 +198,8 @@ class HiddenMediaRepository(
                 isScreenRecording = item.isScreenRecording,
                 width = item.width,
                 height = item.height,
-                mimeType = mimeType
+                mimeType = mimeType,
+                dateAdded = item.dateAdded
             )
         )
         destination
@@ -234,8 +236,8 @@ class HiddenMediaRepository(
         return size
     }
 
-    suspend fun listHidden(): List<HiddenItem> = withContext(Dispatchers.IO) {
-        hiddenDao.allMedia().mapNotNull { entry ->
+    private suspend fun listEntries(deleted: Boolean): List<HiddenItem> = withContext(Dispatchers.IO) {
+        hiddenDao.allMedia().filter { (it.deletedAt != null) == deleted }.mapNotNull { entry ->
             val file = File(hiddenDir, entry.fileName)
             if (file.exists()) {
                 val thumb = File(thumbsDir, entry.fileName)
@@ -255,11 +257,33 @@ class HiddenMediaRepository(
                     isScreenRecording = entry.isScreenRecording,
                     width = thumbnailSize?.first ?: entry.width,
                     height = thumbnailSize?.second ?: entry.height,
-                    mimeType = entry.mimeType
+                    mimeType = entry.mimeType,
+                    deletedAt = entry.deletedAt
                 )
             } else null
         }
             .sortedByDescending { it.hiddenAt }
+    }
+
+    suspend fun listHidden(): List<HiddenItem> = listEntries(deleted = false)
+
+    // Items in the Hidden Recently Deleted, still private files in the app
+    suspend fun listDeleted(): List<HiddenItem> = listEntries(deleted = true)
+
+    // Wipes deleted items older than 30 days, no system dialog needed because the files are the app's own
+    suspend fun purgeExpired() = withContext(Dispatchers.IO) {
+        val limit = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
+        hiddenDao.allMedia()
+            .filter { val d = it.deletedAt; d != null && d < limit }
+            .forEach { discardCopy(it.fileName) }
+    }
+
+    suspend fun purge(fileNames: List<String>) {
+        fileNames.forEach { discardCopy(it) }
+    }
+
+    suspend fun restoreDeleted(fileName: String) = withContext(Dispatchers.IO) {
+        hiddenDao.setDeletedAt(fileName, null)
     }
 
     suspend fun updateSize(fileName: String, width: Int, height: Int) {
@@ -476,6 +500,8 @@ class HiddenMediaRepository(
             // New library id: carry the stored original over
             originals.copy(OriginalsStore.hiddenKey(fileName), OriginalsStore.mediaKey(ContentUris.parseId(newUri)))
             originals.delete(OriginalsStore.hiddenKey(fileName))
+            // MediaStore stamps the new row with today, so the old library date goes back as a sort date
+            entry.dateAdded?.let { localMetadataStore.setSortDate(ContentUris.parseId(newUri), it) }
             file.delete()
             File(thumbsDir, fileName).delete()
             hiddenDao.deleteMedia(fileName)
@@ -484,12 +510,8 @@ class HiddenMediaRepository(
 
     suspend fun unhide(fileName: String): UnhideResult = reinsertIntoMediaStore(fileName)
 
-    suspend fun trash(fileName: String): UnhideResult {
-        val result = reinsertIntoMediaStore(fileName)
-        if (result is UnhideResult.Success) {
-            val id = ContentUris.parseId(result.uri)
-            localMetadataStore.moveToRecycleBin(id, result.uri.toString(), wasHidden = true, width = result.width, height = result.height)
-        }
-        return result
+    // Stays a private file in the app, only marked as deleted
+    suspend fun trash(fileName: String) = withContext(Dispatchers.IO) {
+        hiddenDao.setDeletedAt(fileName, System.currentTimeMillis())
     }
 }

@@ -35,6 +35,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Shared by both pickers, identity is MediaItem.id or HiddenItem.file.name
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,7 +61,7 @@ fun <T, K : Any> SelectionGridPickerScreen(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
@@ -67,7 +69,7 @@ fun <T, K : Any> SelectionGridPickerScreen(
                         enabled = selectedKeys.isNotEmpty(),
                         onClick = { onConfirm(selectedKeys.toList()) }
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = "Add ${selectedKeys.size} photo(s)")
+                        Icon(Icons.Filled.Check, contentDescription = appString(R.string.selection_grid_picker_add_photo_s, selectedKeys.size))
                     }
                 }
             )
@@ -105,7 +107,7 @@ fun <T, K : Any> SelectionGridPickerScreen(
                         if (selected) {
                             Icon(
                                 imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = "Selected",
+                                contentDescription = appString(R.string.common_selected),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
                             )

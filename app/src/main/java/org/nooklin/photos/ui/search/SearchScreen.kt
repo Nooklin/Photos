@@ -1,12 +1,16 @@
 package org.nooklin.photos.ui.search
 
+import org.nooklin.photos.ui.common.rememberGroupSelection
+import org.nooklin.photos.ui.common.groupSelectionTitle
+import org.nooklin.photos.ui.common.GroupSelectionActions
+import org.nooklin.photos.ui.common.GroupSelectableCell
+import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
 import org.nooklin.photos.ui.common.zoomSource
 import org.nooklin.photos.ui.common.zoomBackdropSource
 import org.nooklin.photos.ui.common.scrollToItemCentered
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -43,6 +47,8 @@ import androidx.compose.ui.graphics.FilterQuality
 import org.nooklin.photos.ui.common.freshImageRequest
 import androidx.compose.ui.platform.LocalContext
 import org.nooklin.photos.data.MediaItem
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Filename search only (DISPLAY_NAME), no full-text or EXIF
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +56,7 @@ import org.nooklin.photos.data.MediaItem
 fun SearchScreen(
     items: List<MediaItem>,
     gridColumns: Int,
+    groupActions: GroupActions? = null,
     onBack: () -> Unit,
     onItemClick: (MediaItem, List<MediaItem>) -> Unit
 ) {
@@ -64,6 +71,7 @@ fun SearchScreen(
         }
     }
 
+    val selection = rememberGroupSelection()
     val searchGridState = rememberLazyGridState()
     ScrollToPendingZoomKey(
         lazyIndexOf = { key -> results.indexOfFirst { it.id == key }.takeIf { it >= 0 } },
@@ -78,15 +86,18 @@ fun SearchScreen(
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text("Search by filename") },
+                        placeholder = { Text(appString(R.string.search_search_by_filename)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
+                },
+                actions = {
+                    if (groupActions != null && results.isNotEmpty()) GroupSelectionActions(selection, results, groupActions)
                 }
             )
         }
@@ -96,7 +107,7 @@ fun SearchScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Search by filename")
+                Text(appString(R.string.search_search_by_filename))
             }
             return@Scaffold
         }
@@ -105,7 +116,7 @@ fun SearchScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No matches")
+                Text(appString(R.string.search_no_matches))
             }
             return@Scaffold
         }
@@ -119,16 +130,18 @@ fun SearchScreen(
         ) {
             items(results.size, key = { results[it].id }) { index ->
                 val item = results[index]
-                GridThumbnail(
-                    uri = item.uri,
-                    dateModified = item.dateModified,
+                GroupSelectableCell(
+                    selection = if (groupActions != null) selection else null,
+                    id = item.id,
                     modifier = Modifier
                         .aspectRatio(1f)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .zoomSource(item.id)
-                        .clickable { onItemClick(item, results) }
-                )
+                        .zoomSource(item.id),
+                    onClick = { onItemClick(item, results) }
+                ) {
+                    GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = Modifier.fillMaxSize())
+                }
             }
         }
     }

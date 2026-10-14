@@ -1,5 +1,10 @@
 package org.nooklin.photos.ui.category
 
+import org.nooklin.photos.ui.common.rememberGroupSelection
+import org.nooklin.photos.ui.common.groupSelectionTitle
+import org.nooklin.photos.ui.common.GroupSelectionActions
+import org.nooklin.photos.ui.common.GroupSelectableCell
+import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.ui.common.scrollToItemCentered
 
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
@@ -9,7 +14,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -51,6 +55,8 @@ import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
 import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
 import org.nooklin.photos.ui.common.rememberScreenGridColumns
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +66,7 @@ fun CategoryScreen(
     gridStyleSetting: GridStyle,
     gridColumns: Int,
     duplicateMediaIds: Set<Long> = emptySet(),
+    groupActions: GroupActions? = null,
     onBack: () -> Unit,
     // Second arg: the viewer pages through this list only
     onItemClick: (MediaItem, List<MediaItem>) -> Unit
@@ -77,6 +84,7 @@ fun CategoryScreen(
         filterByCategory(allItems, category)
     }
 
+    val selection = rememberGroupSelection()
     val squareGridState = rememberLazyGridState()
     val staggeredGridState = rememberLazyStaggeredGridState()
     ScrollToPendingZoomKey(
@@ -88,11 +96,14 @@ fun CategoryScreen(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
-                title = { Text(category.label, fontWeight = FontWeight.Bold) },
+                title = { Text(groupSelectionTitle(selection, category.label), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
+                },
+                actions = {
+                    if (groupActions != null && filtered.isNotEmpty()) GroupSelectionActions(selection, filtered, groupActions)
                 }
             )
         }
@@ -102,7 +113,7 @@ fun CategoryScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Nothing here yet")
+                Text(appString(R.string.category_nothing_here_yet))
             }
             return@Scaffold
         }
@@ -118,16 +129,18 @@ fun CategoryScreen(
             ) {
                 items(filtered.size, key = { filtered[it].id }) { index ->
                     val item = filtered[index]
-                    GridThumbnail(
-                        uri = item.uri,
-                        dateModified = item.dateModified,
+                    GroupSelectableCell(
+                        selection = if (groupActions != null) selection else null,
+                        id = item.id,
                         modifier = Modifier
                             .aspectRatio(1f)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .zoomSource(item.id)
-                            .clickable { onItemClick(item, filtered) }
-                    )
+                            .zoomSource(item.id),
+                        onClick = { onItemClick(item, filtered) }
+                    ) {
+                        GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = Modifier.fillMaxSize())
+                    }
                 }
             }
         } else {
@@ -143,16 +156,18 @@ fun CategoryScreen(
                     val ratio = if (item.width != null && item.height != null && item.height > 0) {
                         item.width.toFloat() / item.height.toFloat()
                     } else 1f
-                    GridThumbnail(
-                        uri = item.uri,
-                        dateModified = item.dateModified,
+                    GroupSelectableCell(
+                        selection = if (groupActions != null) selection else null,
+                        id = item.id,
                         modifier = Modifier
                             .aspectRatio(ratio)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .zoomSource(item.id)
-                            .clickable { onItemClick(item, filtered) }
-                    )
+                            .zoomSource(item.id),
+                        onClick = { onItemClick(item, filtered) }
+                    ) {
+                        GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = Modifier.fillMaxSize())
+                    }
                 }
             }
         }

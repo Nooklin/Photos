@@ -27,7 +27,8 @@ class LocalMetadataStore(private val context: Context) {
         val wasHidden: Boolean = false,
         // Orientation-corrected, captured when moved to the recycle bin
         val width: Int? = null,
-        val height: Int? = null
+        val height: Int? = null,
+        val isVideo: Boolean = uri.contains("/video/media")
     )
 
     // Edited copies get their original's date

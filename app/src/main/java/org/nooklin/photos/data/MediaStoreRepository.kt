@@ -9,6 +9,8 @@ import android.net.Uri
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 data class MediaItem(
     val id: Long,
@@ -67,7 +69,7 @@ data class MediaItem(
 class MediaStoreRepository(private val context: Context) {
 
     suspend fun queryMetadata(item: MediaItem): PhotoMetadata = withContext(Dispatchers.IO) {
-        var displayName = item.uri.lastPathSegment ?: "Unknown"
+        var displayName = item.uri.lastPathSegment ?: appString(R.string.nooklin_photos_app_unknown_2)
         var size = item.sizeBytes ?: 0L
         var width: Int? = item.width
         var height: Int? = item.height

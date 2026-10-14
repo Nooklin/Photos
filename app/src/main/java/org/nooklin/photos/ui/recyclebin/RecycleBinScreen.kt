@@ -63,7 +63,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.nooklin.photos.data.local.LocalMetadataStore.RecycleBinEntry
+import org.nooklin.photos.ui.common.CircleIconButton
+import org.nooklin.photos.ui.common.MenuIcon
 import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.ui.common.PillButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.widthIn
@@ -75,6 +78,8 @@ import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
 import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
 import org.nooklin.photos.ui.common.rememberScreenGridColumns
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 private const val RETENTION_DAYS = 30
 private const val MILLIS_PER_DAY = 24L * 60 * 60 * 1000
@@ -86,7 +91,7 @@ fun daysRemaining(deletedAt: Long): Int {
 
 private fun isExpired(deletedAt: Long): Boolean = daysRemaining(deletedAt) <= 0
 
-// Purging needs the system consent dialog, the files belong to MediaStore
+// Purging needs the system consent dialog when the files belong to MediaStore, privateFiles skips it for the app's own files
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecycleBinScreen(
@@ -97,7 +102,8 @@ fun RecycleBinScreen(
     onItemClick: (Int) -> Unit,
     onBack: () -> Unit,
     restoreConfirmTitle: String? = null,
-    restoreConfirmText: ((count: Int) -> String)? = null
+    restoreConfirmText: ((count: Int) -> String)? = null,
+    privateFiles: Boolean = false
 ) {
     val context = LocalContext.current
 
@@ -110,7 +116,9 @@ fun RecycleBinScreen(
 
     val expired = entries.filter { isExpired(it.deletedAt) }
     LaunchedEffect(expired.map { it.mediaId }) {
-        if (expired.isNotEmpty()) {
+        if (expired.isNotEmpty() && privateFiles) {
+            onPurgeExpired(expired.map { it.mediaId })
+        } else if (expired.isNotEmpty()) {
             val uris = expired.map { Uri.parse(it.uri) }
             val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
             purgeLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
@@ -162,10 +170,10 @@ fun RecycleBinScreen(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
-                title = { Text("Recently Deleted", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_recently_deleted), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
@@ -174,29 +182,35 @@ fun RecycleBinScreen(
                             Box {
                                 CircleIconButton(
                                     icon = Icons.Filled.MoreVert,
-                                    contentDescription = "More",
+                                    contentDescription = appString(R.string.common_more),
                                     onClick = { actionsMenuExpanded = true }
                                 )
-                                if (actionsMenuExpanded) {
-                                    Popup(
-                                        alignment = Alignment.TopEnd,
-                                        onDismissRequest = { actionsMenuExpanded = false },
-                                        properties = PopupProperties(focusable = true)
-                                    ) {
-                                        val all = selectedIds.isEmpty()
-                                        Column(
-                                            Modifier
-                                                .clip(GlassPill.shape)
-                                                .background(GlassPill.adaptivePopupBackground)
-                                                .border(GlassPill.adaptiveBorder, GlassPill.shape)
-                                                .padding(vertical = 8.dp)
-                                        ) {
-                                            PillAction(Icons.Filled.Delete, if (all) "Delete All" else "Delete") {
+                                DropdownMenu(
+                                    expanded = actionsMenuExpanded,
+                                    onDismissRequest = { actionsMenuExpanded = false },
+                                    shape = GlassPill.shape,
+                                    containerColor = GlassPill.adaptivePopupBackground
+                                ) {
+                                    val all = selectedIds.isEmpty()
+                                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                        DropdownMenuItem(
+                                            leadingIcon = { MenuIcon(Icons.Filled.Delete) },
+                                            text = {
+                                                Text(
+                                                    if (all) appString(R.string.recycle_bin_delete_all) else appString(R.string.common_delete),
+                                                    color = GlassPill.destructiveText
+                                                )
+                                            },
+                                            onClick = {
                                                 actionsMenuExpanded = false
                                                 pendingDeleteIds = targetIds()
                                                 showDeleteConfirm = true
                                             }
-                                            PillAction(Icons.Filled.Restore, if (all) "Recover All" else "Recover") {
+                                        )
+                                        DropdownMenuItem(
+                                            leadingIcon = { MenuIcon(Icons.Filled.Restore) },
+                                            text = { Text(if (all) appString(R.string.recycle_bin_recover_all) else appString(R.string.recycle_bin_recover)) },
+                                            onClick = {
                                                 actionsMenuExpanded = false
                                                 pendingRecoverIds = targetIds()
                                                 if (restoreConfirmTitle != null && restoreConfirmText != null) {
@@ -205,17 +219,17 @@ fun RecycleBinScreen(
                                                     performRecover(pendingRecoverIds)
                                                 }
                                             }
-                                        }
+                                        )
                                     }
                                 }
                             }
                             CircleIconButton(
                                 icon = Icons.Filled.Close,
-                                contentDescription = "Cancel selection",
+                                contentDescription = appString(R.string.common_cancel_selection),
                                 onClick = { exitSelection() }
                             )
                         } else {
-                            PillButton(text = "Select", onClick = { isSelecting = true })
+                            PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                         }
                     }
                 }
@@ -227,7 +241,7 @@ fun RecycleBinScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Recently Deleted is empty")
+                Text(appString(R.string.recycle_bin_recently_deleted_is_empty))
             }
             return@Scaffold
         }
@@ -264,7 +278,7 @@ fun RecycleBinScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                     Text(
-                        "${daysRemaining(entry.deletedAt)} days",
+                        appString(R.string.recycle_bin_days, daysRemaining(entry.deletedAt)),
                         color = Color.White,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -275,7 +289,7 @@ fun RecycleBinScreen(
                     if (isSelecting && entry.mediaId in selectedIds) {
                         Icon(
                             imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = "Selected",
+                            contentDescription = appString(R.string.common_selected),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
                         )
@@ -293,22 +307,25 @@ fun RecycleBinScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text(if (count == 1) "Delete 1 item?" else "Delete $count items?") },
-            text = { Text("This permanently deletes them from your phone. It can't be undone.") },
+            title = { Text(if (count == 1) appString(R.string.recycle_bin_delete_item) else appString(R.string.recycle_bin_delete_items, count)) },
+            text = { Text(appString(R.string.recycle_bin_this_permanently_deletes_them_from)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
                     val uris = entries.filter { it.mediaId in pendingDeleteIds }.map { Uri.parse(it.uri) }
-                    if (uris.isNotEmpty()) {
+                    if (privateFiles) {
+                        onPurgeExpired(pendingDeleteIds)
+                        pendingDeleteIds = emptyList()
+                    } else if (uris.isNotEmpty()) {
                         val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
                         deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
                     }
                 }) {
-                    Text("Delete", color = Color(0xFFFF3B30))
+                    Text(appString(R.string.common_delete), color = Color(0xFFFF3B30))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
@@ -327,48 +344,13 @@ fun RecycleBinScreen(
                     showBulkRestoreConfirm = false
                     performRecover(pendingRecoverIds)
                 }) {
-                    Text("Restore")
+                    Text(appString(R.string.common_restore))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showBulkRestoreConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showBulkRestoreConfirm = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
-    }
-}
-
-@Composable
-private fun PillButton(text: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .padding(4.dp)
-            .clip(GlassPill.shape)
-            .background(GlassPill.adaptiveGlassBackground)
-            .border(GlassPill.adaptiveBorder, GlassPill.shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Text(text)
-    }
-}
-
-@Composable
-private fun CircleIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    Box(
-        Modifier
-            .padding(4.dp)
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(GlassPill.adaptiveGlassBackground)
-            .border(GlassPill.adaptiveBorder, CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription = contentDescription)
     }
 }
 

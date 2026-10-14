@@ -11,6 +11,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.annotation.StringRes
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Separate from LocalMetadataStore: app settings, not media metadata
 private val Context.appSettingsDataStore by preferencesDataStore(name = "nooklin_app_settings")
@@ -26,14 +29,14 @@ const val MIN_LIBRARY_PREVIEW_ROWS = 1
 const val MAX_LIBRARY_PREVIEW_ROWS = 8
 
 // storageKey, so renaming the enum can't corrupt a saved order
-enum class HomeSection(val storageKey: String, val label: String) {
-    LIBRARY("library", "Library"),
-    ALBUMS("albums", "Albums"),
-    DISCOVERED("discovered", "Discovered"),
-    MEDIA_TYPES("media_types", "Media Types"),
-    UTILITIES("utilities", "Utilities"),
-    SETTINGS("settings", "Settings");
-
+enum class HomeSection(val storageKey: String, @StringRes val labelRes: Int) {
+    LIBRARY("library", R.string.common_library),
+    ALBUMS("albums", R.string.common_albums),
+    DISCOVERED("discovered", R.string.common_discovered),
+    MEDIA_TYPES("media_types", R.string.common_media_types),
+    UTILITIES("utilities", R.string.common_utilities),
+    SETTINGS("settings", R.string.common_settings);
+    val label: String get() = appString(labelRes)
     companion object {
         val DEFAULT_ORDER = listOf(LIBRARY, ALBUMS, DISCOVERED, MEDIA_TYPES, UTILITIES, SETTINGS)
         val HIDEABLE = listOf(ALBUMS, DISCOVERED, MEDIA_TYPES, UTILITIES)
@@ -42,27 +45,27 @@ enum class HomeSection(val storageKey: String, val label: String) {
 }
 
 // DEFAULT has no tint (null)
-enum class ContrastColor(val storageKey: String, val label: String, val color: Color?) {
-    DEFAULT("default", "Default", null),
-    BLUE("blue", "Blue", Color(0xFF0A84FF)),
-    RED("red", "Red", Color(0xFFFF3B30)),
-    ORANGE("orange", "Orange", Color(0xFFFF9500)),
-    YELLOW("yellow", "Yellow", Color(0xFFFFCC00)),
-    GREEN("green", "Green", Color(0xFF34C759)),
-    TEAL("teal", "Teal", Color(0xFF30B0C7)),
-    PURPLE("purple", "Purple", Color(0xFFAF52DE)),
-    PINK("pink", "Pink", Color(0xFFFF2D55));
-
+enum class ContrastColor(val storageKey: String, @StringRes val labelRes: Int, val color: Color?) {
+    DEFAULT("default", R.string.contrast_color_default, null),
+    BLUE("blue", R.string.contrast_color_blue, Color(0xFF0A84FF)),
+    RED("red", R.string.contrast_color_red, Color(0xFFFF3B30)),
+    ORANGE("orange", R.string.contrast_color_orange, Color(0xFFFF9500)),
+    YELLOW("yellow", R.string.contrast_color_yellow, Color(0xFFFFCC00)),
+    GREEN("green", R.string.contrast_color_green, Color(0xFF34C759)),
+    TEAL("teal", R.string.contrast_color_teal, Color(0xFF30B0C7)),
+    PURPLE("purple", R.string.contrast_color_purple, Color(0xFFAF52DE)),
+    PINK("pink", R.string.contrast_color_pink, Color(0xFFFF2D55));
+    val label: String get() = appString(labelRes)
     companion object {
         fun fromKey(key: String): ContrastColor? = entries.find { it.storageKey == key }
     }
 }
 
 // Two fonts only: Helvetica has no free license to bundle
-enum class AppFont(val storageKey: String, val label: String) {
-    SYSTEM_DEFAULT("system_default", "Stock Android Font"),
-    WORK_SANS("work_sans", "Work Sans");
-
+enum class AppFont(val storageKey: String, @StringRes val labelRes: Int) {
+    SYSTEM_DEFAULT("system_default", R.string.app_font_stock_android_font),
+    WORK_SANS("work_sans", R.string.app_font_work_sans);
+    val label: String get() = appString(labelRes)
     companion object {
         fun fromKey(key: String): AppFont? = entries.find { it.storageKey == key }
     }
@@ -93,6 +96,10 @@ private val HIDDEN_PIN_RECOVERY_HASH_KEY = stringPreferencesKey("hidden_pin_reco
 
 private val REMOVE_EXIF_ON_SHARE_KEY = booleanPreferencesKey("remove_exif_on_share")
 private val SHARING_DISABLED_KEY = booleanPreferencesKey("sharing_disabled")
+private val STRIP_LOCATION_KEY = booleanPreferencesKey("strip_location")
+private val STRIP_CAMERA_KEY = booleanPreferencesKey("strip_camera")
+private val STRIP_DATE_TIME_KEY = booleanPreferencesKey("strip_date_time")
+private val STRIP_DESCRIPTION_KEY = booleanPreferencesKey("strip_description")
 
 private val HIDDEN_SECTION_ENABLED_KEY = booleanPreferencesKey("hidden_section_enabled")
 private val HIDDEN_ALBUMS_ENABLED_KEY = booleanPreferencesKey("hidden_albums_enabled")
@@ -274,6 +281,26 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setRemoveExifOnShare(enabled: Boolean) {
         context.appSettingsDataStore.edit { prefs -> prefs[REMOVE_EXIF_ON_SHARE_KEY] = enabled }
+    }
+
+    // What Remove Exif data takes away, all on by default
+    val shareStripOptions: Flow<ShareStripOptions> = context.appSettingsDataStore.data.map { prefs ->
+        ShareStripOptions(
+            location = prefs[STRIP_LOCATION_KEY] ?: true,
+            camera = prefs[STRIP_CAMERA_KEY] ?: true,
+            dateTime = prefs[STRIP_DATE_TIME_KEY] ?: true,
+            description = prefs[STRIP_DESCRIPTION_KEY] ?: true
+        )
+    }
+
+    suspend fun setShareStripOption(category: StripCategory, enabled: Boolean) {
+        val key = when (category) {
+            StripCategory.LOCATION -> STRIP_LOCATION_KEY
+            StripCategory.CAMERA -> STRIP_CAMERA_KEY
+            StripCategory.DATE_TIME -> STRIP_DATE_TIME_KEY
+            StripCategory.DESCRIPTION -> STRIP_DESCRIPTION_KEY
+        }
+        context.appSettingsDataStore.edit { prefs -> prefs[key] = enabled }
     }
 
     // Whole-app share switch, stricter than hiddenImageSharingEnabled

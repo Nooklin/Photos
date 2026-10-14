@@ -66,6 +66,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import org.nooklin.photos.ui.common.SharePreparingDialog
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.nooklin.photos.data.HiddenAlbumWithPreview
@@ -107,6 +109,8 @@ import androidx.compose.runtime.DisposableEffect
 import org.nooklin.photos.ui.common.VideoPrewarm
 import org.nooklin.photos.ui.common.videoUriOf
 import kotlinx.coroutines.delay
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Share is opt-in (Hidden Image Sharing in Settings), easy sharing works against hiding
 @OptIn(ExperimentalMaterial3Api::class)
@@ -175,6 +179,13 @@ fun HiddenPhotoViewerScreen(
     var showUnhideConfirm by remember { mutableStateOf(false) }
     var showTrashConfirm by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var preparingJob by remember { mutableStateOf<Job?>(null) }
+    if (preparingJob != null) {
+        SharePreparingDialog(onCancel = {
+            preparingJob?.cancel()
+            preparingJob = null
+        })
+    }
     var showAddToAlbumDialog by remember { mutableStateOf(false) }
     var metadata by remember { mutableStateOf<PhotoMetadata?>(null) }
     var pillMetadata by remember { mutableStateOf<PhotoMetadata?>(null) }
@@ -245,13 +256,13 @@ fun HiddenPhotoViewerScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { coroutineScope.launch { animateBackOut() } }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = chromeColor)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back), tint = chromeColor)
                     }
                 },
                 actions = {
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = chromeColor)
+                            Icon(Icons.Filled.MoreVert, contentDescription = appString(R.string.common_more), tint = chromeColor)
                         }
                         DropdownMenu(
                             expanded = menuExpanded,
@@ -261,14 +272,14 @@ fun HiddenPhotoViewerScreen(
                         ) {
                             CompositionLocalProvider(LocalContentColor provides chromeColor) {
                                 DropdownMenuItem(
-                                    text = { Text("Unhide") },
+                                    text = { Text(appString(R.string.common_unhide)) },
                                     onClick = {
                                         menuExpanded = false
                                         showUnhideConfirm = true
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Add to Album") },
+                                    text = { Text(appString(R.string.common_add_to_album)) },
                                     onClick = {
                                         menuExpanded = false
                                         showAddToAlbumDialog = true
@@ -299,15 +310,17 @@ fun HiddenPhotoViewerScreen(
                         if (shareEnabled) {
                             ViewerCircleButton(
                                 icon = Icons.Filled.IosShare,
-                                contentDescription = "Share",
+                                contentDescription = appString(R.string.common_share),
                                 backgroundColor = toolbarBackground,
                                 border = toolbarBorder,
                                 tint = chromeColor,
                                 onClick = {
-                                    coroutineScope.launch {
+                                    preparingJob = coroutineScope.launch {
                                         val shareUri = withContext(Dispatchers.IO) {
-                                            createExifStrippedShareUriFromFile(context, item.file, item.isVideo, removeExifOnShare, item.mimeType)
+                                            val running = coroutineContext[Job]
+                                            createExifStrippedShareUriFromFile(context, item.file, item.isVideo, removeExifOnShare, item.mimeType) { running?.isActive == false }
                                         }
+                                        preparingJob = null
                                         // Fails closed: if stripping fails, never share the original with its EXIF/GPS
                                         if (shareUri != null) {
                                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -341,22 +354,22 @@ fun HiddenPhotoViewerScreen(
                                         } else {
                                             Icons.Filled.FavoriteBorder
                                         },
-                                        contentDescription = "Favorite",
+                                        contentDescription = appString(R.string.common_favorite),
                                         tint = chromeColor
                                     )
                                 }
                                 IconButton(onClick = { showInfo = true }) {
-                                    Icon(Icons.Filled.Info, contentDescription = "Info", tint = chromeColor)
+                                    Icon(Icons.Filled.Info, contentDescription = appString(R.string.common_info), tint = chromeColor)
                                 }
                                 IconButton(onClick = { onEdit(item) }) {
-                                    Icon(Icons.Filled.Tune, contentDescription = "Edit", tint = chromeColor)
+                                    Icon(Icons.Filled.Tune, contentDescription = appString(R.string.common_edit), tint = chromeColor)
                                 }
                             }
                         }
 
                         ViewerCircleButton(
                             icon = Icons.Filled.Delete,
-                            contentDescription = "Move to recycle bin",
+                            contentDescription = appString(R.string.common_move_to_recycle_bin_3),
                             backgroundColor = toolbarBackground,
                             border = toolbarBorder,
                             tint = chromeColor,
@@ -517,28 +530,28 @@ fun HiddenPhotoViewerScreen(
             containerColor = popupBackground,
             titleContentColor = chromeColor,
             textContentColor = chromeColor,
-            title = { Text("Unhide") },
-            text = { Text("Move this photo back to your main gallery?") },
+            title = { Text(appString(R.string.common_unhide)) },
+            text = { Text(appString(R.string.hidden_photo_viewer_move_this_photo_back_to)) },
             confirmButton = {
                 TextButton(onClick = {
                     showUnhideConfirm = false
                     onUnhide(currentItem)
                     onBack()
                 }) {
-                    Text("Unhide")
+                    Text(appString(R.string.common_unhide))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showUnhideConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showUnhideConfirm = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
 
     if (showTrashConfirm && currentItem != null) {
         ConfirmDeleteDialog(
-            title = "Move to Recycle Bin?",
-            text = "This photo will be deleted from the library. It will be in Recently Deleted for 30 days.",
-            confirmLabel = "Delete 1 Photo",
+            title = appString(R.string.common_move_to_recycle_bin_2),
+            text = appString(R.string.common_this_photo_will_be_deleted),
+            confirmLabel = appString(R.string.common_delete_photo),
             containerColor = popupBackground,
             contentColor = chromeColor,
             onConfirm = {
@@ -558,17 +571,17 @@ fun HiddenPhotoViewerScreen(
             containerColor = popupBackground,
             titleContentColor = chromeColor,
             textContentColor = chromeColor,
-            title = { Text("Add to Hidden Album") },
+            title = { Text(appString(R.string.common_add_to_hidden_album)) },
             text = {
                 Column {
                     // With no hidden albums the dialog lets you create one right here
                     GlassPillTextField(
                         value = newAlbumName,
                         onValueChange = { newAlbumName = it },
-                        placeholder = "New album name"
+                        placeholder = appString(R.string.common_new_album_name)
                     )
                     if (existingAlbums.isNotEmpty()) {
-                        Text("Or choose existing:", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                        Text(appString(R.string.common_or_choose_existing), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                         existingAlbums.forEach { album ->
                             PillListRow(
                                 label = album.name,
@@ -589,10 +602,10 @@ fun HiddenPhotoViewerScreen(
                         onCreateAlbum(newAlbumName) { newId -> onAddToAlbum(newId, currentItem) }
                         showAddToAlbumDialog = false
                     }
-                ) { Text("Create & Add") }
+                ) { Text(appString(R.string.common_create_add)) }
             },
             dismissButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }

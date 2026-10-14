@@ -37,8 +37,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.nooklin.photos.ui.common.AlbumThumbnail
+import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.GlassPillTextField
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,16 +57,18 @@ fun PetsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pets", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.pets_pets), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showCreateDialog = true }) {
-                        Icon(Icons.Filled.Add, contentDescription = "New pet")
-                    }
+                    CircleIconButton(
+                        icon = Icons.Filled.Add,
+                        contentDescription = appString(R.string.pets_new_pet),
+                        onClick = { showCreateDialog = true }
+                    )
                 }
             )
         }
@@ -73,7 +78,7 @@ fun PetsScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No pets named yet. Tap the + on a Pets photo to add one.", modifier = Modifier.padding(32.dp))
+                Text(appString(R.string.pets_no_pets_named_yet_tap), modifier = Modifier.padding(32.dp))
             }
         } else {
             LazyVerticalGrid(
@@ -101,7 +106,7 @@ fun PetsScreen(
                             modifier = Modifier.padding(top = 6.dp)
                         )
                         Text(
-                            "${pet.itemCount} items",
+                            appString(R.string.common_items, pet.itemCount),
                             color = Color.Gray,
                             fontSize = 12.sp,
                             maxLines = 1,
@@ -121,12 +126,12 @@ fun PetsScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("New Pet") },
+            title = { Text(appString(R.string.pets_new_pet_2)) },
             text = {
                 GlassPillTextField(
                     value = newPetName,
                     onValueChange = { newPetName = it },
-                    placeholder = "Pet name"
+                    placeholder = appString(R.string.pets_pet_name)
                 )
             },
             confirmButton = {
@@ -137,11 +142,11 @@ fun PetsScreen(
                         showCreateDialog = false
                     }
                 ) {
-                    Text("Create")
+                    Text(appString(R.string.common_create))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showCreateDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }

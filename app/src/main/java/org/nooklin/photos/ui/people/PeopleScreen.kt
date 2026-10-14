@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.nooklin.photos.ui.common.FaceThumbnail
+import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.GlassPillTextField
 import android.widget.Toast
@@ -54,6 +55,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Grid of detected people (named and "Unknown N"), each card shows a cropped face
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,16 +78,18 @@ fun PeopleScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("People", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.people_people), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More options")
-                    }
+                    CircleIconButton(
+                        icon = Icons.Filled.MoreVert,
+                        contentDescription = appString(R.string.common_more_options),
+                        onClick = { menuExpanded = true }
+                    )
                     DropdownMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false },
@@ -93,7 +98,7 @@ fun PeopleScreen(
                     ) {
                         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                             DropdownMenuItem(
-                                text = { Text("Combine similar people") },
+                                text = { Text(appString(R.string.people_combine_similar_people)) },
                                 onClick = {
                                     menuExpanded = false
                                     showCombineDialog = true
@@ -108,7 +113,7 @@ fun PeopleScreen(
         if (people.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text(
-                    "No people detected yet. Run a scan from Settings > Machine Learning.",
+                    appString(R.string.people_no_people_detected_yet_run),
                     modifier = Modifier.padding(32.dp)
                 )
             }
@@ -147,7 +152,7 @@ fun PeopleScreen(
                                 ) {
                                     Icon(
                                         Icons.Filled.Add,
-                                        contentDescription = "Add name",
+                                        contentDescription = appString(R.string.people_add_name),
                                         tint = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -163,7 +168,7 @@ fun PeopleScreen(
                             modifier = Modifier.padding(top = 6.dp)
                         )
                         Text(
-                            "${person.itemCount} items",
+                            appString(R.string.common_items, person.itemCount),
                             color = Color.Gray,
                             fontSize = 12.sp,
                             maxLines = 1,
@@ -187,7 +192,7 @@ fun PeopleScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Who is this?") },
+            title = { Text(appString(R.string.people_who_is_this)) },
             text = {
                 Column {
                     GlassPillTextField(
@@ -196,7 +201,7 @@ fun PeopleScreen(
                     )
                     if (existingNames.isNotEmpty()) {
                         Text(
-                            "Or pick an existing person",
+                            appString(R.string.people_or_pick_an_existing_person),
                             color = Color.Gray,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
@@ -223,11 +228,11 @@ fun PeopleScreen(
                         namingPersonId = null
                     }
                 ) {
-                    Text("Save")
+                    Text(appString(R.string.common_save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { namingPersonId = null }) { Text("Cancel") }
+                TextButton(onClick = { namingPersonId = null }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
@@ -235,7 +240,7 @@ fun PeopleScreen(
     if (showCombineDialog) {
         // The same person can be split into several when their faces differ in angle or light. Each setting shows how
         // many people it would combine, so the choice can be made before anything changes.
-        val options = listOf("Careful" to 0.6f, "Balanced" to 0.75f, "Loose" to 0.9f)
+        val options = listOf(appString(R.string.people_careful) to 0.6f, appString(R.string.people_balanced) to 0.75f, appString(R.string.people_loose) to 0.9f)
         var counts by remember { mutableStateOf<Map<Float, Int>>(emptyMap()) }
         LaunchedEffect(Unit) {
             counts = options.associate { (_, threshold) -> threshold to onPreviewCombine(threshold) }
@@ -244,10 +249,10 @@ fun PeopleScreen(
             onDismissRequest = { showCombineDialog = false },
             shape = GlassPill.shape,
             containerColor = GlassPill.adaptivePopupBackground,
-            title = { Text("Combine similar people") },
+            title = { Text(appString(R.string.people_combine_similar_people)) },
             text = {
                 Column {
-                    Text("Pick how strict to be. Looser settings combine more, and can join different people who look alike.")
+                    Text(appString(R.string.people_pick_how_strict_to_be))
                     options.forEach { (label, threshold) ->
                         val count = counts[threshold]
                         TextButton(
@@ -255,15 +260,15 @@ fun PeopleScreen(
                             onClick = {
                                 showCombineDialog = false
                                 onCombine(threshold) { combined ->
-                                    Toast.makeText(context, "Combined $combined people.", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, appString(R.string.people_combined_people, combined), Toast.LENGTH_LONG).show()
                                 }
                             }
                         ) {
                             Text(
                                 when {
-                                    count == null -> "$label: checking..."
-                                    count == 0 -> "$label: nothing to combine"
-                                    else -> "$label: combine $count"
+                                    count == null -> appString(R.string.people_checking, label)
+                                    count == 0 -> appString(R.string.people_nothing_to_combine, label)
+                                    else -> appString(R.string.people_combine, label, count)
                                 }
                             )
                         }
@@ -271,7 +276,7 @@ fun PeopleScreen(
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { showCombineDialog = false }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { showCombineDialog = false }) { Text(appString(R.string.common_cancel)) } }
         )
     }
 }

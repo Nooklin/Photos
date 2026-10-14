@@ -76,6 +76,8 @@ import org.nooklin.photos.data.HiddenItem
 import org.nooklin.photos.data.local.HomeItems
 import org.nooklin.photos.data.local.HomeSection
 import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Landing screen after the gate, mirrors HomeScreen's blocks. Media Types use flags captured at hide-time.
 // Duplicates isn't offered, it needs ML data hidden items don't have.
@@ -138,10 +140,10 @@ fun HiddenHomeScreen(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
-                title = { Text("Hidden Section", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_hidden_section), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -152,11 +154,11 @@ fun HiddenHomeScreen(
                 GlassBlock {
                     Column {
                         SectionHeader(
-                            "Hidden Library",
+                            appString(R.string.common_hidden_library),
                             expanded = true,
                             onTitleClick = onOpenLibrary,
                             showChevron = false,
-                            subtitle = "${items.size} items",
+                            subtitle = appString(R.string.common_items, items.size),
                             titleFontSize = 20.sp
                         ) {}
                         if (neededRows > 0) {
@@ -203,7 +205,7 @@ fun HiddenHomeScreen(
                     GlassBlock {
                         Column {
                             SectionHeader(
-                                "Hidden Albums",
+                                appString(R.string.common_hidden_albums),
                                 albumsExpanded,
                                 onTitleClick = onOpenAlbums,
                                 titleFontSize = 20.sp
@@ -233,18 +235,18 @@ fun HiddenHomeScreen(
             if (HomeSection.MEDIA_TYPES !in hiddenSections) item {
                 GlassBlock {
                     Column {
-                        SectionHeader("Media Types", mediaTypesExpanded, titleFontSize = 20.sp) {
+                        SectionHeader(appString(R.string.common_media_types), mediaTypesExpanded, titleFontSize = 20.sp) {
                             mediaTypesExpanded = !mediaTypesExpanded
                         }
                         if (mediaTypesExpanded) {
                             HiddenCategoryGrid(
                                 mapOf(
-                                    "VIDEOS" to HiddenCategoryRowSpec("Videos", Icons.Filled.Videocam, onOpenVideos),
-                                    "SLOW_MOTION" to HiddenCategoryRowSpec("Slow Motion", Icons.Filled.SlowMotionVideo, onOpenSlowMotion),
+                                    "VIDEOS" to HiddenCategoryRowSpec(appString(R.string.common_videos), Icons.Filled.Videocam, onOpenVideos),
+                                    "SLOW_MOTION" to HiddenCategoryRowSpec(appString(R.string.common_slow_motion), Icons.Filled.SlowMotionVideo, onOpenSlowMotion),
                                     "RAW" to HiddenCategoryRowSpec("RAW", Icons.Filled.RawOn, onOpenRaw),
-                                    "SCREENSHOTS" to HiddenCategoryRowSpec("Screenshots", Icons.Filled.Screenshot, onOpenScreenshots),
-                                    "PANORAMAS" to HiddenCategoryRowSpec("Panoramas", Icons.Filled.Panorama, onOpenPanoramas),
-                                    "SCREEN_RECORDINGS" to HiddenCategoryRowSpec("Screen Recordings", Icons.AutoMirrored.Filled.ScreenShare, onOpenScreenRecordings)
+                                    "SCREENSHOTS" to HiddenCategoryRowSpec(appString(R.string.common_screenshots), Icons.Filled.Screenshot, onOpenScreenshots),
+                                    "PANORAMAS" to HiddenCategoryRowSpec(appString(R.string.common_panoramas), Icons.Filled.Panorama, onOpenPanoramas),
+                                    "SCREEN_RECORDINGS" to HiddenCategoryRowSpec(appString(R.string.common_screen_recordings), Icons.AutoMirrored.Filled.ScreenShare, onOpenScreenRecordings)
                                 ).let { specs -> mediaTypesOrder.mapNotNull { specs[it] } }
                             )
                         }
@@ -255,15 +257,15 @@ fun HiddenHomeScreen(
             if (HomeSection.UTILITIES !in hiddenSections) item {
                 GlassBlock {
                     Column {
-                        SectionHeader("Utilities", utilitiesExpanded, titleFontSize = 20.sp) {
+                        SectionHeader(appString(R.string.common_utilities), utilitiesExpanded, titleFontSize = 20.sp) {
                             utilitiesExpanded = !utilitiesExpanded
                         }
                         if (utilitiesExpanded) {
                             HiddenCategoryGrid(
                                 mapOf(
-                                    "FAVORITES" to HiddenCategoryRowSpec("Favorites", Icons.Filled.Favorite, onOpenFavorites),
-                                    "RECENTLY_DELETED" to HiddenCategoryRowSpec("Recently Deleted", Icons.Filled.Delete, onOpenRecentlyDeleted),
-                                    "RECENTLY_SAVED" to HiddenCategoryRowSpec("Recently Saved", Icons.Filled.History, onOpenRecentlySaved)
+                                    "FAVORITES" to HiddenCategoryRowSpec(appString(R.string.common_favorites), Icons.Filled.Favorite, onOpenFavorites),
+                                    "RECENTLY_DELETED" to HiddenCategoryRowSpec(appString(R.string.common_recently_deleted), Icons.Filled.Delete, onOpenRecentlyDeleted),
+                                    "RECENTLY_SAVED" to HiddenCategoryRowSpec(appString(R.string.common_recently_saved), Icons.Filled.History, onOpenRecentlySaved)
                                 ).let { specs -> utilitiesOrder.mapNotNull { specs[it] } }
                             )
                         }
@@ -281,7 +283,7 @@ fun HiddenHomeScreen(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Show or Hide Sections")
+                        Text(appString(R.string.common_show_or_hide_sections))
                     }
                 }
             }
@@ -364,7 +366,7 @@ private fun SectionHeader(
         if (showChevron) {
             Icon(
                 imageVector = Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (expanded) "Collapse" else "Expand",
+                contentDescription = if (expanded) appString(R.string.common_collapse) else appString(R.string.common_expand),
                 modifier = Modifier
                     .clickable { onToggle() }
                     .graphicsLayer { rotationZ = if (expanded) 180f else 0f }

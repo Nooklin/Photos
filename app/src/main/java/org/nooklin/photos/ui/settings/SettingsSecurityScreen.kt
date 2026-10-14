@@ -19,6 +19,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,10 +34,10 @@ fun SettingsSecurityScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Privacy", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_privacy), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -43,20 +45,20 @@ fun SettingsSecurityScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             SettingsGroup(
-                "App Lock",
-                listOf({ SettingsToggleRow("App Lock", appLockEnabled, Icons.Filled.Lock, onCheckedChange = onAppLockEnabledChange) })
+                appString(R.string.common_app_lock),
+                listOf({ SettingsToggleRow(appString(R.string.common_app_lock), appLockEnabled, Icons.Filled.Lock, onCheckedChange = onAppLockEnabledChange) })
             )
             Text(
-                "App Lock uses your device's own lock screen (PIN, pattern, password, or biometric), not a separate Nooklin Photos password.",
+                appString(R.string.settings_security_app_lock_uses_your_device),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
 
             SettingsGroup(
-                "Screenshots",
-                listOf({ SettingsToggleRow("Disable Screenshots", disableScreenshots, Icons.Filled.Screenshot, onCheckedChange = onDisableScreenshotsChange) })
+                appString(R.string.common_screenshots),
+                listOf({ SettingsToggleRow(appString(R.string.common_disable_screenshots), disableScreenshots, Icons.Filled.Screenshot, onCheckedChange = onDisableScreenshotsChange) })
             )
             Text(
-                "When on, screenshots and screen recording are blocked while using this app.",
+                appString(R.string.settings_security_when_on_screenshots_and_screen),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
         }

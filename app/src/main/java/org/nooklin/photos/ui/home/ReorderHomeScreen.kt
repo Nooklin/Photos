@@ -35,6 +35,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.nooklin.photos.data.local.HomeItems
 import org.nooklin.photos.data.local.HomeSection
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Up/down buttons, not drag and drop: that needs a third-party library or a hand-rolled gesture
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,10 +68,10 @@ fun ReorderHomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Reorder Home Screen", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_reorder_home_screen), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -77,7 +79,7 @@ fun ReorderHomeScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             Text(
-                "Choose the order sections appear in on Home, and which ones are shown.",
+                appString(R.string.reorder_home_choose_the_order_sections_appear),
                 color = Color.Gray,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
@@ -97,7 +99,7 @@ fun ReorderHomeScreen(
             }
 
             Text(
-                "Media Types",
+                appString(R.string.common_media_types),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp)
             )
@@ -112,7 +114,7 @@ fun ReorderHomeScreen(
             }
 
             Text(
-                "Utilities",
+                appString(R.string.common_utilities),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp)
             )
@@ -126,7 +128,7 @@ fun ReorderHomeScreen(
                 )
             }
             Text(
-                "The order of these tiles also applies to the Hidden section.",
+                appString(R.string.reorder_home_the_order_of_these_tiles),
                 color = Color.Gray,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
@@ -161,10 +163,10 @@ private fun ReorderRow(
                 Switch(checked = shown, onCheckedChange = onShownChange)
             }
             IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-                Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Move up")
+                Icon(Icons.Filled.KeyboardArrowUp, contentDescription = appString(R.string.reorder_home_move_up))
             }
             IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move down")
+                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = appString(R.string.reorder_home_move_down))
             }
         }
     }
@@ -182,10 +184,10 @@ fun HiddenHomeCustomizeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Show or Hide Sections", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_show_or_hide_sections), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -193,11 +195,11 @@ fun HiddenHomeCustomizeScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Text(
-                "Choose which sections the Hidden section shows. This is separate from Home.",
+                appString(R.string.reorder_home_choose_which_sections_the_hidden),
                 color = Color.Gray,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
-            listOf(HomeSection.ALBUMS to "Hidden Albums", HomeSection.MEDIA_TYPES to "Media Types", HomeSection.UTILITIES to "Utilities")
+            listOf(HomeSection.ALBUMS to appString(R.string.common_hidden_albums), HomeSection.MEDIA_TYPES to appString(R.string.common_media_types), HomeSection.UTILITIES to appString(R.string.common_utilities))
                 .forEach { (section, label) ->
                     Row(
                         Modifier

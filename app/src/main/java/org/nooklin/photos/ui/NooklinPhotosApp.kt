@@ -2,6 +2,9 @@ package org.nooklin.photos.ui
 
 import org.nooklin.photos.data.HiddenItem
 
+import org.nooklin.photos.ui.calendar.CalendarScreen
+import org.nooklin.photos.ui.duplicates.DuplicatesScreen
+import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.ui.common.ZoomReturnOverlay
 
 import org.nooklin.photos.ui.common.ZoomSources
@@ -13,6 +16,7 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import org.nooklin.photos.data.local.LocalMetadataStore
 import android.os.Build
 import android.provider.Settings
 import android.view.WindowManager
@@ -109,6 +113,8 @@ import org.nooklin.photos.ui.theme.DesignStyle
 import org.nooklin.photos.ui.theme.NooklinTheme
 import org.nooklin.photos.ui.viewer.PhotoViewerScreen
 import org.nooklin.photos.ui.editor.VideoTrimScreen
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // READ_MEDIA_VIDEO must be requested too, else MediaStore silently hides every video
 private fun mediaPermissions(): Array<String> =
@@ -138,6 +144,8 @@ private const val ROUTE_HIDDEN_SCREEN_RECORDINGS = "hiddenscreenrecordings"
 private const val ROUTE_HIDDEN_RECENTLY_SAVED = "hiddenrecentlysaved"
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_SEARCH = "search"
+private const val ROUTE_CALENDAR = "calendar"
+private const val ROUTE_DUPLICATES = "duplicates"
 private const val ROUTE_DISCOVERED = "discovered"
 private const val ROUTE_PEOPLE = "people"
 private const val ROUTE_PETS = "pets"
@@ -145,7 +153,10 @@ private const val ROUTE_PETS = "pets"
 // Home is the single entry, no bottom nav.
 // App lock: one biometric check per cold start. Disable Screenshots sets FLAG_SECURE.
 @Composable
-fun NooklinPhotosApp() {
+fun NooklinPhotosApp(
+    externalRequest: org.nooklin.photos.ExternalRequest? = null,
+    onExternalFinish: (List<Uri>?) -> Unit = {}
+) {
     val context = LocalContext.current
     val viewModel: GalleryViewModel = viewModel()
     val hiddenViewModel: HiddenViewModel = viewModel()
@@ -214,7 +225,8 @@ fun NooklinPhotosApp() {
     ) { results -> hasPermission = mediaPermissions().all { results[it] == true } }
 
     LaunchedEffect(Unit) {
-        if (!hasPermission) launcher.launch(mediaPermissions())
+        // A file opened from another app needs no library access
+        if (!hasPermission && externalRequest !is org.nooklin.photos.ExternalRequest.View) launcher.launch(mediaPermissions())
     }
 
     LaunchedEffect(hasPermission) {
@@ -257,6 +269,15 @@ fun NooklinPhotosApp() {
             )
         }
     }
+
+    // One set of selection actions for every group screen (Media Types, albums, Search, pets)
+    val groupActions = GroupActions(
+        albums = albumsWithPreview,
+        removeExifOnShare = removeExifOnShare,
+        onToggleFavorite = { item -> viewModel.toggleFavorite(item) },
+        onMoveToRecycleBin = { item -> viewModel.moveToRecycleBin(item) },
+        onAddToAlbum = { albumId, item -> albumViewModel.addToAlbum(albumId, item.id) }
+    )
 
     val petsWithPreview = remember(petEntities, petMemberships, uiState.allItems) {
         val membershipsByPet = petMemberships.groupBy { it.petId }
@@ -319,7 +340,7 @@ fun NooklinPhotosApp() {
         val facesByPerson = faces.groupBy { it.personId }
         val unnamedLabels = people.filter { it.name == null }
             .sortedBy { it.id }
-            .mapIndexed { index, p -> p.id to "Unknown ${index + 1}" }
+            .mapIndexed { index, p -> p.id to appString(R.string.nooklin_photos_app_unknown, index + 1) }
             .toMap()
         people.mapNotNull { person ->
             val personFaces = facesByPerson[person.id].orEmpty()
@@ -333,7 +354,7 @@ fun NooklinPhotosApp() {
             } else {
                 PersonWithPreview(
                     id = person.id,
-                    displayName = person.name ?: unnamedLabels[person.id] ?: "Unknown",
+                    displayName = person.name ?: unnamedLabels[person.id] ?: appString(R.string.nooklin_photos_app_unknown_2),
                     isNamed = person.name != null,
                     itemCount = items.size,
                     representativePhotoUri = representativeItem.uri,
@@ -380,61 +401,20 @@ fun NooklinPhotosApp() {
         }
     }
 
-    // A queue: only one system consent dialog can be in flight, launch() throws otherwise
-    var pendingHiddenRestoreQueue by remember { mutableStateOf<List<Long>>(emptyList()) }
-
-    // Slot to break the circular reference between the launcher and the queue logic
-    var processNextHiddenRestore: (suspend () -> Unit)? = null
-
-    // Own launcher: its callback also clears the recycle bin entry and advances the queue
-    val restoreToHiddenLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        hiddenViewModel.finishHide(result.resultCode == Activity.RESULT_OK)
-        viewModel.load()
-        hiddenViewModel.refresh()
-        // If denied the photo is duplicated (hidden copy plus original), same tradeoff as Hide
-        pendingHiddenRestoreQueue.firstOrNull()?.let { viewModel.restoreFromRecycleBin(it) }
-        pendingHiddenRestoreQueue = pendingHiddenRestoreQueue.drop(1)
-        // Advance the queue, else a bulk restore stops after the first item
-        if (pendingHiddenRestoreQueue.isNotEmpty()) {
-            coroutineScope.launch { processNextHiddenRestore?.invoke() }
-        }
+    // Hidden Recently Deleted comes from the Hidden database, the files never leave the app. Stable id per file name.
+    val hiddenRecycleBinEntries = hiddenUiState.deleted.map {
+        LocalMetadataStore.RecycleBinEntry(
+            mediaId = it.file.name.hashCode().toLong(),
+            uri = Uri.fromFile(it.file).toString(),
+            deletedAt = it.deletedAt ?: 0L,
+            wasHidden = true,
+            width = it.width,
+            height = it.height,
+            isVideo = it.isVideo
+        )
     }
-
-    // Launches the consent flow for the first queued item, popped in the callback
-    processNextHiddenRestore = suspend {
-        val mediaId = pendingHiddenRestoreQueue.firstOrNull()
-        if (mediaId != null) {
-            val item = viewModel.findMediaItemById(mediaId)
-            // Null intent: the copy failed, skip so the queue doesn't get stuck
-            val pendingIntent = item?.let { hiddenViewModel.beginHide(it) }
-            if (pendingIntent == null) {
-                pendingHiddenRestoreQueue = pendingHiddenRestoreQueue.drop(1)
-                processNextHiddenRestore?.invoke()
-            } else {
-                restoreToHiddenLauncher.launch(
-                    IntentSenderRequest.Builder(pendingIntent.intentSender).build()
-                )
-            }
-        }
-    }
-
-    // Restoring a hidden item re-hides it (copy back, delete the MediaStore row).
-    // Looked up via findMediaItemById, allItems excludes recycled items.
-    fun restoreHiddenItem(mediaId: Long) {
-        val wasIdle = pendingHiddenRestoreQueue.isEmpty()
-        pendingHiddenRestoreQueue = pendingHiddenRestoreQueue + mediaId
-        if (wasIdle) {
-            coroutineScope.launch { processNextHiddenRestore?.invoke() }
-        }
-    }
-
-    fun hiddenRestoreConfirmText(count: Int): String = if (count == 1) {
-        "This photo will be restored to the Hidden Library and stays hidden. You may see one more system prompt to confirm."
-    } else {
-        "These photos will be restored to the Hidden Library and stay hidden. You may see one more system prompt to confirm."
-    }
+    fun hiddenFileNamesFor(mediaIds: Collection<Long>): List<String> =
+        hiddenUiState.deleted.map { it.file.name }.filter { it.hashCode().toLong() in mediaIds }
 
     NooklinTheme(
         style = DesignStyle.IOS,
@@ -450,10 +430,16 @@ fun NooklinPhotosApp() {
         }
         if (appLockEnabled == true && !appUnlocked) {
             HiddenFolderGate(
-                title = "Unlock Nooklin Photos",
+                title = appString(R.string.nooklin_photos_app_unlock_nooklin_photos),
                 onAuthenticated = { settingsViewModel.unlockApp() },
                 onCancelled = { /* stays locked, retry happens on next recomposition */ }
             )
+            return@NooklinTheme
+        }
+
+        // After the app lock, so a locked app does not open files for other apps
+        if (externalRequest is org.nooklin.photos.ExternalRequest.View) {
+            org.nooklin.photos.ui.external.ExternalViewScreen(externalRequest, onClose = { onExternalFinish(null) })
             return@NooklinTheme
         }
 
@@ -463,18 +449,28 @@ fun NooklinPhotosApp() {
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Nooklin Photos needs access to your photos and videos to show your library.")
+                Text(appString(R.string.nooklin_photos_app_nooklin_photos_needs_access_to))
                 Button(onClick = { launcher.launch(mediaPermissions()) }, modifier = Modifier.padding(top = 16.dp)) {
-                    Text("Grant access")
+                    Text(appString(R.string.nooklin_photos_app_grant_access))
                 }
                 TextButton(onClick = {
                     context.startActivity(
                         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
                     )
                 }) {
-                    Text("Open app settings")
+                    Text(appString(R.string.nooklin_photos_app_open_app_settings))
                 }
             }
+            return@NooklinTheme
+        }
+
+        if (externalRequest is org.nooklin.photos.ExternalRequest.Pick) {
+            org.nooklin.photos.ui.external.ExternalPickScreen(
+                items = uiState.visibleItems.filter { if (it.isVideo) externalRequest.videos else externalRequest.images },
+                allowMultiple = externalRequest.allowMultiple,
+                columns = gridColumns.coerceAtLeast(3),
+                onResult = onExternalFinish
+            )
             return@NooklinTheme
         }
 
@@ -577,7 +573,11 @@ fun NooklinPhotosApp() {
                     onOpenRecentlyDeleted = { navController.navigate(ROUTE_RECYCLE_BIN) },
                     onOpenSettings = { navController.navigate(ROUTE_SETTINGS) },
                     onOpenReorderHome = { navController.navigate(ROUTE_HOME_REORDER) },
-                    onOpenCategory = { category -> navController.navigate("category/${category.name}") },
+                    onOpenCategory = { category ->
+                        // Duplicates has its own review screen
+                        navController.navigate(if (category == MediaCategory.DUPLICATES) ROUTE_DUPLICATES else "category/${category.name}")
+                    },
+                    onOpenCalendar = { navController.navigate(ROUTE_CALENDAR) },
                     onItemClick = { index, bounds, backdrop ->
                         capturedZoomLaunch = ZoomLaunch(bounds, backdrop, ZoomSources.snapshotBounds())
                         viewerItemsOverride = null
@@ -656,6 +656,7 @@ fun NooklinPhotosApp() {
                     onHideSelected = { items -> hideItems(items) },
                     onAddToAlbum = { albumId, item -> albumViewModel.addToAlbum(albumId, item.id) },
                     onOpenSearch = { navController.navigate(ROUTE_SEARCH) },
+                    removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() }
                 )
             }
@@ -665,6 +666,12 @@ fun NooklinPhotosApp() {
                     gridColumns = gridColumns,
                     onAlbumClick = { albumId -> navController.navigate("album/$albumId") },
                     onCreateAlbum = { name -> albumViewModel.createAlbum(name) },
+                    onDeleteAlbums = { ids -> ids.forEach { albumViewModel.deleteAlbum(it) } },
+                    itemsOfAlbums = { ids ->
+                        val memberIds = albumMemberships.filter { it.albumId in ids }.map { it.mediaId }.toSet()
+                        uiState.allItems.filter { it.id in memberIds }
+                    },
+                    removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() }
                 )
             }
@@ -695,9 +702,10 @@ fun NooklinPhotosApp() {
                     uiState.allItems.filter { it.id in memberIds }
                 }
                 AlbumDetailScreen(
-                    albumName = album?.name ?: "Album",
+                    albumName = album?.name ?: appString(R.string.nooklin_photos_app_album),
                     photos = albumPhotos,
                     gridColumns = gridColumns,
+                    groupActions = groupActions,
                     onBack = { navController.popBackStack() },
                     onItemClick = { item, bounds, backdrop ->
                         val index = albumPhotos.indexOf(item)
@@ -718,7 +726,7 @@ fun NooklinPhotosApp() {
                     albumMemberships.filter { it.albumId == albumId }.map { it.mediaId }.toSet()
                 }
                 AlbumPhotoPickerScreen(
-                    albumName = album?.name ?: "Album",
+                    albumName = album?.name ?: appString(R.string.nooklin_photos_app_album),
                     items = uiState.allItems,
                     alreadyInAlbum = memberIds,
                     gridColumns = gridColumns,
@@ -734,7 +742,7 @@ fun NooklinPhotosApp() {
                 val album = albumsWithPreview.find { it.id == albumId }
                 AlbumMergeScreen(
                     sourceAlbumId = albumId,
-                    sourceAlbumName = album?.name ?: "Album",
+                    sourceAlbumName = album?.name ?: appString(R.string.nooklin_photos_app_album),
                     candidates = albumsWithPreview,
                     onMerge = { targetAlbumId ->
                         albumViewModel.mergeAlbums(albumId, targetAlbumId) {
@@ -809,9 +817,10 @@ fun NooklinPhotosApp() {
                     uiState.allItems.filter { it.id in memberIds }
                 }
                 PetDetailScreen(
-                    petName = pet?.name ?: "Pet",
+                    petName = pet?.name ?: appString(R.string.nooklin_photos_app_pet),
                     photos = petPhotos,
                     gridColumns = gridColumns,
+                    groupActions = groupActions,
                     onBack = { navController.popBackStack() },
                     onItemClick = { item, petPhotoList ->
                         viewerItemsOverride = StableList(petPhotoList)
@@ -834,7 +843,7 @@ fun NooklinPhotosApp() {
                     uiState.allItems.filter { it.id in taggedIds }
                 }
                 AlbumPhotoPickerScreen(
-                    albumName = pet?.name ?: "Pet",
+                    albumName = pet?.name ?: appString(R.string.nooklin_photos_app_pet),
                     items = petsTaggedItems,
                     alreadyInAlbum = memberIds,
                     gridColumns = gridColumns,
@@ -866,7 +875,7 @@ fun NooklinPhotosApp() {
                     }
                 }
 
-                val displayName = peopleByDisplayName[personId] ?: "Unknown"
+                val displayName = peopleByDisplayName[personId] ?: appString(R.string.nooklin_photos_app_unknown_2)
                 val personFaces = remember(faces, personId) { faces.filter { it.personId == personId } }
                 val facesByMediaId = remember(personFaces) {
                     // Last face wins, removing needs only one valid face id
@@ -902,8 +911,8 @@ fun NooklinPhotosApp() {
                 )
             }
             composable(ROUTE_RECYCLE_BIN) {
-                // wasHidden entries belong to the Hidden recycle bin, one store split by this filter
-                val normalRecycleBinEntries = recycleBinEntries.filter { !it.wasHidden }
+                // Older versions put deleted hidden items in this store too, they are plain library files and show here
+                val normalRecycleBinEntries = recycleBinEntries
                 RecycleBinScreen(
                     entries = normalRecycleBinEntries,
                     gridColumns = gridColumns,
@@ -915,7 +924,7 @@ fun NooklinPhotosApp() {
             }
             composable("recyclebinviewer/{index}") { entry ->
                 val index = entry.arguments?.getString("index")?.toIntOrNull() ?: 0
-                val normalRecycleBinEntries = recycleBinEntries.filter { !it.wasHidden }
+                val normalRecycleBinEntries = recycleBinEntries
                 RecycleBinViewerScreen(
                     entries = StableList(normalRecycleBinEntries),
                     zoomLaunch = capturedZoomLaunch,
@@ -995,7 +1004,7 @@ fun NooklinPhotosApp() {
                     items = hiddenFavorites,
                     gridColumns = gridColumns,
                     existingAlbums = hiddenUiState.albums,
-                    title = "Favorites",
+                    title = appString(R.string.common_favorites),
                     onItemClick = { index -> openViewerZoomed(hiddenFavorites[index].file.absolutePath, "hiddenfavoritesviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1035,7 +1044,7 @@ fun NooklinPhotosApp() {
                     items = hiddenVideos,
                     gridColumns = gridColumns,
                     existingAlbums = hiddenUiState.albums,
-                    title = "Videos",
+                    title = appString(R.string.common_videos),
                     onItemClick = { index -> openViewerZoomed(hiddenVideos[index].file.absolutePath, "hiddenvideosviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1076,7 +1085,7 @@ fun NooklinPhotosApp() {
                     items = hiddenSlowMotion,
                     gridColumns = gridColumns,
                     existingAlbums = hiddenUiState.albums,
-                    title = "Slow Motion",
+                    title = appString(R.string.common_slow_motion),
                     onItemClick = { index -> openViewerZoomed(hiddenSlowMotion[index].file.absolutePath, "hiddenslowmotionviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1116,7 +1125,7 @@ fun NooklinPhotosApp() {
                     items = hiddenRaw,
                     gridColumns = gridColumns,
                     existingAlbums = hiddenUiState.albums,
-                    title = "RAW",
+                    title = appString(R.string.common_raw),
                     onItemClick = { index -> openViewerZoomed(hiddenRaw[index].file.absolutePath, "hiddenrawviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1156,7 +1165,7 @@ fun NooklinPhotosApp() {
                     items = hiddenScreenshots,
                     gridColumns = gridColumns,
                     existingAlbums = hiddenUiState.albums,
-                    title = "Screenshots",
+                    title = appString(R.string.common_screenshots),
                     onItemClick = { index -> openViewerZoomed(hiddenScreenshots[index].file.absolutePath, "hiddenscreenshotsviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1196,7 +1205,7 @@ fun NooklinPhotosApp() {
                     items = hiddenPanoramas,
                     gridColumns = gridColumns,
                     existingAlbums = hiddenUiState.albums,
-                    title = "Panoramas",
+                    title = appString(R.string.common_panoramas),
                     onItemClick = { index -> openViewerZoomed(hiddenPanoramas[index].file.absolutePath, "hiddenpanoramasviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1236,7 +1245,7 @@ fun NooklinPhotosApp() {
                     items = hiddenScreenRecordings,
                     gridColumns = gridColumns,
                     existingAlbums = hiddenUiState.albums,
-                    title = "Screen Recordings",
+                    title = appString(R.string.common_screen_recordings),
                     onItemClick = { index -> openViewerZoomed(hiddenScreenRecordings[index].file.absolutePath, "hiddenscreenrecordingsviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1280,7 +1289,7 @@ fun NooklinPhotosApp() {
                     items = hiddenRecentlySaved,
                     gridColumns = gridColumns,
                     existingAlbums = hiddenUiState.albums,
-                    title = "Recently Saved",
+                    title = appString(R.string.common_recently_saved),
                     onItemClick = { index -> openViewerZoomed(hiddenRecentlySaved[index].file.absolutePath, "hiddenrecentlysavedviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1317,30 +1326,24 @@ fun NooklinPhotosApp() {
                 )
             }
             composable(ROUTE_HIDDEN_RECYCLE_BIN) {
-                val hiddenRecycleBinEntries = recycleBinEntries.filter { it.wasHidden }
                 RecycleBinScreen(
                     entries = hiddenRecycleBinEntries,
                     gridColumns = gridColumns,
-                    onRestore = { mediaId -> restoreHiddenItem(mediaId) },
-                    onPurgeExpired = viewModel::purgeExpiredFromRecycleBin,
+                    onRestore = { mediaId -> hiddenViewModel.restoreDeleted(hiddenFileNamesFor(listOf(mediaId))) },
+                    onPurgeExpired = { ids -> hiddenViewModel.purgeDeleted(hiddenFileNamesFor(ids)) },
                     onItemClick = { index -> openViewerZoomed(hiddenRecycleBinEntries[index].mediaId, "hiddenrecyclebinviewer/$index") },
                     onBack = { navController.popBackStack() },
-                    restoreConfirmTitle = "Restore to Hidden Library?",
-                    restoreConfirmText = { count -> hiddenRestoreConfirmText(count) }
+                    privateFiles = true
                 )
             }
             composable("hiddenrecyclebinviewer/{index}") { entry ->
                 val index = entry.arguments?.getString("index")?.toIntOrNull() ?: 0
-                val hiddenRecycleBinEntries = recycleBinEntries.filter { it.wasHidden }
                 RecycleBinViewerScreen(
                     entries = StableList(hiddenRecycleBinEntries),
                     zoomLaunch = capturedZoomLaunch,
                     startIndex = index,
                     onBack = { navController.popBackStack() },
-                    onRestore = { mediaId -> restoreHiddenItem(mediaId) },
-                    restoreConfirmTitle = "Restore to Hidden Library?",
-                    // Single-entry restore, count is always 1 here
-                    restoreConfirmText = hiddenRestoreConfirmText(1)
+                    onRestore = { mediaId -> hiddenViewModel.restoreDeleted(hiddenFileNamesFor(listOf(mediaId))) }
                 )
             }
             composable(ROUTE_HIDDEN_ALBUMS) {
@@ -1349,6 +1352,7 @@ fun NooklinPhotosApp() {
                     gridColumns = gridColumns,
                     onAlbumClick = { albumId -> navController.navigate("hiddenalbums/$albumId") },
                     onCreateAlbum = { name -> hiddenViewModel.createAlbum(name) },
+                    onDeleteAlbums = { ids -> ids.forEach { hiddenViewModel.deleteAlbum(it) } },
                     onBack = { navController.popBackStack() }
                 )
             }
@@ -1362,7 +1366,7 @@ fun NooklinPhotosApp() {
                     hiddenUiState.items.filter { it.file.name in memberFileNames }
                 }
                 HiddenAlbumDetailScreen(
-                    albumName = album?.name ?: "Album",
+                    albumName = album?.name ?: appString(R.string.nooklin_photos_app_album),
                     items = albumItems,
                     gridColumns = gridColumns,
                     existingAlbums = hiddenUiState.albums.filter { it.id != albumId },
@@ -1393,7 +1397,7 @@ fun NooklinPhotosApp() {
                     hiddenUiState.albumMembership.filter { it.first == albumId }.map { it.second }.toSet()
                 }
                 HiddenAlbumPhotoPickerScreen(
-                    albumName = album?.name ?: "Album",
+                    albumName = album?.name ?: appString(R.string.nooklin_photos_app_album),
                     items = hiddenUiState.items,
                     alreadyInAlbum = memberFileNames,
                     gridColumns = gridColumns,
@@ -1452,10 +1456,42 @@ fun NooklinPhotosApp() {
                     onBack = { navController.popBackStack() }
                 )
             }
+            composable(ROUTE_DUPLICATES) {
+                var groupIds by remember { mutableStateOf(emptyList<List<Long>>()) }
+                LaunchedEffect(uiState.allItems) {
+                    val validIds = uiState.allItems.map { it.id }.toSet()
+                    settingsViewModel.findDuplicateGroups(validIds) { groupIds = it }
+                }
+                // Items already moved to Recently Deleted drop out at once, groups of one are no group
+                val groups = remember(groupIds, uiState.allItems) {
+                    val byId = uiState.allItems.associateBy { it.id }
+                    groupIds.map { ids -> ids.mapNotNull { byId[it] } }.filter { it.size >= 2 }
+                }
+                DuplicatesScreen(
+                    groups = groups,
+                    onBack = { navController.popBackStack() },
+                    onOpenGroup = { group, startIndex ->
+                        viewerItemsOverride = StableList(group)
+                        openViewerZoomed(group[startIndex].id, "viewer/$startIndex")
+                    },
+                    onMoveToRecycleBin = { item -> viewModel.moveToRecycleBin(item) }
+                )
+            }
+            composable(ROUTE_CALENDAR) {
+                CalendarScreen(
+                    items = uiState.visibleItems,
+                    onBack = { navController.popBackStack() },
+                    onOpenDay = { dayItems ->
+                        viewerItemsOverride = StableList(dayItems)
+                        openViewerZoomed(dayItems.first().id, "viewer/0")
+                    }
+                )
+            }
             composable(ROUTE_SEARCH) {
                 SearchScreen(
                     items = uiState.allItems,
                     gridColumns = gridColumns,
+                    groupActions = groupActions,
                     onBack = { navController.popBackStack() },
                     onItemClick = { item, searchResults ->
                         viewerItemsOverride = StableList(searchResults)
@@ -1477,6 +1513,7 @@ fun NooklinPhotosApp() {
                     CategoryScreen(
                         category = category,
                         allItems = uiState.allItems,
+                        groupActions = groupActions,
                         gridStyleSetting = gridStyle,
                         gridColumns = gridColumns,
                         duplicateMediaIds = duplicateMediaIds,
@@ -1663,7 +1700,7 @@ private val ZOOM_GRID_ROUTES = setOf(
     ROUTE_HIDDEN_SLOW_MOTION, ROUTE_HIDDEN_RAW, ROUTE_HIDDEN_SCREENSHOTS,
     ROUTE_HIDDEN_PANORAMAS, ROUTE_HIDDEN_SCREEN_RECORDINGS,
     ROUTE_HIDDEN_RECENTLY_SAVED, ROUTE_HIDDEN_RECYCLE_BIN, "hiddenalbums/{albumId}",
-    "discovered/{tagId}", "pets/{petId}", "people/{personId}", ROUTE_SEARCH
+    "discovered/{tagId}", "pets/{petId}", "people/{personId}", ROUTE_SEARCH, ROUTE_CALENDAR
 )
 
 private fun isZoomPair(a: String?, b: String?): Boolean =

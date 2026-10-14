@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,19 +22,21 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsHelpScreen(onBack: () -> Unit) {
+fun SettingsHelpScreen(onOpenHowTo: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Help & Support") },
+                title = { Text(appString(R.string.common_help_support)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -41,10 +44,11 @@ fun SettingsHelpScreen(onBack: () -> Unit) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             SettingsGroup(
-                "Help & Support",
+                appString(R.string.common_help_support),
                 listOf(
+                    { SettingsNavRow(appString(R.string.common_how_to_use), Icons.AutoMirrored.Filled.Help) { onOpenHowTo() } },
                     {
-                        SettingsNavRow("Request a Feature", Icons.Filled.Lightbulb) {
+                        SettingsNavRow(appString(R.string.settings_help_request_a_feature), Icons.Filled.Lightbulb) {
                             try {
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Nooklin/Photos")))
                             } catch (e: ActivityNotFoundException) {
@@ -53,7 +57,7 @@ fun SettingsHelpScreen(onBack: () -> Unit) {
                         }
                     },
                     {
-                        SettingsNavRow("Report an Issue", Icons.Filled.BugReport) {
+                        SettingsNavRow(appString(R.string.settings_help_report_an_issue), Icons.Filled.BugReport) {
                             try {
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Nooklin/Photos")))
                             } catch (e: ActivityNotFoundException) {

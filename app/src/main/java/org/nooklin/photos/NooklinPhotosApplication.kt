@@ -18,6 +18,7 @@ import org.nooklin.photos.data.VideoTrims
 class NooklinPhotosApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
+        AppStrings.app = this
         // Channel must exist before the first scan notification
         ScanCompleteNotifier.createChannelIfNeeded(this)
         CoroutineScope(Dispatchers.IO).launch {

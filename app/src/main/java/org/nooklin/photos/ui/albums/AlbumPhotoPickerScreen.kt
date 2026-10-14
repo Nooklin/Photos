@@ -5,6 +5,8 @@ import androidx.compose.ui.platform.LocalContext
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.ui.common.SelectionGridPickerScreen
 import org.nooklin.photos.ui.common.freshImageRequest
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Only shows photos not already in the album, this screen only adds
 @Composable
@@ -18,13 +20,13 @@ fun AlbumPhotoPickerScreen(
 ) {
     val context = LocalContext.current
     SelectionGridPickerScreen(
-        title = "Add to $albumName",
+        title = appString(R.string.common_add_to, albumName),
         items = items,
         key = { it.id },
         thumbnailModel = { freshImageRequest(context, it.uri, it.dateModified) },
         excludeKeys = alreadyInAlbum,
         gridColumns = gridColumns,
-        emptyMessage = "Every photo is already in this album",
+        emptyMessage = appString(R.string.album_photo_picker_every_photo_is_already_in),
         onConfirm = onConfirm,
         onBack = onBack
     )

@@ -23,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,10 +39,10 @@ fun SettingsHiddenSharingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Hidden Image Sharing", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_hidden_image_sharing), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -48,10 +50,10 @@ fun SettingsHiddenSharingScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             SettingsGroup(
-                "Hidden Image Sharing",
+                appString(R.string.common_hidden_image_sharing),
                 listOf({
                     SettingsToggleRow(
-                        "Allow Sharing Hidden Images",
+                        appString(R.string.settings_hidden_sharing_allow_sharing_hidden_images),
                         hiddenImageSharingEnabled,
                         Icons.Filled.Share,
                         enabled = !sharingDisabled,
@@ -67,12 +69,12 @@ fun SettingsHiddenSharingScreen(
             )
             if (sharingDisabled) {
                 Text(
-                    "Sharing is turned off for the whole app (Settings > Sharing). Turn that back on first to change this setting.",
+                    appString(R.string.settings_hidden_sharing_sharing_is_turned_off_for),
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
                 )
             } else {
                 Text(
-                    "When off (the default), the Hidden photo viewer has no Share button, so a hidden photo can't be shared out by mistake. Turning this on adds a Share button back to that viewer, same EXIF-stripped share behavior as your regular Library.",
+                    appString(R.string.settings_hidden_sharing_when_off_the_default_the),
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
                 )
             }
@@ -81,9 +83,9 @@ fun SettingsHiddenSharingScreen(
 
     if (showEnableConfirm) {
         ConfirmDeleteDialog(
-            title = "Allow Sharing Hidden Images?",
-            text = "Hidden photos will be shareable to other apps again, using the same EXIF-stripped share behavior as your regular Library. Hidden photos still won't appear anywhere else on your device.",
-            confirmLabel = "Allow Sharing",
+            title = appString(R.string.settings_hidden_sharing_allow_sharing_hidden_images_2),
+            text = appString(R.string.settings_hidden_sharing_hidden_photos_will_be_shareable),
+            confirmLabel = appString(R.string.settings_hidden_sharing_allow_sharing),
             onConfirm = {
                 showEnableConfirm = false
                 onHiddenImageSharingEnabledChange(true)

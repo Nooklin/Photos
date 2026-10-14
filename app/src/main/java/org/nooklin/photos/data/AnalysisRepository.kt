@@ -40,10 +40,24 @@ class AnalysisRepository(context: Context) {
         dao.upsertHash(PhotoHashEntity(mediaId, dHash))
     }
 
-    suspend fun findDuplicateMediaIds(validMediaIds: Set<Long>): Set<Long> = withContext(Dispatchers.IO) {
+    suspend fun findDuplicateMediaIds(validMediaIds: Set<Long>): Set<Long> =
+        findDuplicateGroups(validMediaIds).flatten().toSet()
+
+    // Photos that look the same, grouped. Photos linked through a chain of matches end up in one group.
+    suspend fun findDuplicateGroups(validMediaIds: Set<Long>): List<List<Long>> = withContext(Dispatchers.IO) {
         // Flat images give all-0 or all-1 hashes that match each other
         val hashes = dao.allHashes().filter { it.mediaId in validMediaIds && it.dHash != 0L && it.dHash != -1L }
-        val duplicateIds = mutableSetOf<Long>()
+        val parent = HashMap<Long, Long>()
+        fun find(x: Long): Long {
+            var root = x
+            while (true) {
+                val next = parent[root] ?: break
+                if (next == root) break
+                root = next
+            }
+            return root
+        }
+        val matched = mutableSetOf<Long>()
         // Within 5 bits means one of 6 chunks is equal, so compare same-chunk pairs only
         var shift = 0
         for (bits in intArrayOf(11, 11, 11, 11, 10, 10)) {
@@ -52,15 +66,18 @@ class AnalysisRepository(context: Context) {
                 for (i in bucket.indices) {
                     for (j in i + 1 until bucket.size) {
                         if (hammingDistance(bucket[i].dHash, bucket[j].dHash) <= HAMMING_THRESHOLD) {
-                            duplicateIds.add(bucket[i].mediaId)
-                            duplicateIds.add(bucket[j].mediaId)
+                            val a = find(bucket[i].mediaId)
+                            val b = find(bucket[j].mediaId)
+                            if (a != b) parent[a] = b
+                            matched.add(bucket[i].mediaId)
+                            matched.add(bucket[j].mediaId)
                         }
                     }
                 }
             }
             shift += bits
         }
-        duplicateIds
+        matched.groupBy { find(it) }.values.sortedByDescending { it.size }
     }
 
     private companion object {

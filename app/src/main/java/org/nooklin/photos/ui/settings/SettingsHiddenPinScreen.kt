@@ -28,6 +28,8 @@ import org.nooklin.photos.ui.hidden.HiddenPinEntryScreen
 import org.nooklin.photos.ui.hidden.HiddenPinRecoveryCodeScreen
 import org.nooklin.photos.ui.hidden.HiddenPinRecoveryEntryScreen
 import org.nooklin.photos.ui.hidden.HiddenPinSetupScreen
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 private enum class Step { IDLE, VERIFY_CURRENT, RECOVERY_ENTRY, SETUP_NEW, REVEAL_CODE }
 private enum class PendingAction { CHANGE, DISABLE }
@@ -52,10 +54,10 @@ fun SettingsHiddenPinScreen(
         Step.IDLE -> Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Extra PIN", fontWeight = FontWeight.Bold) },
+                    title = { Text(appString(R.string.common_extra_pin), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                         }
                     }
                 )
@@ -63,30 +65,30 @@ fun SettingsHiddenPinScreen(
         ) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
                 Text(
-                    "An extra layer of protection for the Hidden Section, separate from your device's own lock screen — you'll be asked for this PIN every time you open the Hidden Section, on top of, not instead of, the usual unlock.",
+                    appString(R.string.settings_hidden_pin_an_extra_layer_of_protection),
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
                 )
                 Text(
-                    "When you set a PIN, a one-time recovery code is generated in case you forget it. It's shown once, right after setup — save it somewhere safe, since it can't be shown again.",
+                    appString(R.string.settings_hidden_pin_when_you_set_a_pin),
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)
                 )
                 if (!pinSet) {
                     SettingsGroup(
-                        "Set up",
-                        listOf({ SettingsNavRow("Set PIN", Icons.Filled.Password) { step = Step.SETUP_NEW } })
+                        appString(R.string.settings_hidden_pin_set_up),
+                        listOf({ SettingsNavRow(appString(R.string.settings_hidden_pin_set_pin), Icons.Filled.Password) { step = Step.SETUP_NEW } })
                     )
                 } else {
                     SettingsGroup(
-                        "Manage",
+                        appString(R.string.settings_hidden_pin_manage),
                         listOf(
                             {
-                                SettingsNavRow("Change PIN", Icons.Filled.Password) {
+                                SettingsNavRow(appString(R.string.settings_hidden_pin_change_pin), Icons.Filled.Password) {
                                     pendingAction = PendingAction.CHANGE
                                     step = Step.VERIFY_CURRENT
                                 }
                             },
                             {
-                                SettingsNavRow("Turn Off", Icons.Filled.Password) {
+                                SettingsNavRow(appString(R.string.common_turn_off), Icons.Filled.Password) {
                                     pendingAction = PendingAction.DISABLE
                                     step = Step.VERIFY_CURRENT
                                 }

@@ -1,5 +1,10 @@
 package org.nooklin.photos.ui.pets
 
+import org.nooklin.photos.ui.common.rememberGroupSelection
+import org.nooklin.photos.ui.common.groupSelectionTitle
+import org.nooklin.photos.ui.common.GroupSelectionActions
+import org.nooklin.photos.ui.common.GroupSelectableCell
+import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
 import org.nooklin.photos.ui.common.zoomSource
 import org.nooklin.photos.ui.common.zoomBackdropSource
@@ -7,7 +12,6 @@ import org.nooklin.photos.ui.common.scrollToItemCentered
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -51,8 +55,11 @@ import org.nooklin.photos.ui.common.freshImageRequest
 import androidx.compose.ui.platform.LocalContext
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.GlassPillTextField
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +67,7 @@ fun PetDetailScreen(
     petName: String,
     photos: List<MediaItem>,
     gridColumns: Int,
+    groupActions: GroupActions? = null,
     onBack: () -> Unit,
     // Viewer pages through this pet's photos only
     onItemClick: (MediaItem, List<MediaItem>) -> Unit,
@@ -72,6 +80,7 @@ fun PetDetailScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
+    val selection = rememberGroupSelection()
     val petGridState = rememberLazyGridState()
     ScrollToPendingZoomKey(
         lazyIndexOf = { key -> photos.indexOfFirst { it.id == key }.takeIf { it >= 0 } },
@@ -82,19 +91,24 @@ fun PetDetailScreen(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
-                title = { Text(petName, fontWeight = FontWeight.Bold) },
+                title = { Text(groupSelectionTitle(selection, petName), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
-                    IconButton(onClick = onAddPhotos) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add photos")
-                    }
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More options")
-                    }
+                    if (groupActions != null && photos.isNotEmpty()) GroupSelectionActions(selection, photos, groupActions)
+                    CircleIconButton(
+                        icon = Icons.Filled.Add,
+                        contentDescription = appString(R.string.common_add_photos),
+                        onClick = onAddPhotos
+                    )
+                    CircleIconButton(
+                        icon = Icons.Filled.MoreVert,
+                        contentDescription = appString(R.string.common_more_options),
+                        onClick = { menuExpanded = true }
+                    )
                     DropdownMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false },
@@ -103,14 +117,14 @@ fun PetDetailScreen(
                     ) {
                         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                             DropdownMenuItem(
-                                text = { Text("Rename") },
+                                text = { Text(appString(R.string.common_rename)) },
                                 onClick = {
                                     menuExpanded = false
                                     showRenameDialog = true
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Delete Pet", color = GlassPill.destructiveText) },
+                                text = { Text(appString(R.string.pet_detail_delete_pet), color = GlassPill.destructiveText) },
                                 onClick = {
                                     menuExpanded = false
                                     showDeleteConfirm = true
@@ -127,7 +141,7 @@ fun PetDetailScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No photos assigned to $petName yet")
+                Text(appString(R.string.pet_detail_no_photos_assigned_to_yet, petName))
             }
         } else {
             LazyVerticalGrid(
@@ -140,17 +154,23 @@ fun PetDetailScreen(
             ) {
                 items(photos.size, key = { photos[it].id }) { index ->
                     val item = photos[index]
-                    AsyncImage(
-                        model = freshImageRequest(context, item.uri, item.dateModified),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
+                    GroupSelectableCell(
+                        selection = if (groupActions != null) selection else null,
+                        id = item.id,
                         modifier = Modifier
                             .aspectRatio(1f)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .zoomSource(item.id)
-                            .clickable { onItemClick(item, photos) }
-                    )
+                            .zoomSource(item.id),
+                        onClick = { onItemClick(item, photos) }
+                    ) {
+                        AsyncImage(
+                            model = freshImageRequest(context, item.uri, item.dateModified),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
@@ -164,7 +184,7 @@ fun PetDetailScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Rename Pet") },
+            title = { Text(appString(R.string.pet_detail_rename_pet)) },
             text = {
                 GlassPillTextField(
                     value = newName,
@@ -179,20 +199,20 @@ fun PetDetailScreen(
                         showRenameDialog = false
                     }
                 ) {
-                    Text("Rename")
+                    Text(appString(R.string.common_rename))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showRenameDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
 
     if (showDeleteConfirm) {
         ConfirmDeleteDialog(
-            title = "Delete Pet?",
-            text = "\"$petName\" will be removed. The photos themselves are not affected.",
-            confirmLabel = "Delete Pet",
+            title = appString(R.string.pet_detail_delete_pet_2),
+            text = appString(R.string.pet_detail_will_be_removed_the_photos, petName),
+            confirmLabel = appString(R.string.pet_detail_delete_pet),
             onConfirm = {
                 showDeleteConfirm = false
                 onDeletePet()

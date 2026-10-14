@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -37,6 +38,12 @@ import androidx.compose.foundation.lazy.staggeredgrid.items as staggeredItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.PhotoAlbum
+import androidx.compose.material.icons.filled.VisibilityOff
+import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Check
@@ -54,11 +61,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +82,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
@@ -85,6 +98,7 @@ import org.nooklin.photos.ui.common.GridThumbnail
 import org.nooklin.photos.ui.common.PrefetchAhead
 import androidx.compose.ui.graphics.FilterQuality
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.data.groupItemsByDate
@@ -96,12 +110,16 @@ import org.nooklin.photos.ui.MediaFilter
 import org.nooklin.photos.ui.SortOrder
 import org.nooklin.photos.ui.albums.AlbumWithPreview
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.PillListRow
 import org.nooklin.photos.ui.common.dragToSelect
 import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
 import org.nooklin.photos.ui.common.prefetchScreenTierImage
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Library grid with its own top bar. The title count is the visible count (after filter and hide screenshots).
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -128,6 +146,8 @@ fun GalleryScreen(
     onHideSelected: (List<MediaItem>) -> Unit,
     onAddToAlbum: (albumId: Long, item: MediaItem) -> Unit,
     onOpenSearch: () -> Unit,
+    // Starting value of the metadata switch in the share sheet (Settings, Sharing)
+    removeExifOnShare: Boolean = true,
     onBack: () -> Unit
 ) {
     var filterMenuExpanded by remember { mutableStateOf(false) }
@@ -136,6 +156,12 @@ fun GalleryScreen(
     var actionsMenuExpanded by remember { mutableStateOf(false) }
     var showAddToAlbumDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
+    // Years and Months are overviews, All is the grid below. The bar shows while scrolling and in the overviews.
+    var timelineMode by rememberSaveable { mutableStateOf(TimelineMode.ALL) }
+    var focusYear by remember { mutableStateOf<Int?>(null) }
+    var pendingJumpId by remember { mutableStateOf<Long?>(null) }
+    var recentlyScrolled by remember { mutableStateOf(false) }
     // One state per grid type, LazyGridState and LazyStaggeredGridState are unrelated types
     val gridState = rememberLazyGridState()
     val staggeredGridState = rememberLazyStaggeredGridState()
@@ -165,6 +191,40 @@ fun GalleryScreen(
         selectedIds = if (item.id in selectedIds) selectedIds - item.id else selectedIds + item.id
     }
 
+    // Selecting only works in the grid
+    LaunchedEffect(isSelecting) {
+        if (isSelecting) timelineMode = TimelineMode.ALL
+    }
+    val scrolling = gridState.isScrollInProgress || staggeredGridState.isScrollInProgress
+    LaunchedEffect(scrolling) {
+        if (scrolling) {
+            recentlyScrolled = true
+        } else {
+            delay(2000)
+            recentlyScrolled = false
+        }
+    }
+    val timelineBarVisible = !isSelecting && (timelineMode != TimelineMode.ALL || recentlyScrolled)
+    val timelineBarAlpha by animateFloatAsState(if (timelineBarVisible) 1f else 0f, label = "timelineBar")
+    // A tap on a month in the overview opens the grid at that month
+    LaunchedEffect(timelineMode, pendingJumpId) {
+        val id = pendingJumpId
+        if (timelineMode == TimelineMode.ALL && id != null) {
+            val grouped = gridStyle == GridStyle.SQUARE && groupBy != GroupBy.NONE
+            val index = zoomLazyIndexOf(
+                id,
+                items.map { it.id },
+                if (grouped) groupItemsByDate(items, groupBy).map { (_, group) -> group.map { it.id } } else null
+            )
+            if (index != null) {
+                // One back from the photo so the date header stays in view
+                val target = (if (grouped) index - 1 else index).coerceAtLeast(0)
+                if (gridStyle == GridStyle.SQUARE) gridState.scrollToItem(target) else staggeredGridState.scrollToItem(target)
+            }
+            pendingJumpId = null
+        }
+    }
+
     Scaffold(
         modifier = Modifier.drawWithContent {
             backdropGraphicsLayer.record { this@drawWithContent.drawContent() }
@@ -174,21 +234,21 @@ fun GalleryScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text("Library", fontWeight = FontWeight.Bold)
+                        Text(appString(R.string.common_library), fontWeight = FontWeight.Bold)
                         Spacer(Modifier.width(6.dp))
-                        Text("${items.size} items", color = Color.Gray, fontSize = 13.sp)
+                        Text(appString(R.string.common_items, items.size), color = Color.Gray, fontSize = 13.sp)
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
                     Box {
                         CircleIconButton(
                             icon = Icons.Filled.FilterList,
-                            contentDescription = "Filter",
+                            contentDescription = appString(R.string.common_filter),
                             onClick = { filterMenuExpanded = true }
                         )
                         DropdownMenu(
@@ -199,7 +259,7 @@ fun GalleryScreen(
                         ) {
                             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                 DropdownMenuItem(
-                                    text = { Text("All") },
+                                    text = { Text(appString(R.string.common_all)) },
                                     trailingIcon = {
                                         if (filter == MediaFilter.ALL) {
                                             Icon(Icons.Filled.Check, contentDescription = null)
@@ -208,7 +268,7 @@ fun GalleryScreen(
                                     onClick = { onFilterChange(MediaFilter.ALL) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Favorites") },
+                                    text = { Text(appString(R.string.common_favorites)) },
                                     trailingIcon = {
                                         if (filter == MediaFilter.FAVORITES) {
                                             Icon(Icons.Filled.Check, contentDescription = null)
@@ -217,7 +277,7 @@ fun GalleryScreen(
                                     onClick = { onFilterChange(MediaFilter.FAVORITES) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Videos") },
+                                    text = { Text(appString(R.string.common_videos)) },
                                     trailingIcon = {
                                         if (filter == MediaFilter.VIDEOS) {
                                             Icon(Icons.Filled.Check, contentDescription = null)
@@ -226,7 +286,7 @@ fun GalleryScreen(
                                     onClick = { onFilterChange(MediaFilter.VIDEOS) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Screenshots") },
+                                    text = { Text(appString(R.string.common_screenshots)) },
                                     trailingIcon = {
                                         if (!hideScreenshots) {
                                             Icon(Icons.Filled.Check, contentDescription = null)
@@ -236,7 +296,7 @@ fun GalleryScreen(
                                 )
                                 HorizontalDivider()
                                 DropdownMenuItem(
-                                    text = { Text("Newest First") },
+                                    text = { Text(appString(R.string.common_newest_first)) },
                                     trailingIcon = {
                                         if (sortOrder == SortOrder.NEWEST_FIRST) {
                                             Icon(Icons.Filled.Check, contentDescription = null)
@@ -245,7 +305,7 @@ fun GalleryScreen(
                                     onClick = { onSortOrderChange(SortOrder.NEWEST_FIRST) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Oldest First") },
+                                    text = { Text(appString(R.string.common_oldest_first)) },
                                     trailingIcon = {
                                         if (sortOrder == SortOrder.OLDEST_FIRST) {
                                             Icon(Icons.Filled.Check, contentDescription = null)
@@ -261,7 +321,7 @@ fun GalleryScreen(
                         Box {
                             CircleIconButton(
                                 icon = Icons.Filled.MoreVert,
-                                contentDescription = "More",
+                                contentDescription = appString(R.string.common_more),
                                 onClick = { actionsMenuExpanded = true }
                             )
                             DropdownMenu(
@@ -272,7 +332,17 @@ fun GalleryScreen(
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                     DropdownMenuItem(
-                                        text = { Text("Favorite") },
+                                        text = { Text(appString(R.string.common_share)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.IosShare) },
+                                        enabled = selectedIds.isNotEmpty(),
+                                        onClick = {
+                                            actionsMenuExpanded = false
+                                            showShareSheet = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.common_favorite)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             items.filter { it.id in selectedIds }.forEach { onToggleFavorite(it) }
@@ -280,14 +350,16 @@ fun GalleryScreen(
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Add to Album") },
+                                        text = { Text(appString(R.string.common_add_to_album)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.PhotoAlbum) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             showAddToAlbumDialog = true
                                         }
                                     )
                                     if (hideEnabled) DropdownMenuItem(
-                                        text = { Text("Hide") },
+                                        text = { Text(appString(R.string.common_hide)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.VisibilityOff) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             onHideSelected(items.filter { it.id in selectedIds })
@@ -295,7 +367,8 @@ fun GalleryScreen(
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Move to Recycle Bin", color = GlassPill.destructiveText) },
+                                        text = { Text(appString(R.string.common_move_to_recycle_bin), color = GlassPill.destructiveText) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.Delete) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             showDeleteConfirm = true
@@ -306,21 +379,55 @@ fun GalleryScreen(
                         }
                         CircleIconButton(
                             icon = Icons.Filled.Close,
-                            contentDescription = "Cancel selection",
+                            contentDescription = appString(R.string.common_cancel_selection),
                             onClick = { exitSelection() }
                         )
                     } else {
-                        PillButton(text = "Select", onClick = { isSelecting = true })
+                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
                 }
             )
         },
+        floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            CircleIconButton(
-                icon = Icons.Filled.Search,
-                contentDescription = "Search",
-                onClick = onOpenSearch
-            )
+            // The row has a fixed height, so the search button does not move when the bar disappears.
+            // The bar sits in the middle of the screen, the search button at the right edge.
+            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(56.dp)) {
+                // Not composed while invisible: a hidden bar would still catch taps meant for the photos below it
+                if (isSelecting) {
+                    // Same look as the bar, so it is easy to read over photos
+                    Surface(
+                        color = GlassPill.adaptivePopupBackground,
+                        shape = GlassPill.shape,
+                        border = GlassPill.adaptiveBorder,
+                        modifier = Modifier.align(Alignment.Center)
+                    ) {
+                        // Same height as the timeline bar and the search button
+                        Box(Modifier.height(56.dp).padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                appString(R.string.share_sheet_selected, selectedIds.size),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                } else if (timelineBarAlpha > 0f) {
+                    TimelineBar(
+                        selected = timelineMode,
+                        onSelect = { timelineMode = it },
+                        modifier = Modifier.align(Alignment.Center).alpha(timelineBarAlpha)
+                    )
+                }
+                Box(Modifier.align(Alignment.CenterEnd)) {
+                    // 56dp like the timeline bar, no outer margin so the row stays 56dp
+                    CircleIconButton(
+                        icon = Icons.Filled.Search,
+                        contentDescription = appString(R.string.gallery_search),
+                        onClick = onOpenSearch,
+                        size = 56.dp,
+                        outerPadding = 0.dp
+                    )
+                }
+            }
         }
     ) { padding ->
         // Shared by both square grid branches, only the staggered one needs its own
@@ -331,7 +438,22 @@ fun GalleryScreen(
             }?.key
         }
         if (gridStyle == GridStyle.SQUARE) PrefetchAhead(gridState, items, gridColumns)
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        if (timelineMode != TimelineMode.ALL) {
+            TimelineOverview(
+                items = items,
+                mode = timelineMode,
+                focusYear = focusYear,
+                onOpenYear = { year ->
+                    focusYear = year
+                    timelineMode = TimelineMode.MONTHS
+                },
+                onOpenMonth = { firstItemId ->
+                    pendingJumpId = firstItemId
+                    timelineMode = TimelineMode.ALL
+                },
+                modifier = Modifier.padding(padding)
+            )
+        } else Column(Modifier.fillMaxSize().padding(padding)) {
             if (gridStyle == GridStyle.SQUARE) {
                 if (groupBy == GroupBy.NONE) {
                     LazyVerticalGrid(
@@ -496,7 +618,7 @@ fun GalleryScreen(
                             if (isSelecting && selected) {
                                 Icon(
                                     imageVector = Icons.Filled.CheckCircle,
-                                    contentDescription = "Selected",
+                                    contentDescription = appString(R.string.common_selected),
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
                                 )
@@ -508,6 +630,18 @@ fun GalleryScreen(
         }
     }
 
+    if (showShareSheet) {
+        ShareSelectionSheet(
+            selectedItems = items.filter { it.id in selectedIds },
+            removeMetadataDefault = removeExifOnShare,
+            onDismiss = { showShareSheet = false },
+            onFinished = {
+                showShareSheet = false
+                exitSelection()
+            }
+        )
+    }
+
     if (showAddToAlbumDialog) {
         AlertDialog(
             onDismissRequest = { showAddToAlbumDialog = false },
@@ -515,10 +649,10 @@ fun GalleryScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Add to Album") },
+            title = { Text(appString(R.string.common_add_to_album)) },
             text = {
                 if (existingAlbums.isEmpty()) {
-                    Text("No albums yet. Create one from the Albums screen first.")
+                    Text(appString(R.string.common_no_albums_yet_create_one))
                 } else {
                     Column {
                         existingAlbums.forEach { album ->
@@ -535,7 +669,7 @@ fun GalleryScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
@@ -543,13 +677,13 @@ fun GalleryScreen(
     if (showDeleteConfirm) {
         val count = selectedIds.size
         ConfirmDeleteDialog(
-            title = "Move to Recycle Bin?",
+            title = appString(R.string.common_move_to_recycle_bin_2),
             text = if (count == 1) {
-                "This photo will be deleted from the library. It will be in Recently Deleted for 30 days."
+                appString(R.string.common_this_photo_will_be_deleted)
             } else {
-                "These photos will be deleted from the library. They will be in Recently Deleted for 30 days."
+                appString(R.string.common_these_photos_will_be_deleted)
             },
-            confirmLabel = if (count == 1) "Delete 1 Photo" else "Delete $count Photos",
+            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
             onConfirm = {
                 showDeleteConfirm = false
                 items.filter { it.id in selectedIds }.forEach { onMoveToRecycleBin(it) }
@@ -557,42 +691,6 @@ fun GalleryScreen(
             },
             onDismiss = { showDeleteConfirm = false }
         )
-    }
-}
-
-@Composable
-private fun CircleIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    Box(
-        Modifier
-            .padding(4.dp)
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(GlassPill.adaptiveGlassBackground)
-            .border(GlassPill.adaptiveBorder, CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription = contentDescription)
-    }
-}
-
-/** Same glass background+border as CircleIconButton, for text labels (Select) instead of a single icon. */
-@Composable
-private fun PillButton(text: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .padding(4.dp)
-            .clip(GlassPill.shape)
-            .background(GlassPill.adaptiveGlassBackground)
-            .border(GlassPill.adaptiveBorder, GlassPill.shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Text(text)
     }
 }
 
@@ -645,7 +743,7 @@ private fun GridCell(
         if (isSelecting && isSelected) {
             Icon(
                 imageVector = Icons.Filled.CheckCircle,
-                contentDescription = "Selected",
+                contentDescription = appString(R.string.common_selected),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
             )

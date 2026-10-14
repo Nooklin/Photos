@@ -1,12 +1,9 @@
 package org.nooklin.photos.ui.home
 
-import org.nooklin.photos.ui.common.previewWindowStartRow
 
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
 
-import androidx.compose.runtime.mutableIntStateOf
 
-import androidx.compose.runtime.saveable.rememberSaveable
 
 import org.nooklin.photos.ui.common.ZoomSources
 import org.nooklin.photos.ui.common.zoomSource
@@ -31,12 +28,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
@@ -96,6 +95,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.widthIn
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Single scroll home, no bottom nav. Sections are collapsible glass cards (translucent, no real backdrop blur).
 @OptIn(ExperimentalMaterial3Api::class)
@@ -121,34 +122,22 @@ fun HomeScreen(
     onOpenReorderHome: () -> Unit,
     onOpenCategory: (MediaCategory) -> Unit,
     onItemClick: (Int, Rect, ImageBitmap?) -> Unit,
-    duplicatesMlEnabled: Boolean = false
+    duplicatesMlEnabled: Boolean = false,
+    onOpenCalendar: () -> Unit = {}
 ) {
     val previewColumns = gridColumns.coerceAtLeast(2) // the small Home preview never goes to one huge column
     // Home Library Preview Rows setting
     val maxPreviewRows = libraryPreviewRows
-    // First preview row shown. Normally 0 (newest photos). When the viewer is
-    // exited on a photo outside the preview, the preview follows to that part
-    // of the library with the photo in its middle row, so the return zoom
-    // always lands on the photo's own thumbnail. Kept for the session.
-    var previewStartRow by rememberSaveable { mutableIntStateOf(0) }
-    val previewStart = previewStartRow.coerceIn(0, previewWindowStartRow(Int.MAX_VALUE / 2, items.size, previewColumns, maxPreviewRows)) * previewColumns
-    val previewItems = remember(items, previewStart, previewColumns, maxPreviewRows) {
-        val from = previewStart.coerceIn(0, items.size)
-        items.subList(from, minOf(items.size, from + previewColumns * maxPreviewRows))
-    }
-    // The window only follows a photo so the zoom back from the viewer lands on its thumbnail. Once that animation
-    // is over (or when Home is opened again) it goes back to the newest photos.
-    val returnOverlay = ZoomSources.returnOverlay
-    LaunchedEffect(returnOverlay) {
-        if (returnOverlay == null && previewStartRow != 0) previewStartRow = 0
-    }
+    // The Library card scrolls sideways through the whole library, newest first. Scrolls to a photo the viewer was
+    // closed on when it is out of view, so the return zoom lands on its thumbnail.
+    val libraryGridState = rememberLazyGridState()
     ScrollToPendingZoomKey(
         lazyIndexOf = { key -> items.indexOfFirst { it.id == key }.takeIf { it >= 0 } },
-        scrollToIndex = { i -> previewStartRow = previewWindowStartRow(i, items.size, previewColumns, maxPreviewRows) }
+        scrollToIndex = { i -> libraryGridState.scrollToItem(i) }
     )
     val neededRows = min(
         maxPreviewRows,
-        if (previewItems.isEmpty()) 0 else ceil(previewItems.size / previewColumns.toFloat()).toInt()
+        if (items.isEmpty()) 0 else ceil(items.size / previewColumns.toFloat()).toInt()
     )
 
     // Top 10 by item count, the full list is in AlbumsScreen
@@ -177,15 +166,14 @@ fun HomeScreen(
                 when (section) {
                     HomeSection.LIBRARY -> item {
                         LibraryBlock(
-                            itemCount = items.size,
-                            previewItems = previewItems,
+                            libraryItems = items,
+                            gridState = libraryGridState,
                             previewColumns = previewColumns,
                             neededRows = neededRows,
                             onSeeFullLibrary = onSeeFullLibrary,
                             backdropGraphicsLayer = backdropGraphicsLayer,
                             coroutineScope = coroutineScope,
-                            // Preview index -> library index (preview may be shifted).
-                            onItemClick = { i, bounds, backdrop -> onItemClick(previewStart + i, bounds, backdrop) }
+                            onItemClick = onItemClick
                         )
                     }
                     HomeSection.ALBUMS -> item {
@@ -227,7 +215,8 @@ fun HomeScreen(
                             onOpenHidden = onOpenHidden,
                             onOpenRecentlyDeleted = onOpenRecentlyDeleted,
                             onOpenCategory = onOpenCategory,
-                            duplicatesMlEnabled = duplicatesMlEnabled
+                            duplicatesMlEnabled = duplicatesMlEnabled,
+                            onOpenCalendar = onOpenCalendar
                         )
                     }
                     HomeSection.SETTINGS -> item {
@@ -245,8 +234,8 @@ fun HomeScreen(
 
 @Composable
 private fun LibraryBlock(
-    itemCount: Int,
-    previewItems: List<MediaItem>,
+    libraryItems: List<MediaItem>,
+    gridState: LazyGridState,
     previewColumns: Int,
     neededRows: Int,
     onSeeFullLibrary: () -> Unit,
@@ -257,11 +246,11 @@ private fun LibraryBlock(
     GlassBlock {
         Column {
             SectionHeader(
-                "Library",
+                appString(R.string.common_library),
                 expanded = true,
                 onTitleClick = onSeeFullLibrary,
                 showChevron = false,
-                subtitle = "$itemCount items",
+                subtitle = appString(R.string.common_items, libraryItems.size),
                 titleFontSize = 20.sp
             ) {}
             if (neededRows > 0) {
@@ -271,29 +260,29 @@ private fun LibraryBlock(
                         .padding(top = 4.dp)
                 ) {
                     val cellSize = maxWidth / previewColumns
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(previewColumns),
+                    LazyHorizontalGrid(
+                        rows = GridCells.Fixed(neededRows),
+                        state = gridState,
                         modifier = Modifier.fillMaxWidth().height(cellSize * neededRows),
-                        userScrollEnabled = false,
                         contentPadding = PaddingValues(2.dp)
                     ) {
-                        items(previewItems.size, key = { previewItems[it].id }) { index ->
+                        items(libraryItems.size, key = { libraryItems[it].id }) { index ->
                             val context = LocalContext.current
                             AsyncImage(
-                                model = freshImageRequest(context, previewItems[index].uri, previewItems[index].dateModified),
+                                model = freshImageRequest(context, libraryItems[index].uri, libraryItems[index].dateModified),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
+                                    .fillMaxHeight()
                                     .aspectRatio(1f)
-                                    .fillMaxWidth()
                                     .padding(1.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .zoomSource(previewItems[index].id)
+                                    .zoomSource(libraryItems[index].id)
                                     .clickable {
-                                        prefetchScreenTierImage(context, previewItems[index])
+                                        prefetchScreenTierImage(context, libraryItems[index])
                                         coroutineScope.launch {
                                             val backdrop = runCatching { backdropGraphicsLayer.toImageBitmap() }.getOrNull()
-                                            onItemClick(index, (ZoomSources.boundsOf(previewItems[index].id) ?: Rect.Zero), backdrop)
+                                            onItemClick(index, (ZoomSources.boundsOf(libraryItems[index].id) ?: Rect.Zero), backdrop)
                                         }
                                     }
                             )
@@ -317,7 +306,7 @@ private fun AlbumsBlock(
     GlassBlock {
         Column {
             SectionHeader(
-                "Albums",
+                appString(R.string.common_albums),
                 expanded,
                 onTitleClick = onOpenAlbums,
                 titleFontSize = 20.sp
@@ -354,7 +343,7 @@ private fun DiscoveredBlock(
     GlassBlock {
         Column {
             SectionHeader(
-                "Discovered",
+                appString(R.string.common_discovered),
                 expanded,
                 onTitleClick = onOpenDiscovered,
                 titleFontSize = 20.sp
@@ -389,7 +378,7 @@ private fun MediaTypesBlock(
 ) {
     GlassBlock {
         Column {
-            SectionHeader("Media Types", expanded, titleFontSize = 20.sp) { onToggle() }
+            SectionHeader(appString(R.string.common_media_types), expanded, titleFontSize = 20.sp) { onToggle() }
             if (expanded) {
                 val icons = mapOf(
                     MediaCategory.VIDEOS to Icons.Filled.Videocam,
@@ -417,18 +406,20 @@ private fun UtilitiesBlock(
     onOpenHidden: () -> Unit,
     onOpenRecentlyDeleted: () -> Unit,
     onOpenCategory: (MediaCategory) -> Unit,
-    duplicatesMlEnabled: Boolean
+    duplicatesMlEnabled: Boolean,
+    onOpenCalendar: () -> Unit
 ) {
     GlassBlock {
         Column {
-            SectionHeader("Utilities", expanded, titleFontSize = 20.sp) { onToggle() }
+            SectionHeader(appString(R.string.common_utilities), expanded, titleFontSize = 20.sp) { onToggle() }
             if (expanded) {
                 UtilitiesGrid(
                     order = order,
                     onOpenHidden = onOpenHidden,
                     onOpenRecentlyDeleted = onOpenRecentlyDeleted,
                     onOpenCategory = onOpenCategory,
-                    duplicatesMlEnabled = duplicatesMlEnabled
+                    duplicatesMlEnabled = duplicatesMlEnabled,
+                    onOpenCalendar = onOpenCalendar
                 )
             }
         }
@@ -446,7 +437,7 @@ private fun SettingsRowBlock(onOpenSettings: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
-            Text("Settings")
+            Text(appString(R.string.common_settings))
         }
     }
 }
@@ -463,7 +454,7 @@ private fun ReorderHomeRowBlock(onOpenReorderHome: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Filled.Reorder, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
-            Text("Reorder Home Screen")
+            Text(appString(R.string.common_reorder_home_screen))
         }
     }
 }
@@ -477,8 +468,8 @@ private fun GlassBlock(content: @Composable () -> Unit) {
         border = GlassPill.adaptiveBorder,
         modifier = Modifier
             .fillMaxWidth()
-            // 4dp horizontal so pills reach the screen edge, one shared value for every Home section
-            .padding(horizontal = 4.dp, vertical = 6.dp)
+            // 2dp horizontal so pills reach the screen edge, one shared value for every Home section
+            .padding(horizontal = 2.dp, vertical = 6.dp)
     ) {
         content()
     }
@@ -524,7 +515,7 @@ private fun SectionHeader(
             ) {
                 Icon(
                     imageVector = Icons.Filled.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    contentDescription = if (expanded) appString(R.string.common_collapse) else appString(R.string.common_expand),
                     modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f }
                 )
             }
@@ -553,7 +544,8 @@ private fun UtilitiesGrid(
     onOpenHidden: () -> Unit,
     onOpenRecentlyDeleted: () -> Unit,
     onOpenCategory: (MediaCategory) -> Unit,
-    duplicatesMlEnabled: Boolean
+    duplicatesMlEnabled: Boolean,
+    onOpenCalendar: () -> Unit
 ) {
     LazyHorizontalGrid(
         rows = GridCells.Fixed(2),
@@ -565,10 +557,11 @@ private fun UtilitiesGrid(
         for (key in order) {
             when (key) {
                 "FAVORITES" -> item { CategoryRow(MediaCategory.FAVORITES.label, Icons.Filled.Favorite) { onOpenCategory(MediaCategory.FAVORITES) } }
-                "HIDDEN" -> item { CategoryRow("Hidden Section", Icons.Filled.Lock, onOpenHidden) }
+                "HIDDEN" -> item { CategoryRow(appString(R.string.common_hidden_section), Icons.Filled.Lock, onOpenHidden) }
                 "RECENTLY_SAVED" -> item { CategoryRow(MediaCategory.RECENTLY_SAVED.label, Icons.Filled.History) { onOpenCategory(MediaCategory.RECENTLY_SAVED) } }
-                "RECENTLY_DELETED" -> item { CategoryRow("Recently Deleted", Icons.Filled.Delete, onOpenRecentlyDeleted) }
+                "RECENTLY_DELETED" -> item { CategoryRow(appString(R.string.common_recently_deleted), Icons.Filled.Delete, onOpenRecentlyDeleted) }
                 // Only when Machine Learning > Duplicates is on, real perceptual-hash comparison lives behind it.
+                "CALENDAR" -> item { CategoryRow(appString(R.string.home_calendar), Icons.Filled.CalendarMonth, onOpenCalendar) }
                 "DUPLICATES" -> if (duplicatesMlEnabled) {
                     item { CategoryRow(MediaCategory.DUPLICATES.label, Icons.Filled.ContentCopy) { onOpenCategory(MediaCategory.DUPLICATES) } }
                 }

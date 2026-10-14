@@ -120,25 +120,29 @@ import org.nooklin.photos.data.MediaStoreRepository
 import android.graphics.ImageDecoder
 import android.content.ContentUris
 import org.nooklin.photos.data.local.LocalMetadataStore
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
+import androidx.annotation.StringRes
 
 // Bottom bar (Styles, Adjust, Crop), same image box in every mode so the photo doesn't move
 enum class EditorMode { STYLES, ADJUST, CROP }
-enum class AdjustmentType(val label: String, val icon: ImageVector) {
-    AUTO_ENHANCE("Auto", Icons.Filled.AutoFixHigh),
-    EXPOSURE("Exposure", Icons.Filled.Exposure),
-    BRIGHTNESS("Brightness", Icons.Filled.WbSunny),
-    HIGHLIGHTS("Highlights", Icons.Filled.Highlight),
-    SHADOWS("Shadows", Icons.Filled.DarkMode),
-    CONTRAST("Contrast", Icons.Filled.Contrast),
-    BLACK_POINT("Black Point", Icons.Filled.Tonality),
-    SATURATION("Saturation", Icons.Filled.InvertColors),
-    VIBRANCE("Vibrance", Icons.Filled.Palette),
-    WARMTH("Warmth", Icons.Filled.WbIncandescent),
-    TINT("Tint", Icons.Filled.Colorize),
-    SHARPNESS("Sharpness", Icons.Filled.Deblur),
-    DEFINITION("Definition", Icons.Filled.Texture),
-    NOISE_REDUCTION("Noise Reduction", Icons.Filled.BlurOn),
-    VIGNETTE("Vignette", Icons.Filled.Vignette)
+enum class AdjustmentType(@StringRes val labelRes: Int, val icon: ImageVector) {
+    AUTO_ENHANCE(R.string.photo_editor_auto, Icons.Filled.AutoFixHigh),
+    EXPOSURE(R.string.photo_editor_exposure, Icons.Filled.Exposure),
+    BRIGHTNESS(R.string.photo_editor_brightness, Icons.Filled.WbSunny),
+    HIGHLIGHTS(R.string.photo_editor_highlights, Icons.Filled.Highlight),
+    SHADOWS(R.string.photo_editor_shadows, Icons.Filled.DarkMode),
+    CONTRAST(R.string.photo_editor_contrast, Icons.Filled.Contrast),
+    BLACK_POINT(R.string.photo_editor_black_point, Icons.Filled.Tonality),
+    SATURATION(R.string.photo_editor_saturation, Icons.Filled.InvertColors),
+    VIBRANCE(R.string.photo_editor_vibrance, Icons.Filled.Palette),
+    WARMTH(R.string.photo_editor_warmth, Icons.Filled.WbIncandescent),
+    TINT(R.string.photo_editor_tint, Icons.Filled.Colorize),
+    SHARPNESS(R.string.photo_editor_sharpness, Icons.Filled.Deblur),
+    DEFINITION(R.string.photo_editor_definition, Icons.Filled.Texture),
+    NOISE_REDUCTION(R.string.photo_editor_noise_reduction, Icons.Filled.BlurOn),
+    VIGNETTE(R.string.photo_editor_vignette, Icons.Filled.Vignette);
+    val label: String get() = appString(labelRes)
 }
 
 // BitmapFactory ignores EXIF orientation, same fix as HiddenMediaRepository
@@ -595,7 +599,7 @@ fun PhotoEditorScreen(
                         clearImageCaches(listOf(target.item.uri.toString()))
                         onDeleted()
                     } else {
-                        Toast.makeText(context, "Could not delete the edited copy.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, appString(R.string.photo_editor_could_not_delete_the_edited), Toast.LENGTH_LONG).show()
                     }
                 }
             } else {
@@ -687,10 +691,10 @@ fun PhotoEditorScreen(
                         // Sorted just before the original (+1 second) so the copy sits beside it
                         LocalMetadataStore(context).setSortDate(ContentUris.parseId(copyUri), target.item.dateAdded + 1)
                         LocalMetadataStore(context).addEditedCopy(ContentUris.parseId(copyUri))
-                        Toast.makeText(context, "Saved as a new photo. The original is unchanged.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, appString(R.string.photo_editor_saved_as_a_new_photo), Toast.LENGTH_LONG).show()
                         onSaved()
                     } else {
-                        Toast.makeText(context, "Could not save the edit.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, appString(R.string.photo_editor_could_not_save_the_edit), Toast.LENGTH_LONG).show()
                     }
                 }
                 is EditTarget.HiddenFileTarget -> {
@@ -798,10 +802,10 @@ fun PhotoEditorScreen(
         containerColor = screenBackground,
         topBar = {
             TopAppBar(
-                title = { Text("Edit", color = chromeColor, fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_edit), color = chromeColor, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { requestBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel", tint = chromeColor)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_cancel), tint = chromeColor)
                     }
                 },
                 actions = {
@@ -815,14 +819,14 @@ fun PhotoEditorScreen(
                                 .clickable(enabled = !isSaving && !isReverting) { showRevertConfirm = true }
                                 .padding(horizontal = 14.dp, vertical = 6.dp)
                         ) {
-                            Text(if (isEditedCopy) "Delete Edit" else "Revert", color = chromeColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                            Text(if (isEditedCopy) appString(R.string.photo_editor_delete_edit) else appString(R.string.photo_editor_revert), color = chromeColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                     IconButton(
                         enabled = sourceBitmap != null && !isSaving && !isReverting,
                         onClick = { onSaveClicked() }
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = "Save", tint = chromeColor)
+                        Icon(Icons.Filled.Check, contentDescription = appString(R.string.common_save), tint = chromeColor)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = screenBackground)
@@ -984,7 +988,7 @@ fun PhotoEditorScreen(
                         }
                         GeometrySliderRow(
                             chromeColor = chromeColor,
-                            label = "Straighten",
+                            label = appString(R.string.photo_editor_straighten),
                             value = straightenDegrees,
                             valueRange = -45f..45f,
                             displayValue = (if (straightenDegrees > 0f) "+" else "") + "%.1f".format(straightenDegrees) + "°",
@@ -992,7 +996,7 @@ fun PhotoEditorScreen(
                         )
                         GeometrySliderRow(
                             chromeColor = chromeColor,
-                            label = "Vertical",
+                            label = appString(R.string.photo_editor_vertical),
                             value = perspectiveV,
                             valueRange = -1f..1f,
                             displayValue = (perspectiveV * 100).toInt().let { if (it > 0) "+$it" else "$it" },
@@ -1000,7 +1004,7 @@ fun PhotoEditorScreen(
                         )
                         GeometrySliderRow(
                             chromeColor = chromeColor,
-                            label = "Horizontal",
+                            label = appString(R.string.photo_editor_horizontal),
                             value = perspectiveH,
                             valueRange = -1f..1f,
                             displayValue = (perspectiveH * 100).toInt().let { if (it > 0) "+$it" else "$it" },
@@ -1014,15 +1018,15 @@ fun PhotoEditorScreen(
                                 rotationDegrees = (rotationDegrees + 90f) % 360f
                                 cropRect = CropRect()
                             }) {
-                                Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = "Rotate", tint = chromeColor)
+                                Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = appString(R.string.photo_editor_rotate), tint = chromeColor)
                             }
                             IconButton(onClick = { flipHorizontal = !flipHorizontal }) {
-                                Icon(Icons.Filled.Flip, contentDescription = "Flip horizontal", tint = chromeColor)
+                                Icon(Icons.Filled.Flip, contentDescription = appString(R.string.photo_editor_flip_horizontal), tint = chromeColor)
                             }
                             IconButton(onClick = { flipVertical = !flipVertical }) {
                                 Icon(
                                     imageVector = Icons.Filled.Flip,
-                                    contentDescription = "Flip vertical",
+                                    contentDescription = appString(R.string.photo_editor_flip_vertical),
                                     tint = chromeColor,
                                     modifier = Modifier.graphicsLayer { rotationZ = 90f }
                                 )
@@ -1145,12 +1149,12 @@ fun PhotoEditorScreen(
                 loadFailed -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         val isHiddenVideo = target is EditTarget.HiddenFileTarget && target.isVideo
-                        Text(if (isHiddenVideo) "Videos in Hidden can't be edited" else "This photo can't be edited", color = chromeColor)
+                        Text(if (isHiddenVideo) appString(R.string.photo_editor_videos_in_hidden_can_t) else appString(R.string.photo_editor_this_photo_can_t_be), color = chromeColor)
                         Text(
                             if (isHiddenVideo) {
-                                "Move the video out of Hidden first, then trim it from the library."
+                                appString(R.string.photo_editor_move_the_video_out_of)
                             } else {
-                                "The format isn't supported (e.g. RAW formats aren't decodable by the platform's bitmap tools)"
+                                appString(R.string.photo_editor_the_format_isn_t_supported)
                             },
                             color = chromeColor.copy(alpha = 0.7f),
                             modifier = Modifier.padding(top = 8.dp, start = 24.dp, end = 24.dp)
@@ -1178,11 +1182,11 @@ fun PhotoEditorScreen(
             containerColor = popupBackground,
             titleContentColor = chromeColor,
             textContentColor = chromeColor,
-            title = { Text(if (isEditedCopy) "Delete this edit?" else "Revert to original?") },
+            title = { Text(if (isEditedCopy) appString(R.string.photo_editor_delete_this_edit) else appString(R.string.photo_editor_revert_to_original)) },
             text = {
                 Text(
-                    if (isEditedCopy) "This deletes the edited copy. The photo it was made from is unchanged."
-                    else "This restores the photo to how it was before it was edited. The saved edits can't be recovered."
+                    if (isEditedCopy) appString(R.string.photo_editor_this_deletes_the_edited_copy)
+                    else appString(R.string.photo_editor_this_restores_the_photo_to)
                 )
             },
             confirmButton = {
@@ -1196,12 +1200,12 @@ fun PhotoEditorScreen(
                         }
                         .padding(horizontal = 20.dp, vertical = 10.dp)
                 ) {
-                    Text(if (isEditedCopy) "Delete Edit" else "Revert to Original", color = Color.Red)
+                    Text(if (isEditedCopy) appString(R.string.photo_editor_delete_edit) else appString(R.string.photo_editor_revert_to_original_2), color = Color.Red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRevertConfirm = false }) {
-                    Text("Cancel")
+                    Text(appString(R.string.common_cancel))
                 }
             }
         )
@@ -1214,8 +1218,8 @@ fun PhotoEditorScreen(
             containerColor = popupBackground,
             titleContentColor = chromeColor,
             textContentColor = chromeColor,
-            title = { Text("Discard changes?") },
-            text = { Text("Are you sure you want to discard the changes?") },
+            title = { Text(appString(R.string.photo_editor_discard_changes)) },
+            text = { Text(appString(R.string.photo_editor_are_you_sure_you_want)) },
             confirmButton = {
                 Box(
                     Modifier
@@ -1227,12 +1231,12 @@ fun PhotoEditorScreen(
                         }
                         .padding(horizontal = 20.dp, vertical = 10.dp)
                 ) {
-                    Text("Discard Changes", color = Color.Red)
+                    Text(appString(R.string.photo_editor_discard_changes_2), color = Color.Red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDiscardConfirm = false }) {
-                    Text("Cancel")
+                    Text(appString(R.string.common_cancel))
                 }
             }
         )
@@ -1263,7 +1267,7 @@ private fun GeometrySliderRow(
                     ) {
                         Icon(
                             Icons.Filled.RestartAlt,
-                            contentDescription = "Reset $label",
+                            contentDescription = appString(R.string.photo_editor_reset, label),
                             tint = chromeColor.copy(alpha = 0.7f),
                             modifier = Modifier.size(18.dp)
                         )
@@ -1294,9 +1298,9 @@ private fun BottomModeBar(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             listOf(
-                Triple(EditorMode.STYLES, Icons.Filled.AutoAwesome, "Styles"),
-                Triple(EditorMode.ADJUST, Icons.Filled.Tune, "Adjust"),
-                Triple(EditorMode.CROP, Icons.Filled.Crop, "Crop")
+                Triple(EditorMode.STYLES, Icons.Filled.AutoAwesome, appString(R.string.photo_editor_styles)),
+                Triple(EditorMode.ADJUST, Icons.Filled.Tune, appString(R.string.photo_editor_adjust)),
+                Triple(EditorMode.CROP, Icons.Filled.Crop, appString(R.string.photo_editor_crop))
             ).forEach { (m, icon, label) ->
                 val selected = m == mode
                 val tint = if (selected) Color(0xFFFFD60A) else chromeColor

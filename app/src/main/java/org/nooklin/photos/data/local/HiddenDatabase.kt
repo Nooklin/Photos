@@ -12,6 +12,8 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 // Flags are captured at hide-time, a hidden file has no MediaStore row
 @Entity(tableName = "hidden_media")
@@ -27,7 +29,11 @@ data class HiddenMediaEntity(
     val isScreenRecording: Boolean = false,
     val width: Int? = null,
     val height: Int? = null,
-    val mimeType: String? = null
+    val mimeType: String? = null,
+    // Library date (seconds) at hide-time, so unhide can put the item back in its old place. Null for items hidden before v1.1.0.
+    val dateAdded: Long? = null,
+    // Set when deleted from the Hidden Section. The file stays private until purged after 30 days.
+    val deletedAt: Long? = null
 )
 
 @Entity(tableName = "hidden_albums")
@@ -65,6 +71,9 @@ data class HiddenAlbumMembershipEntity(
 interface HiddenDao {
     @Query("SELECT * FROM hidden_media")
     suspend fun allMedia(): List<HiddenMediaEntity>
+
+    @Query("UPDATE hidden_media SET deletedAt = :deletedAt WHERE fileName = :fileName")
+    suspend fun setDeletedAt(fileName: String, deletedAt: Long?)
 
     @Query("SELECT * FROM hidden_media WHERE fileName = :fileName")
     suspend fun mediaFor(fileName: String): HiddenMediaEntity?
@@ -114,7 +123,7 @@ interface HiddenDao {
         HiddenAlbumEntity::class,
         HiddenAlbumMembershipEntity::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class HiddenDatabase : RoomDatabase() {
@@ -124,13 +133,25 @@ abstract class HiddenDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: HiddenDatabase? = null
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE hidden_media ADD COLUMN dateAdded INTEGER")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE hidden_media ADD COLUMN deletedAt INTEGER")
+            }
+        }
+
         fun getInstance(context: Context): HiddenDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     HiddenDatabase::class.java,
                     "nooklin_hidden.db"
-                ).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
             }
     }
 }

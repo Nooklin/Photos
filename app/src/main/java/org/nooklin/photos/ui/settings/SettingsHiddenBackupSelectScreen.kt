@@ -15,6 +15,8 @@ import java.util.Locale
 import org.nooklin.photos.data.HiddenItem
 import org.nooklin.photos.ui.common.SelectionGridPickerScreen
 import org.nooklin.photos.ui.common.freshImageRequest
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @Composable
 fun SettingsHiddenBackupSelectScreen(
@@ -38,13 +40,13 @@ fun SettingsHiddenBackupSelectScreen(
     }
 
     SelectionGridPickerScreen(
-        title = "Select Photos to Export",
+        title = appString(R.string.settings_hidden_backup_select_select_photos_to_export),
         items = items,
         key = { it.file.name },
         thumbnailModel = { freshImageRequest(context, it.thumbnailFile, it.thumbnailFile.lastModified()) },
         excludeKeys = emptySet(),
         gridColumns = gridColumns,
-        emptyMessage = "No hidden photos to select",
+        emptyMessage = appString(R.string.settings_hidden_backup_select_no_hidden_photos_to_select),
         onConfirm = { selectedFileNames ->
             pendingSelection = selectedFileNames.toSet()
             launcher.launch("nooklin-hidden-backup-selected-$timestamp.zip")

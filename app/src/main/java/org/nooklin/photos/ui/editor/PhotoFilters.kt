@@ -1,9 +1,12 @@
 package org.nooklin.photos.ui.editor
+import androidx.annotation.StringRes
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // ColorMatrix filters (4x5), the same array drives the preview and the save
-enum class PhotoFilter(val label: String, val matrix: FloatArray) {
+enum class PhotoFilter(@StringRes val labelRes: Int, val matrix: FloatArray) {
     NONE(
-        "None",
+        R.string.settings_gallery_none,
         floatArrayOf(
             1f, 0f, 0f, 0f, 0f,
             0f, 1f, 0f, 0f, 0f,
@@ -12,7 +15,7 @@ enum class PhotoFilter(val label: String, val matrix: FloatArray) {
         )
     ),
     GRAYSCALE(
-        "B&W",
+        R.string.photo_filters_b_w,
         floatArrayOf(
             0.299f, 0.587f, 0.114f, 0f, 0f,
             0.299f, 0.587f, 0.114f, 0f, 0f,
@@ -21,7 +24,7 @@ enum class PhotoFilter(val label: String, val matrix: FloatArray) {
         )
     ),
     SEPIA(
-        "Sepia",
+        R.string.photo_filters_sepia,
         floatArrayOf(
             0.393f, 0.769f, 0.189f, 0f, 0f,
             0.349f, 0.686f, 0.168f, 0f, 0f,
@@ -30,7 +33,7 @@ enum class PhotoFilter(val label: String, val matrix: FloatArray) {
         )
     ),
     VIVID(
-        "Vivid",
+        R.string.photo_filters_vivid,
         run {
             // Standard luminance-preserving saturation matrix
             val sat = 1.4f
@@ -46,7 +49,7 @@ enum class PhotoFilter(val label: String, val matrix: FloatArray) {
         }
     ),
     COOL(
-        "Cool",
+        R.string.photo_filters_cool,
         floatArrayOf(
             0.9f, 0f, 0f, 0f, 0f,
             0f, 1f, 0f, 0f, 0f,
@@ -55,12 +58,13 @@ enum class PhotoFilter(val label: String, val matrix: FloatArray) {
         )
     ),
     WARM(
-        "Warm",
+        R.string.photo_filters_warm,
         floatArrayOf(
             1.15f, 0f, 0f, 0f, 10f,
             0f, 1f, 0f, 0f, 0f,
             0f, 0f, 0.9f, 0f, 0f,
             0f, 0f, 0f, 1f, 0f
         )
-    )
+    );
+    val label: String get() = appString(labelRes)
 }

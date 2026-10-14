@@ -32,6 +32,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // State shared by the player and the control bar, they live in different places (pager page and bottom bar)
 @Stable
@@ -71,7 +73,7 @@ fun VideoControlBar(
                 },
                 modifier = Modifier
                     .size(44.dp)
-                    .semantics { contentDescription = if (state.isPlaying) "Pause" else "Play" }
+                    .semantics { contentDescription = if (state.isPlaying) appString(R.string.common_pause) else appString(R.string.common_play) }
             ) {
                 Canvas(Modifier.size(22.dp)) {
                     if (state.isPlaying) pauseGlyph(contentColor) else playGlyph(contentColor)
@@ -86,7 +88,7 @@ fun VideoControlBar(
                 onClick = { state.isMuted = !state.isMuted },
                 modifier = Modifier
                     .size(44.dp)
-                    .semantics { contentDescription = if (state.isMuted) "Unmute" else "Mute" }
+                    .semantics { contentDescription = if (state.isMuted) appString(R.string.video_control_bar_unmute) else appString(R.string.video_control_bar_mute) }
             ) {
                 Canvas(Modifier.size(22.dp)) {
                     speakerGlyph(contentColor, muted = state.isMuted)

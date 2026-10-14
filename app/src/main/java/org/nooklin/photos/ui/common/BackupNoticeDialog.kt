@@ -19,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Shown once and not dismissible: it has to be acknowledged
 @Composable
@@ -32,53 +34,43 @@ fun BackupNoticeDialog(onAcknowledge: () -> Unit) {
         containerColor = GlassPill.adaptivePopupBackground,
         titleContentColor = MaterialTheme.colorScheme.onSurface,
         textContentColor = MaterialTheme.colorScheme.onSurface,
-        title = { Text("Thank you for installing Nooklin Photos.", fontWeight = FontWeight.Bold) },
+        title = { Text(appString(R.string.backup_notice_thank_you_for_installing_nooklin), fontWeight = FontWeight.Bold) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Below you will find some very important information you SHOULD READ!",
+                    appString(R.string.backup_notice_below_you_will_find_some),
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
                 Text(
-                    "If you use the Hidden Section of this app, please read this carefully.",
+                    appString(R.string.backup_notice_if_you_use_the_hidden),
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    "Why: photos you hide are stored privately on this device only, in a " +
-                        "location only this app can read. That is what keeps them invisible to " +
-                        "every other app on your phone. But that same privacy means Android " +
-                        "permanently deletes them the moment this app is uninstalled — this is " +
-                        "how your device handles all private app storage, not a bug, and it " +
-                        "cannot be undone once it happens.",
+                    appString(R.string.backup_notice_why_photos_you_hide_are),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    "How to protect them: before you uninstall this app, or switch to a new " +
-                        "device, open Settings > Hidden Section > Hidden Photos Backup and export a " +
-                        "backup zip file to a location you control (for example another folder " +
-                        "on your device, an SD card, or a cloud folder you manage yourself). " +
-                        "This app will never do this automatically or without you asking — " +
-                        "backing up is always your choice, on your terms.",
+                    appString(R.string.backup_notice_how_to_protect_them_before),
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
                 Row {
                     Checkbox(checked = checked, onCheckedChange = { checked = it })
                     Text(
-                        "I have read and acknowledge the information above.",
+                        appString(R.string.backup_notice_i_have_read_and_acknowledge),
                         modifier = Modifier.padding(top = 12.dp)
                     )
                 }
                 Text(
-                    "We wish you happy use of the app!\nGreetings,\nNooklin Team",
+                    appString(R.string.backup_notice_we_wish_you_happy_use),
                     modifier = Modifier.padding(top = 16.dp)
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = onAcknowledge, enabled = checked) {
-                Text("Confirm")
+                Text(appString(R.string.common_confirm))
             }
         }
     )

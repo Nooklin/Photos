@@ -1,0 +1,10 @@
+Version 1.1.0
+- Timeline bar (Years, Months, All) and a calendar view
+- Duplicates review
+- Select and a menu in every group of photos, in one style
+- Remove metadata when sharing, with a choice of what is removed
+- Share sheet with an apps row, Print and Use as Wallpaper, and Cancel
+- Open photos and videos from other apps
+- English and Dutch
+- New How to use page
+- New app icon

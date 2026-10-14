@@ -7,6 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -42,6 +44,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,10 +53,10 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", fontWeight = FontWeight.Bold) },
+                title = { Text(appString(R.string.common_settings), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 }
             )
@@ -62,15 +66,33 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             SettingsGroup(
                 null,
                 listOf(
-                    { SettingsNavRow("Appearance", Icons.Filled.Palette) { onNavigate("appearance") } },
-                    { SettingsNavRow("Gallery", Icons.Filled.PhotoLibrary) { onNavigate("gallery") } },
-                    { SettingsNavRow("Privacy", Icons.Filled.Lock) { onNavigate("security") } },
-                    { SettingsNavRow("Sharing", Icons.Filled.Share) { onNavigate("exif") } },
-                    { SettingsNavRow("Machine Learning", Icons.Filled.Psychology) { onNavigate("machinelearning") } },
-                    { SettingsNavRow("Notifications", Icons.Filled.Notifications) { onNavigate("notifications") } },
-                    { SettingsNavRow("Hidden Section", Icons.Filled.VisibilityOff) { onNavigate("hiddensection") } },
-                    { SettingsNavRow("Help & Support", Icons.AutoMirrored.Filled.Help) { onNavigate("help") } },
-                    { SettingsNavRow("About", Icons.Filled.Info) { onNavigate("about") } }
+                    { SettingsNavRow(appString(R.string.common_appearance), Icons.Filled.Palette) { onNavigate("appearance") } },
+                    { SettingsNavRow(appString(R.string.common_gallery), Icons.Filled.PhotoLibrary) { onNavigate("gallery") } }
+                )
+            )
+            Spacer(Modifier.height(12.dp))
+            SettingsGroup(
+                null,
+                listOf(
+                    { SettingsNavRow(appString(R.string.common_privacy), Icons.Filled.Lock) { onNavigate("security") } },
+                    { SettingsNavRow(appString(R.string.common_sharing), Icons.Filled.Share) { onNavigate("exif") } },
+                    { SettingsNavRow(appString(R.string.common_hidden_section), Icons.Filled.VisibilityOff) { onNavigate("hiddensection") } }
+                )
+            )
+            Spacer(Modifier.height(12.dp))
+            SettingsGroup(
+                null,
+                listOf(
+                    { SettingsNavRow(appString(R.string.common_machine_learning), Icons.Filled.Psychology) { onNavigate("machinelearning") } }
+                )
+            )
+            Spacer(Modifier.height(12.dp))
+            SettingsGroup(
+                null,
+                listOf(
+                    { SettingsNavRow(appString(R.string.common_notifications), Icons.Filled.Notifications) { onNavigate("notifications") } },
+                    { SettingsNavRow(appString(R.string.common_help_support), Icons.AutoMirrored.Filled.Help) { onNavigate("help") } },
+                    { SettingsNavRow(appString(R.string.common_about), Icons.Filled.Info) { onNavigate("about") } }
                 )
             )
         }

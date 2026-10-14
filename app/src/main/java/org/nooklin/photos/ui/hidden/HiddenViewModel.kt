@@ -26,6 +26,8 @@ data class HiddenUiState(
     // Separate from isAuthenticated, both checks must pass. True when no extra PIN is enabled.
     val pinVerified: Boolean = true,
     val items: List<HiddenItem> = emptyList(),
+    // Hidden Recently Deleted, still private files
+    val deleted: List<HiddenItem> = emptyList(),
     val albums: List<HiddenAlbumWithPreview> = emptyList(),
     // (albumId, fileName) pairs to filter items per album client-side, like DiscoveredDetailScreen
     val albumMembership: List<Pair<Long, String>> = emptyList(),
@@ -104,10 +106,12 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
         refreshJob = viewModelScope.launch {
             delay(40)
             _uiState.update { it.copy(isLoading = true) }
+            repository.purgeExpired()
             val items = repository.listHidden()
+            val deleted = repository.listDeleted()
             val albums = repository.listAlbumsWithPreview(items)
             val membership = repository.albumMembershipSnapshot()
-            _uiState.update { it.copy(items = items, albums = albums, albumMembership = membership, isLoading = false) }
+            _uiState.update { it.copy(items = items, deleted = deleted, albums = albums, albumMembership = membership, isLoading = false) }
             backfillVideoThumbnails()
         }
     }
@@ -190,6 +194,20 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
     fun trash(fileName: String) {
         viewModelScope.launch {
             repository.trash(fileName)
+            refresh()
+        }
+    }
+
+    fun restoreDeleted(fileNames: List<String>) {
+        viewModelScope.launch {
+            fileNames.forEach { repository.restoreDeleted(it) }
+            refresh()
+        }
+    }
+
+    fun purgeDeleted(fileNames: List<String>) {
+        viewModelScope.launch {
+            repository.purge(fileNames)
             refresh()
         }
     }

@@ -71,6 +71,8 @@ import androidx.compose.ui.platform.LocalContext
 import org.nooklin.photos.ui.common.VideoPrewarm
 import org.nooklin.photos.ui.common.videoUriOf
 import kotlinx.coroutines.delay
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // No edit/favorite/hide here, these are pending deletion
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,8 +137,8 @@ fun RecycleBinViewerScreen(
         if (!transitionDone || !pagerIdle) return@LaunchedEffect
         delay(250)
         val current = pagerState.settledPage
-        val near = listOf(current - 1, current + 1).mapNotNull { index -> list.getOrNull(index)?.takeIf { it.uri.contains("/video/media") }?.let { videoUriOf(it.uri) } }.toSet()
-        val currentVideo = list.getOrNull(current)?.takeIf { it.uri.contains("/video/media") }?.let { videoUriOf(it.uri) }
+        val near = listOf(current - 1, current + 1).mapNotNull { index -> list.getOrNull(index)?.takeIf { it.isVideo }?.let { videoUriOf(it.uri) } }.toSet()
+        val currentVideo = list.getOrNull(current)?.takeIf { it.isVideo }?.let { videoUriOf(it.uri) }
         VideoPrewarm.update(context, warm = near, keep = near + listOfNotNull(currentVideo))
     }
     DisposableEffect(Unit) { onDispose { VideoPrewarm.clear() } }
@@ -154,12 +156,12 @@ fun RecycleBinViewerScreen(
                     .chromeGate(chromeVisible) { chromeVisible = true },
                 title = {
                     currentEntry?.let {
-                        Text("${daysRemaining(it.deletedAt)} days left", color = Color.White)
+                        Text(appString(R.string.recycle_bin_viewer_days_left, daysRemaining(it.deletedAt)), color = Color.White)
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = { coroutineScope.launch { animateBackOut() } }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
@@ -186,7 +188,7 @@ fun RecycleBinViewerScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Restore")
+                        Text(appString(R.string.common_restore))
                     }
                 }
             }
@@ -194,7 +196,7 @@ fun RecycleBinViewerScreen(
     ) { padding ->
         val pagerPadding = videoFramePadding(padding, 64.dp)
         val photoInset = photoFrameInset(64.dp, 0.dp)
-        val settledIsVideo = list.getOrNull(pagerState.settledPage)?.uri?.contains("/video/media") == true
+        val settledIsVideo = list.getOrNull(pagerState.settledPage)?.isVideo == true
         Box(Modifier.fillMaxSize()) {
             ZoomBackdrop(zoom)
             Box(
@@ -215,7 +217,7 @@ fun RecycleBinViewerScreen(
                 val pageEntry = list.getOrNull(page)
                 if (pageEntry != null) {
                     val isCurrentPage = page == pagerState.currentPage
-                    val pageFrame = Modifier.fillMaxSize().padding(if (pageEntry.uri.contains("/video/media")) PaddingValues() else photoInset)
+                    val pageFrame = Modifier.fillMaxSize().padding(if (pageEntry.isVideo) PaddingValues() else photoInset)
                     // No stored width/height for recycle-bin entries, the hero assumes square
                     val pager = zoom.pagerBounds
                     if (isCurrentPage && zoom.initialBounds != null && pager == null) {
@@ -237,14 +239,14 @@ fun RecycleBinViewerScreen(
                                 model = pageEntry.uri,
                                 freshnessKey = pageEntry.deletedAt,
                                 isCurrentPage = isCurrentPage,
-                                isVideo = pageEntry.uri.contains("/video/media"),
+                                isVideo = pageEntry.isVideo,
                                 onZoomStateChanged = { zoomedIn -> currentPageZoomedIn = zoomedIn },
                                 onTap = { chromeVisible = !chromeVisible },
                                 modifier = pageFrame,
                                 zoomScale = if (isCurrentPage) currentZoomScale else remember { mutableStateOf(1f) },
                                 zoomOffset = if (isCurrentPage) currentZoomOffset else remember { mutableStateOf(Offset.Zero) }
                             )
-                            if (isCurrentPage && pageEntry.uri.contains("/video/media") && pagerIdle) {
+                            if (isCurrentPage && pageEntry.isVideo && pagerIdle) {
                                 // Video fades in over the still image, nothing is swapped mid-swipe
                                 VideoPlayerView(
                                     model = pageEntry.uri,
@@ -280,9 +282,8 @@ fun RecycleBinViewerScreen(
                     .graphicsLayer { alpha = min(zoom.chromeAlpha(), chromeToggleAlpha) }
                     .chromeGate(chromeVisible) { chromeVisible = true }
             ) {
-                // Entries carry no isVideo flag, same URI-path check as the player branch
                 AnimatedVisibility(
-                    visible = currentEntry?.uri?.contains("/video/media") == true,
+                    visible = currentEntry?.isVideo == true,
                     enter = expandVertically() + fadeIn(),
                     exit = shrinkVertically() + fadeOut()
                 ) {
@@ -310,11 +311,11 @@ fun RecycleBinViewerScreen(
                     currentEntry?.let { onRestore(it.mediaId) }
                     onBack()
                 }) {
-                    Text("Restore")
+                    Text(appString(R.string.common_restore))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRestoreConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showRestoreConfirm = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }

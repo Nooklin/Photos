@@ -1,4 +1,7 @@
 package org.nooklin.photos.ui.editor
+import androidx.annotation.StringRes
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Fractional (0..1) coordinates, so container size changes don't matter
 data class CropRect(
@@ -11,11 +14,12 @@ data class CropRect(
     val height: Float get() = bottom - top
 }
 
-enum class AspectPreset(val label: String, val ratio: Float?) {
-    FREE("Free", null),
-    SQUARE("1:1", 1f),
-    FOUR_THREE("4:3", 4f / 3f),
-    SIXTEEN_NINE("16:9", 16f / 9f)
+enum class AspectPreset(@StringRes val labelRes: Int, val ratio: Float?) {
+    FREE(R.string.crop_free, null),
+    SQUARE(R.string.crop_ratio_1_1, 1f),
+    FOUR_THREE(R.string.crop_ratio_4_3, 4f / 3f),
+    SIXTEEN_NINE(R.string.crop_ratio_16_9, 16f / 9f);
+    val label: String get() = appString(labelRes)
 }
 
 fun cropRectForAspect(ratio: Float, imageAspect: Float): CropRect {

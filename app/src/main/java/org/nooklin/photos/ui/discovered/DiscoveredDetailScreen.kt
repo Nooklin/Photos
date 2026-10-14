@@ -32,6 +32,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PhotoAlbum
+import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -74,10 +78,14 @@ import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.ui.MediaFilter
 import org.nooklin.photos.ui.albums.AlbumWithPreview
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.GlassPillTextField
 import org.nooklin.photos.ui.common.PillListRow
 import org.nooklin.photos.ui.pets.PetWithPreview
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Matches GalleryScreen's top bar, select mode and filter
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -142,21 +150,21 @@ fun DiscoveredDetailScreen(
                 title = { Text(label, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
                 actions = {
                     if (isPetsCategory) {
                         CircleIconButton(
                             icon = Icons.Filled.Pets,
-                            contentDescription = "View Pets",
+                            contentDescription = appString(R.string.discovered_detail_view_pets),
                             onClick = onOpenPets
                         )
                     }
                     Box {
                         CircleIconButton(
                             icon = Icons.Filled.FilterList,
-                            contentDescription = "Filter",
+                            contentDescription = appString(R.string.common_filter),
                             onClick = { filterMenuExpanded = true }
                         )
                         DropdownMenu(
@@ -167,7 +175,7 @@ fun DiscoveredDetailScreen(
                         ) {
                             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                 DropdownMenuItem(
-                                    text = { Text("All") },
+                                    text = { Text(appString(R.string.common_all)) },
                                     trailingIcon = {
                                         if (filter == MediaFilter.ALL) {
                                             Icon(Icons.Filled.Check, contentDescription = null)
@@ -176,7 +184,7 @@ fun DiscoveredDetailScreen(
                                     onClick = { filter = MediaFilter.ALL; filterMenuExpanded = false }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Favorites") },
+                                    text = { Text(appString(R.string.common_favorites)) },
                                     trailingIcon = {
                                         if (filter == MediaFilter.FAVORITES) {
                                             Icon(Icons.Filled.Check, contentDescription = null)
@@ -185,7 +193,7 @@ fun DiscoveredDetailScreen(
                                     onClick = { filter = MediaFilter.FAVORITES; filterMenuExpanded = false }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Videos") },
+                                    text = { Text(appString(R.string.common_videos)) },
                                     trailingIcon = {
                                         if (filter == MediaFilter.VIDEOS) {
                                             Icon(Icons.Filled.Check, contentDescription = null)
@@ -201,7 +209,7 @@ fun DiscoveredDetailScreen(
                         Box {
                             CircleIconButton(
                                 icon = Icons.Filled.MoreVert,
-                                contentDescription = "More",
+                                contentDescription = appString(R.string.common_more),
                                 onClick = { actionsMenuExpanded = true }
                             )
                             DropdownMenu(
@@ -212,7 +220,8 @@ fun DiscoveredDetailScreen(
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                     DropdownMenuItem(
-                                        text = { Text("Favorite") },
+                                        text = { Text(appString(R.string.common_favorite)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             filtered.filter { it.id in selectedIds }.forEach { onToggleFavorite(it) }
@@ -220,7 +229,8 @@ fun DiscoveredDetailScreen(
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Add to Album") },
+                                        text = { Text(appString(R.string.common_add_to_album)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.PhotoAlbum) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             showAddToAlbumDialog = true
@@ -228,7 +238,8 @@ fun DiscoveredDetailScreen(
                                     )
                                     if (isPetsCategory) {
                                         DropdownMenuItem(
-                                            text = { Text("Add to Pet") },
+                                            text = { Text(appString(R.string.discovered_detail_add_to_pet)) },
+                                            leadingIcon = { MenuIcon(Icons.Filled.Pets) },
                                             onClick = {
                                                 actionsMenuExpanded = false
                                                 showAddToPetDialog = true
@@ -236,7 +247,8 @@ fun DiscoveredDetailScreen(
                                         )
                                     }
                                     DropdownMenuItem(
-                                        text = { Text("Move to Recycle Bin", color = GlassPill.destructiveText) },
+                                        text = { Text(appString(R.string.common_move_to_recycle_bin), color = GlassPill.destructiveText) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.Delete) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             showDeleteConfirm = true
@@ -247,11 +259,11 @@ fun DiscoveredDetailScreen(
                         }
                         CircleIconButton(
                             icon = Icons.Filled.Close,
-                            contentDescription = "Cancel selection",
+                            contentDescription = appString(R.string.common_cancel_selection),
                             onClick = { exitSelection() }
                         )
                     } else {
-                        PillButton(text = "Select", onClick = { isSelecting = true })
+                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
                 }
             )
@@ -262,7 +274,7 @@ fun DiscoveredDetailScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(if (photos.isEmpty()) "No photos here" else "Nothing matches this filter")
+                Text(if (photos.isEmpty()) appString(R.string.common_no_photos_here) else appString(R.string.discovered_detail_nothing_matches_this_filter))
             }
         } else {
             LazyVerticalGrid(
@@ -302,7 +314,7 @@ fun DiscoveredDetailScreen(
                         if (isSelecting && selected) {
                             Icon(
                                 imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = "Selected",
+                                contentDescription = appString(R.string.common_selected),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
                             )
@@ -323,7 +335,7 @@ fun DiscoveredDetailScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Add,
-                                    contentDescription = "Add to Pet",
+                                    contentDescription = appString(R.string.discovered_detail_add_to_pet),
                                     tint = Color.White,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -342,10 +354,10 @@ fun DiscoveredDetailScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Add to Album") },
+            title = { Text(appString(R.string.common_add_to_album)) },
             text = {
                 if (existingAlbums.isEmpty()) {
-                    Text("No albums yet. Create one from the Albums screen first.")
+                    Text(appString(R.string.common_no_albums_yet_create_one))
                 } else {
                     Column {
                         existingAlbums.forEach { album ->
@@ -362,7 +374,7 @@ fun DiscoveredDetailScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
@@ -380,17 +392,17 @@ fun DiscoveredDetailScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text("Add to Pet") },
+            title = { Text(appString(R.string.discovered_detail_add_to_pet)) },
             text = {
                 Column {
                     GlassPillTextField(
                         value = newPetName,
                         onValueChange = { newPetName = it },
-                        placeholder = "New pet name"
+                        placeholder = appString(R.string.discovered_detail_new_pet_name)
                     )
                     if (existingPets.isNotEmpty()) {
                         Text(
-                            "Or add to an existing pet",
+                            appString(R.string.discovered_detail_or_add_to_an_existing),
                             color = Color.Gray,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
@@ -422,11 +434,11 @@ fun DiscoveredDetailScreen(
                         if (!wasQuickAdd) exitSelection()
                     }
                 ) {
-                    Text("Create & Add")
+                    Text(appString(R.string.common_create_add))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { closeAddToPetDialog() }) { Text("Cancel") }
+                TextButton(onClick = { closeAddToPetDialog() }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
@@ -434,13 +446,13 @@ fun DiscoveredDetailScreen(
     if (showDeleteConfirm) {
         val count = selectedIds.size
         ConfirmDeleteDialog(
-            title = "Move to Recycle Bin?",
+            title = appString(R.string.common_move_to_recycle_bin_2),
             text = if (count == 1) {
-                "This photo will be deleted from the library. It will be in Recently Deleted for 30 days."
+                appString(R.string.common_this_photo_will_be_deleted)
             } else {
-                "These photos will be deleted from the library. They will be in Recently Deleted for 30 days."
+                appString(R.string.common_these_photos_will_be_deleted)
             },
-            confirmLabel = if (count == 1) "Delete 1 Photo" else "Delete $count Photos",
+            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
             onConfirm = {
                 showDeleteConfirm = false
                 filtered.filter { it.id in selectedIds }.forEach { onMoveToRecycleBin(it) }
@@ -451,37 +463,3 @@ fun DiscoveredDetailScreen(
     }
 }
 
-@Composable
-private fun CircleIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    Box(
-        Modifier
-            .padding(4.dp)
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(GlassPill.adaptiveGlassBackground)
-            .border(GlassPill.adaptiveBorder, CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription = contentDescription)
-    }
-}
-
-@Composable
-private fun PillButton(text: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .padding(4.dp)
-            .clip(GlassPill.shape)
-            .background(GlassPill.adaptiveGlassBackground)
-            .border(GlassPill.adaptiveBorder, GlassPill.shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Text(text)
-    }
-}

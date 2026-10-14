@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.nooklin.photos.data.PhotoMetadata
 import org.nooklin.photos.data.formatFileSize
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // Only fields with real data: no lens name (Apple infers it), no geocoded location (needs network)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,7 +27,7 @@ fun PhotoInfoSheet(metadata: PhotoMetadata, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
             Text(
-                "${metadata.weekdayDateLabel} \u2022 ${metadata.timeLabel}",
+                appString(R.string.photo_info_sheet_u, metadata.weekdayDateLabel, metadata.timeLabel),
                 fontWeight = FontWeight.Medium
             )
             Text(metadata.name, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
@@ -43,7 +45,7 @@ fun PhotoInfoSheet(metadata: PhotoMetadata, onDismiss: () -> Unit) {
                                 .padding(horizontal = 16.dp, vertical = 12.dp)
                         ) {
                             Text(
-                                deviceLabel ?: "Unknown device",
+                                deviceLabel ?: appString(R.string.photo_info_sheet_unknown_device),
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.weight(1f)
                             )

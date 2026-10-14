@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.settings
 
+import org.nooklin.photos.data.local.ShareStripOptions
+import org.nooklin.photos.data.local.StripCategory
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -157,6 +159,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // Same photos as findDuplicateMediaIds, grouped for the review screen
+    fun findDuplicateGroups(validMediaIds: Set<Long>, onResult: (List<List<Long>>) -> Unit) {
+        viewModelScope.launch {
+            onResult(analysisRepository.findDuplicateGroups(validMediaIds))
+        }
+    }
+
     // null means "not loaded yet", distinct from a confirmed false
     val appLockEnabled: StateFlow<Boolean?> = preferences.appLockEnabled
         .map<Boolean, Boolean?> { it }
@@ -214,6 +223,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setRemoveExifOnShare(enabled: Boolean) {
         viewModelScope.launch { preferences.setRemoveExifOnShare(enabled) }
+    }
+
+    val shareStripOptions: StateFlow<ShareStripOptions> = preferences.shareStripOptions
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ShareStripOptions())
+
+    fun setShareStripOption(category: StripCategory, enabled: Boolean) {
+        viewModelScope.launch { preferences.setShareStripOption(category, enabled) }
     }
 
     val sharingDisabled: StateFlow<Boolean> = preferences.sharingDisabled

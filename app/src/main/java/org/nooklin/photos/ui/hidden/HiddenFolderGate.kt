@@ -24,17 +24,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 // BiometricPrompt with BIOMETRIC_STRONG or DEVICE_CREDENTIAL, the fallback is the phone's own lock
 @Composable
 fun HiddenFolderGate(
-    title: String = "Unlock Hidden Section",
+    title: String = appString(R.string.hidden_folder_gate_unlock_hidden_section),
     onAuthenticated: () -> Unit,
     onCancelled: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = context as? FragmentActivity
-    var statusText by remember { mutableStateOf("Unlocking...") }
+    var statusText by remember { mutableStateOf(appString(R.string.hidden_folder_gate_unlocking)) }
     var failed by remember { mutableStateOf(false) }
     var retryCount by remember { mutableIntStateOf(0) }
 
@@ -44,7 +46,7 @@ fun HiddenFolderGate(
             return@LaunchedEffect
         }
         failed = false
-        statusText = "Unlocking..."
+        statusText = appString(R.string.hidden_folder_gate_unlocking)
         val executor = ContextCompat.getMainExecutor(activity)
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
@@ -83,14 +85,14 @@ fun HiddenFolderGate(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(statusText, color = MaterialTheme.colorScheme.onBackground)
                 Text(
-                    "Tap to retry",
+                    appString(R.string.hidden_folder_gate_tap_to_retry),
                     color = Color(0xFF0A84FF),
                     modifier = Modifier
                         .padding(top = 12.dp)
                         .clickable { retryCount++ }
                 )
                 Text(
-                    "Cancel",
+                    appString(R.string.common_cancel),
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
                         .padding(top = 8.dp)

@@ -36,6 +36,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
 import org.nooklin.photos.data.local.PinAttemptGuard
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
 
 private val AccentBlue = Color(0xFF0A84FF)
 private const val MIN_PIN_LENGTH = 4
@@ -86,7 +88,7 @@ private fun rememberPinLockSeconds(): Int {
 }
 
 private fun pinLockMessage(seconds: Int): String =
-    if (seconds >= 60) "Too many attempts. Try again in ${(seconds + 59) / 60} min" else "Too many attempts. Try again in $seconds s"
+    if (seconds >= 60) appString(R.string.hidden_pin_screens_too_many_attempts_try_again, (seconds + 59) / 60) else appString(R.string.hidden_pin_screens_too_many_attempts_try_again_2, seconds)
 
 // Verifies the Extra PIN at the entry gate and before changing the PIN, so neither route bypasses the other
 @Composable
@@ -102,7 +104,7 @@ fun HiddenPinEntryScreen(
     val scope = rememberCoroutineScope()
     val lockSeconds = rememberPinLockSeconds()
 
-    PinScreenFrame(title = "Enter PIN", body = "Enter your Extra PIN for the Hidden Section.") {
+    PinScreenFrame(title = appString(R.string.hidden_pin_screens_enter_pin), body = appString(R.string.hidden_pin_screens_enter_your_extra_pin_for)) {
         OutlinedTextField(
             value = pin,
             onValueChange = { if (it.length <= 8 && it.all { c -> c.isDigit() }) { pin = it; error = null } },
@@ -126,7 +128,7 @@ fun HiddenPinEntryScreen(
                     if (verify(pin)) {
                         onVerified()
                     } else {
-                        error = "Incorrect PIN"
+                        error = appString(R.string.hidden_pin_screens_incorrect_pin)
                         pin = ""
                         checking = false
                     }
@@ -134,15 +136,15 @@ fun HiddenPinEntryScreen(
             },
             modifier = Modifier.padding(top = 16.dp).fillMaxWidth()
         ) {
-            Text("Unlock")
+            Text(appString(R.string.hidden_pin_screens_unlock))
         }
         Text(
-            "Forgot PIN?",
+            appString(R.string.hidden_pin_screens_forgot_pin),
             color = AccentBlue,
             modifier = Modifier.padding(top = 16.dp).clickable { onForgotPin() }
         )
         Text(
-            "Cancel",
+            appString(R.string.common_cancel),
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 8.dp).clickable { onCancel() }
         )
@@ -161,11 +163,11 @@ fun HiddenPinSetupScreen(
     var error by remember { mutableStateOf<String?>(null) }
 
     PinScreenFrame(
-        title = if (step == 0) "Set a PIN" else "Confirm PIN",
+        title = if (step == 0) appString(R.string.hidden_pin_screens_set_a_pin) else appString(R.string.hidden_pin_screens_confirm_pin),
         body = if (step == 0) {
-            "At least $MIN_PIN_LENGTH digits — 6 is recommended for better security."
+            appString(R.string.hidden_pin_screens_at_least_digits_is_recommended, MIN_PIN_LENGTH)
         } else {
-            "Enter the same PIN again."
+            appString(R.string.hidden_pin_screens_enter_the_same_pin_again)
         }
     ) {
         OutlinedTextField(
@@ -185,7 +187,7 @@ fun HiddenPinSetupScreen(
             onClick = {
                 if (step == 0) {
                     if (!pin.isValidPinFormat()) {
-                        error = "At least $MIN_PIN_LENGTH digits"
+                        error = appString(R.string.hidden_pin_screens_at_least_digits, MIN_PIN_LENGTH)
                     } else {
                         firstPin = pin
                         pin = ""
@@ -193,7 +195,7 @@ fun HiddenPinSetupScreen(
                     }
                 } else {
                     if (pin != firstPin) {
-                        error = "Doesn't match, try again"
+                        error = appString(R.string.hidden_pin_screens_doesn_t_match_try_again)
                         pin = ""
                         step = 0
                         firstPin = ""
@@ -204,10 +206,10 @@ fun HiddenPinSetupScreen(
             },
             modifier = Modifier.padding(top = 16.dp).fillMaxWidth()
         ) {
-            Text(if (step == 0) "Next" else "Confirm")
+            Text(if (step == 0) appString(R.string.hidden_pin_screens_next) else appString(R.string.common_confirm))
         }
         Text(
-            "Cancel",
+            appString(R.string.common_cancel),
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 16.dp).clickable { onCancel() }
         )
@@ -221,8 +223,8 @@ fun HiddenPinRecoveryCodeScreen(code: String, onAcknowledged: () -> Unit) {
     // The code is shown once and the PIN is already changed, so back must not discard it.
     BackHandler(enabled = true) {}
     PinScreenFrame(
-        title = "Save your recovery code",
-        body = "If you forget your PIN, this is the only way back into the Hidden Section — Nooklin Photos can't reset it for you. Write it down or save it somewhere safe."
+        title = appString(R.string.hidden_pin_screens_save_your_recovery_code),
+        body = appString(R.string.hidden_pin_screens_if_you_forget_your_pin)
     ) {
         Text(
             code,
@@ -233,14 +235,14 @@ fun HiddenPinRecoveryCodeScreen(code: String, onAcknowledged: () -> Unit) {
         )
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             Checkbox(checked = acknowledged, onCheckedChange = { acknowledged = it })
-            Text("I've saved this code somewhere safe", color = MaterialTheme.colorScheme.onBackground)
+            Text(appString(R.string.hidden_pin_screens_i_ve_saved_this_code), color = MaterialTheme.colorScheme.onBackground)
         }
         Button(
             enabled = acknowledged,
             onClick = onAcknowledged,
             modifier = Modifier.padding(top = 16.dp).fillMaxWidth()
         ) {
-            Text("Done")
+            Text(appString(R.string.hidden_pin_screens_done))
         }
     }
 }
@@ -259,8 +261,8 @@ fun HiddenPinRecoveryEntryScreen(
     val lockSeconds = rememberPinLockSeconds()
 
     PinScreenFrame(
-        title = "Enter recovery code",
-        body = "Enter the recovery code you saved when you set up your PIN."
+        title = appString(R.string.hidden_pin_screens_enter_recovery_code),
+        body = appString(R.string.hidden_pin_screens_enter_the_recovery_code_you)
     ) {
         OutlinedTextField(
             value = code,
@@ -286,17 +288,17 @@ fun HiddenPinRecoveryEntryScreen(
                     if (verify(code.replace("-", "").trim())) {
                         onVerified()
                     } else {
-                        error = "Incorrect recovery code"
+                        error = appString(R.string.hidden_pin_screens_incorrect_recovery_code)
                         checking = false
                     }
                 }
             },
             modifier = Modifier.padding(top = 16.dp).fillMaxWidth()
         ) {
-            Text("Continue")
+            Text(appString(R.string.hidden_pin_screens_continue))
         }
         Text(
-            "Cancel",
+            appString(R.string.common_cancel),
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 16.dp).clickable { onCancel() }
         )

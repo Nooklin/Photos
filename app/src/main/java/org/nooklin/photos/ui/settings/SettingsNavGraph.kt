@@ -87,9 +87,12 @@ fun NavGraphBuilder.settingsNavGraph(
     composable("settings/exif") {
         val removeExifOnShare by settingsViewModel.removeExifOnShare.collectAsStateWithLifecycle()
         val sharingDisabled by settingsViewModel.sharingDisabled.collectAsStateWithLifecycle()
+        val shareStripOptions by settingsViewModel.shareStripOptions.collectAsStateWithLifecycle()
         SettingsExifScreen(
             removeExifOnShare = removeExifOnShare,
             onRemoveExifOnShareChange = settingsViewModel::setRemoveExifOnShare,
+            stripOptions = shareStripOptions,
+            onStripOptionChange = settingsViewModel::setShareStripOption,
             sharingDisabled = sharingDisabled,
             onSharingDisabledChange = settingsViewModel::setSharingDisabled,
             onBack = { navController.popBackStack() }
@@ -153,11 +156,53 @@ fun NavGraphBuilder.settingsNavGraph(
     }
 
     composable("settings/help") {
-        SettingsHelpScreen(onBack = { navController.popBackStack() })
+        SettingsHelpScreen(
+            onOpenHowTo = { navController.navigate("settings/howto") },
+            onBack = { navController.popBackStack() }
+        )
+    }
+
+    composable("settings/howto") {
+        val hiddenSectionEnabled by settingsViewModel.hiddenSectionEnabled.collectAsStateWithLifecycle()
+        val hiddenPinSet by settingsViewModel.hiddenPinSet.collectAsStateWithLifecycle()
+        val hiddenAlbumsEnabled by settingsViewModel.hiddenAlbumsEnabled.collectAsStateWithLifecycle()
+        val hiddenImageSharingEnabled by settingsViewModel.hiddenImageSharingEnabled.collectAsStateWithLifecycle()
+        val sharingDisabled by settingsViewModel.sharingDisabled.collectAsStateWithLifecycle()
+        val removeExifOnShare by settingsViewModel.removeExifOnShare.collectAsStateWithLifecycle()
+        val appLockEnabled by settingsViewModel.appLockEnabled.collectAsStateWithLifecycle()
+        val disableScreenshots by settingsViewModel.disableScreenshots.collectAsStateWithLifecycle()
+        val mlEnabled by settingsViewModel.mlEnabled.collectAsStateWithLifecycle()
+        val mlEnabledTags by settingsViewModel.mlEnabledTags.collectAsStateWithLifecycle()
+        val scanCompleteNotificationEnabled by settingsViewModel.scanCompleteNotificationEnabled.collectAsStateWithLifecycle()
+        val howToStripOptions by settingsViewModel.shareStripOptions.collectAsStateWithLifecycle()
+        SettingsHowToScreen(
+            state = HowToState(
+                hiddenSectionEnabled = hiddenSectionEnabled,
+                hiddenPinSet = hiddenPinSet ?: false,
+                hiddenAlbumsEnabled = hiddenAlbumsEnabled,
+                hiddenImageSharingEnabled = hiddenImageSharingEnabled,
+                sharingDisabled = sharingDisabled,
+                removeExifOnShare = removeExifOnShare,
+                appLockEnabled = appLockEnabled ?: false,
+                disableScreenshots = disableScreenshots,
+                mlEnabled = mlEnabled,
+                mlEnabledTags = mlEnabledTags,
+                scanCompleteNotificationEnabled = scanCompleteNotificationEnabled,
+                stripOptions = howToStripOptions
+            ),
+            onOpenSetting = { route -> navController.navigate(route) },
+            onBack = { navController.popBackStack() }
+        )
     }
 
     composable("settings/about") {
-        SettingsAboutScreen(onBack = { navController.popBackStack() })
+        SettingsAboutScreen(
+            onOpenChangelog = { navController.navigate("settings/changelog") },
+            onBack = { navController.popBackStack() }
+        )
+    }
+    composable("settings/changelog") {
+        SettingsChangelogScreen(onBack = { navController.popBackStack() })
     }
 }
 
