@@ -92,10 +92,21 @@ import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.GlassPillTextField
 import org.nooklin.photos.ui.common.PillListRow
 import org.nooklin.photos.ui.common.dragToSelect
+import org.nooklin.photos.ui.common.orderedKeys
 import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.deleteWording
+import org.nooklin.photos.ui.common.SelectionBadge
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material3.TopAppBarDefaults
+import org.nooklin.photos.ui.albums.AlbumHero
+import org.nooklin.photos.ui.albums.CoverPickerDialog
+import org.nooklin.photos.ui.albums.SlideshowDialog
+import org.nooklin.photos.ui.albums.SlideshowPhoto
+import org.nooklin.photos.ui.common.heroImageRequest
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.common.EmptyState
 
 // Reached from Home, re-auth required each visit. Select mode mirrors the main Library.
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -113,6 +124,10 @@ fun HiddenGalleryScreen(
     onCreateAlbum: (name: String, onCreated: (Long) -> Unit) -> Unit,
     onBack: () -> Unit,
     title: String = appString(R.string.common_hidden_library),
+    // Favorites: a big photo at the top like an album (only with the square grid without groups)
+    showHero: Boolean = false,
+    heroCoverName: String? = null,
+    onSetHeroCover: (String?) -> Unit = {},
     showFilterMenu: Boolean = false,
     filter: MediaFilter = MediaFilter.ALL,
     onFilterChange: (MediaFilter) -> Unit = {},
@@ -133,6 +148,12 @@ fun HiddenGalleryScreen(
     var filterMenuExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showAddToAlbumDialog by remember { mutableStateOf(false) }
+    val hasHero = showHero && items.isNotEmpty() && gridStyle == GridStyle.SQUARE && groupBy == GroupBy.NONE
+    val heroItem = if (hasHero) (items.firstOrNull { it.file.name == heroCoverName } ?: items.first()) else null
+    val headerCount = if (hasHero) 1 else 0
+    var showSlideshow by remember { mutableStateOf(false) }
+    var showCoverPicker by remember { mutableStateOf(false) }
+    var heroMenuExpanded by remember { mutableStateOf(false) }
     // Same dragToSelect and pinch wiring as GalleryScreen
     val gridState = rememberLazyGridState()
     val staggeredGridState = rememberLazyStaggeredGridState()
@@ -146,7 +167,7 @@ fun HiddenGalleryScreen(
                 } else null
             )
         },
-        scrollToIndex = { i -> if (gridStyle == GridStyle.SQUARE) gridState.scrollToItemCentered(i) else staggeredGridState.scrollToItemCentered(i) }
+        scrollToIndex = { i -> if (gridStyle == GridStyle.SQUARE) gridState.scrollToItemCentered(i + headerCount) else staggeredGridState.scrollToItemCentered(i) }
     )
 
     fun exitSelection() {
@@ -163,13 +184,53 @@ fun HiddenGalleryScreen(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
-                title = { Text(title, fontWeight = FontWeight.Bold) },
+                // With the big photo the bar is see-through, the title is on the photo
+                colors = if (hasHero) {
+                    TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
+                } else {
+                    TopAppBarDefaults.topAppBarColors()
+                },
+                title = { if (!hasHero) Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
+                    if (hasHero) {
+                        CircleIconButton(
+                            icon = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = appString(R.string.common_back),
+                            onClick = onBack
+                        )
+                    } else {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
+                        }
                     }
                 },
                 actions = {
+                    if (hasHero && !isSelecting) {
+                        Box {
+                            CircleIconButton(
+                                icon = Icons.Filled.MoreVert,
+                                contentDescription = appString(R.string.common_more_options),
+                                onClick = { heroMenuExpanded = true }
+                            )
+                            DropdownMenu(
+                                expanded = heroMenuExpanded,
+                                onDismissRequest = { heroMenuExpanded = false },
+                                shape = GlassPill.shape,
+                                containerColor = GlassPill.adaptivePopupBackground
+                            ) {
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.album_set_cover)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.Image) },
+                                        onClick = {
+                                            heroMenuExpanded = false
+                                            showCoverPicker = true
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                     if (showFilterMenu && !isSelecting) {
                         Box {
                             CircleIconButton(
@@ -294,11 +355,7 @@ fun HiddenGalleryScreen(
                                 }
                             }
                         }
-                        CircleIconButton(
-                            icon = Icons.Filled.Close,
-                            contentDescription = appString(R.string.common_cancel_selection),
-                            onClick = { exitSelection() }
-                        )
+                        PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                     } else {
                         PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
@@ -311,29 +368,33 @@ fun HiddenGalleryScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(appString(R.string.hidden_gallery_no_hidden_items))
+                EmptyState(message = appString(R.string.hidden_gallery_no_hidden_items), actionLabel = appString(R.string.common_back), onAction = onBack)
             }
             return@Scaffold
         }
+        val itemNames = remember(items) { items.mapTo(HashSet()) { it.file.name } }
         val hitTestSquareGrid: (Offset) -> Any? = { pos ->
             gridState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
                 pos.x >= info.offset.x && pos.x <= info.offset.x + info.size.width &&
                     pos.y >= info.offset.y && pos.y <= info.offset.y + info.size.height
-            }?.key
+            }?.key?.takeIf { it != "hero" }
         }
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        Column(Modifier.fillMaxSize().then(if (hasHero) Modifier.padding(bottom = padding.calculateBottomPadding()) else Modifier.padding(padding))) {
             if (gridStyle == GridStyle.SQUARE) {
                 if (groupBy == GroupBy.NONE) {
                     LazyVerticalGrid(
                         state = gridState,
                         columns = GridCells.Fixed(gridColumns),
-                        contentPadding = PaddingValues(2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        contentPadding = if (hasHero) PaddingValues(bottom = 2.dp) else PaddingValues(2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(if (hasHero) 2.dp else 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (hasHero) 2.dp else 4.dp),
                         modifier = Modifier
                             .dragToSelect(
                                 enabled = isSelecting,
                                 hitTest = hitTestSquareGrid,
+                                orderedKeys = {
+                                    orderedKeys(gridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is String && it in itemNames }
+                                },
                                 isSelected = { key -> key is String && key in selectedNames },
                                 onItemDragged = { key, select ->
                                     if (key is String) {
@@ -349,6 +410,27 @@ fun HiddenGalleryScreen(
                                 onColumnsChange = onGridColumnsChange
                             )
                     ) {
+                        if (heroItem != null) {
+                            item(key = "hero", span = { GridItemSpan(maxLineSpan) }, contentType = "hero") {
+                                val heroContext = LocalContext.current
+                                AlbumHero(
+                                    title = if (isSelecting) appString(R.string.share_sheet_selected, selectedNames.size) else title,
+                                    itemCount = items.size,
+                                    showPlay = true,
+                                    onPlay = { showSlideshow = true },
+                                    image = {
+                                        // A video has no photo file, its thumbnail is used
+                                        val heroFile = if (heroItem.isVideo) heroItem.thumbnailFile else heroItem.file
+                                        AsyncImage(
+                                            model = heroImageRequest(heroContext, heroFile, heroFile.lastModified()),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                )
+                            }
+                        }
                         items(items.size, key = { items[it].file.name }, contentType = { "photo" }) { index ->
                             val item = items[index]
                             HiddenGridCell(
@@ -373,6 +455,9 @@ fun HiddenGalleryScreen(
                             .dragToSelect(
                                 enabled = isSelecting,
                                 hitTest = hitTestSquareGrid,
+                                orderedKeys = {
+                                    orderedKeys(gridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is String && it in itemNames }
+                                },
                                 isSelected = { key -> key is String && key in selectedNames },
                                 onItemDragged = { key, select ->
                                     if (key is String) {
@@ -425,6 +510,9 @@ fun HiddenGalleryScreen(
                         .dragToSelect(
                             enabled = isSelecting,
                             hitTest = hitTestStaggeredGrid,
+                            orderedKeys = {
+                                orderedKeys(staggeredGridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is String && it in itemNames }
+                            },
                             isSelected = { key -> key is String && key in selectedNames },
                             onItemDragged = { key, select ->
                                 if (key is String) {
@@ -467,12 +555,7 @@ fun HiddenGalleryScreen(
                                 )
                             }
                             if (isSelecting && selected) {
-                                Icon(
-                                    imageVector = Icons.Filled.CheckCircle,
-                                    contentDescription = appString(R.string.common_selected),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-                                )
+                                SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
                             }
                         }
                     }
@@ -481,16 +564,53 @@ fun HiddenGalleryScreen(
         }
     }
 
+    if (showSlideshow) {
+        SlideshowDialog(
+            photos = items.filter { !it.isVideo }.map {
+                SlideshowPhoto(
+                    model = it.file,
+                    thumbnail = it.thumbnailFile,
+                    freshness = it.thumbnailFile.lastModified(),
+                    aspect = if (it.width != null && it.height != null && it.height > 0) it.width.toFloat() / it.height.toFloat() else null
+                )
+            },
+            title = title,
+            // Hidden photos stay out of screenshots in the slideshow window too
+            secure = true,
+            onClose = { showSlideshow = false }
+        )
+    }
+
+    if (showCoverPicker) {
+        CoverPickerDialog(
+            count = items.size,
+            key = { items[it].file.name },
+            thumbnail = { index ->
+                AsyncImage(
+                    model = freshImageRequest(LocalContext.current, items[index].thumbnailFile, items[index].thumbnailFile.lastModified()),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            },
+            onPick = { index ->
+                onSetHeroCover(items[index].file.name)
+                showCoverPicker = false
+            },
+            onUseNewest = {
+                onSetHeroCover(null)
+                showCoverPicker = false
+            },
+            onDismiss = { showCoverPicker = false }
+        )
+    }
+
     if (showDeleteConfirm) {
-        val count = selectedNames.size
+        val wording = deleteWording(items.filter { it.file.name in selectedNames }.map { it.isVideo })
         ConfirmDeleteDialog(
             title = appString(R.string.common_move_to_recycle_bin_2),
-            text = if (count == 1) {
-                appString(R.string.common_this_photo_will_be_deleted)
-            } else {
-                appString(R.string.common_these_photos_will_be_deleted)
-            },
-            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
+            text = wording.text,
+            confirmLabel = wording.confirmLabel,
             onConfirm = {
                 showDeleteConfirm = false
                 items.filter { it.file.name in selectedNames }.forEach { onMoveToRecycleBin(it) }
@@ -589,12 +709,7 @@ private fun HiddenGridCell(
             )
         }
         if (isSelecting && isSelected) {
-            Icon(
-                imageVector = Icons.Filled.CheckCircle,
-                contentDescription = appString(R.string.common_selected),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-            )
+            SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
         }
     }
 }

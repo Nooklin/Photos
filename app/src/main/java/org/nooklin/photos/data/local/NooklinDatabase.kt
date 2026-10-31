@@ -19,7 +19,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PetMembershipEntity::class,
         PhotoHashEntity::class
     ],
-    version = 7,
+    version = 9,
     exportSchema = false
 )
 abstract class NooklinDatabase : RoomDatabase() {
@@ -180,13 +180,27 @@ abstract class NooklinDatabase : RoomDatabase() {
             }
         }
 
+        // Folders inside albums: a folder is an album row with a parentId
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `albums` ADD COLUMN `parentId` INTEGER")
+            }
+        }
+
+        // Chosen cover photo of an album or folder
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `albums` ADD COLUMN `coverMediaId` INTEGER")
+            }
+        }
+
         fun getInstance(context: Context): NooklinDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     NooklinDatabase::class.java,
                     "nooklin_albums.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build().also { INSTANCE = it }
             }
     }
 }

@@ -37,6 +37,7 @@ import org.nooklin.photos.data.local.HomeItems
 import org.nooklin.photos.data.local.HomeSection
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.Spacing
 
 // Up/down buttons, not drag and drop: that needs a third-party library or a hand-rolled gesture
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,7 +102,7 @@ fun ReorderHomeScreen(
             Text(
                 appString(R.string.common_media_types),
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp)
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = Spacing.Lg, bottom = 4.dp)
             )
             mediaTypes.forEachIndexed { index, key ->
                 ReorderRow(
@@ -116,7 +117,7 @@ fun ReorderHomeScreen(
             Text(
                 appString(R.string.common_utilities),
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp)
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = Spacing.Lg, bottom = 4.dp)
             )
             utilities.forEachIndexed { index, key ->
                 ReorderRow(
@@ -150,7 +151,7 @@ private fun ReorderRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = Spacing.Sm)
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             .padding(horizontal = 12.dp, vertical = 4.dp),
@@ -204,7 +205,7 @@ fun HiddenHomeCustomizeScreen(
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                            .padding(horizontal = 16.dp, vertical = Spacing.Sm)
                             .clip(RoundedCornerShape(14.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                             .padding(horizontal = 12.dp, vertical = 8.dp),

@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -46,6 +48,9 @@ import androidx.compose.ui.unit.sp
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,23 +75,36 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                     { SettingsNavRow(appString(R.string.common_gallery), Icons.Filled.PhotoLibrary) { onNavigate("gallery") } }
                 )
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
+            SettingsGroup(
+                null,
+                listOf(
+                    { SettingsNavRow(appString(R.string.settings_backup_import_row), Icons.Filled.CloudUpload) { onNavigate("backupimport") } }
+                )
+            )
+            Spacer(Modifier.height(8.dp))
             SettingsGroup(
                 null,
                 listOf(
                     { SettingsNavRow(appString(R.string.common_privacy), Icons.Filled.Lock) { onNavigate("security") } },
-                    { SettingsNavRow(appString(R.string.common_sharing), Icons.Filled.Share) { onNavigate("exif") } },
+                    { SettingsNavRow(appString(R.string.common_sharing), Icons.Filled.Share) { onNavigate("exif") } }
+                )
+            )
+            Spacer(Modifier.height(8.dp))
+            SettingsGroup(
+                null,
+                listOf(
                     { SettingsNavRow(appString(R.string.common_hidden_section), Icons.Filled.VisibilityOff) { onNavigate("hiddensection") } }
                 )
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             SettingsGroup(
                 null,
                 listOf(
                     { SettingsNavRow(appString(R.string.common_machine_learning), Icons.Filled.Psychology) { onNavigate("machinelearning") } }
                 )
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             SettingsGroup(
                 null,
                 listOf(
@@ -106,9 +124,9 @@ fun SettingsGroup(title: String?, items: List<@Composable () -> Unit>) {
         Text(
             title,
             color = Color.Gray,
-            fontSize = 13.sp,
+            fontSize = AppText.Body,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 24.dp, top = 16.dp, bottom = 6.dp)
+            modifier = Modifier.padding(start = 24.dp, top = 16.dp, bottom = Spacing.Sm)
         )
     }
     Surface(
@@ -120,7 +138,7 @@ fun SettingsGroup(title: String?, items: List<@Composable () -> Unit>) {
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
     ) {
-        val edgePadding = if (items.size == 1) 8.dp else 14.dp
+        val edgePadding = if (items.size == 1) 4.dp else 8.dp
         Column(Modifier.padding(vertical = edgePadding)) {
             items.forEachIndexed { index, item ->
                 item()
@@ -141,9 +159,9 @@ fun SettingsNavRow(label: String, icon: ImageVector = Icons.Filled.MoreHoriz, on
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .heightIn(min = 44.dp)
+            .clickable(role = Role.Button) { onClick() }
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

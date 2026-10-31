@@ -55,7 +55,6 @@ import androidx.compose.material.icons.filled.Highlight
 import androidx.compose.material.icons.filled.InvertColors
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Texture
 import androidx.compose.material.icons.filled.Tonality
 import androidx.compose.material.icons.filled.Tune
@@ -79,6 +78,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -111,7 +111,11 @@ import org.nooklin.photos.data.readExif
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.MaterialTheme
 import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.ui.common.EditorDestructivePill
+import org.nooklin.photos.ui.common.EditorModeBar
+import org.nooklin.photos.ui.common.EditorModeItem
 import org.nooklin.photos.ui.common.GlassPillContainer
+import org.nooklin.photos.ui.theme.AppColors
 import org.nooklin.photos.ui.common.detectPinchPanGestures
 import java.io.File
 import org.nooklin.photos.data.OriginalsStore
@@ -123,6 +127,9 @@ import org.nooklin.photos.data.local.LocalMetadataStore
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import androidx.annotation.StringRes
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
 
 // Bottom bar (Styles, Adjust, Crop), same image box in every mode so the photo doesn't move
 enum class EditorMode { STYLES, ADJUST, CROP }
@@ -444,18 +451,18 @@ fun PhotoEditorScreen(
     var sourceBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var loadFailed by remember { mutableStateOf(false) }
     var autoEnhanceTargets by remember { mutableStateOf<AutoEnhanceTargets?>(null) }
-    var editorMode by remember { mutableStateOf(EditorMode.STYLES) }
-    var rotationDegrees by remember { mutableStateOf(0f) }
-    var straightenDegrees by remember { mutableStateOf(0f) }
-    var perspectiveH by remember { mutableStateOf(0f) }
-    var perspectiveV by remember { mutableStateOf(0f) }
-    var flipHorizontal by remember { mutableStateOf(false) }
-    var flipVertical by remember { mutableStateOf(false) }
-    var selectedFilter by remember { mutableStateOf(PhotoFilter.NONE) }
+    var editorMode by rememberSaveable { mutableStateOf(EditorMode.STYLES) }
+    var rotationDegrees by rememberSaveable { mutableStateOf(0f) }
+    var straightenDegrees by rememberSaveable { mutableStateOf(0f) }
+    var perspectiveH by rememberSaveable { mutableStateOf(0f) }
+    var perspectiveV by rememberSaveable { mutableStateOf(0f) }
+    var flipHorizontal by rememberSaveable { mutableStateOf(false) }
+    var flipVertical by rememberSaveable { mutableStateOf(false) }
+    var selectedFilter by rememberSaveable { mutableStateOf(PhotoFilter.NONE) }
     var adjustments by remember { mutableStateOf(Adjustments()) }
-    var selectedAdjustmentType by remember { mutableStateOf(AdjustmentType.BRIGHTNESS) }
+    var selectedAdjustmentType by rememberSaveable { mutableStateOf(AdjustmentType.BRIGHTNESS) }
     var cropRect by remember { mutableStateOf(CropRect()) }
-    var selectedAspectPreset by remember { mutableStateOf(AspectPreset.entries.first()) }
+    var selectedAspectPreset by rememberSaveable { mutableStateOf(AspectPreset.entries.first()) }
     var isSaving by remember { mutableStateOf(false) }
     var pendingTransformedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     // Real on-screen pixel size, needed for the sharpen shader (RenderEffect works in layer pixels)
@@ -811,16 +818,10 @@ fun PhotoEditorScreen(
                 actions = {
                     // Only for a photo with a stored original
                     if (hasOriginal || isEditedCopy) {
-                        Box(
-                            Modifier
-                                .padding(end = 4.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFFF3B30))
-                                .clickable(enabled = !isSaving && !isReverting) { showRevertConfirm = true }
-                                .padding(horizontal = 14.dp, vertical = 6.dp)
-                        ) {
-                            Text(if (isEditedCopy) appString(R.string.photo_editor_delete_edit) else appString(R.string.photo_editor_revert), color = chromeColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                        }
+                        EditorDestructivePill(
+                            text = if (isEditedCopy) appString(R.string.photo_editor_delete_edit) else appString(R.string.photo_editor_revert),
+                            enabled = !isSaving && !isReverting
+                        ) { showRevertConfirm = true }
                     }
                     IconButton(
                         enabled = sourceBitmap != null && !isSaving && !isReverting,
@@ -850,7 +851,7 @@ fun PhotoEditorScreen(
                                     Column(
                                         Modifier
                                             .padding(end = 12.dp)
-                                            .clickable { selectedFilter = filter },
+                                            .clickable(role = Role.Button) { selectedFilter = filter },
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Image(
@@ -863,14 +864,14 @@ fun PhotoEditorScreen(
                                                 .clip(RoundedCornerShape(10.dp))
                                                 .then(
                                                     if (selected) {
-                                                        Modifier.border(2.dp, Color(0xFFFFD60A), RoundedCornerShape(10.dp))
+                                                        Modifier.border(2.dp, AppColors.SelectedYellow, RoundedCornerShape(10.dp))
                                                     } else Modifier
                                                 )
                                         )
                                         Text(
                                             filter.label,
-                                            color = if (selected) Color(0xFFFFD60A) else chromeColor.copy(alpha = 0.7f),
-                                            fontSize = 12.sp,
+                                            color = if (selected) AppColors.SelectedYellow else chromeColor.copy(alpha = 0.7f),
+                                            fontSize = AppText.Caption,
                                             modifier = Modifier.padding(top = 4.dp)
                                         )
                                     }
@@ -883,7 +884,7 @@ fun PhotoEditorScreen(
                         LazyRow(
                             modifier = Modifier.fillMaxWidth(),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(20.dp)
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.Lg)
                         ) {
                             items(AdjustmentType.entries, key = { it.name }) { type ->
                                 val selected = type == selectedAdjustmentType
@@ -897,10 +898,10 @@ fun PhotoEditorScreen(
                                             .background(chromeColor.copy(alpha = 0.1f))
                                             .then(
                                                 if (selected) {
-                                                    Modifier.border(2.dp, Color(0xFFFFD60A), CircleShape)
+                                                    Modifier.border(2.dp, AppColors.SelectedYellow, CircleShape)
                                                 } else Modifier
                                             )
-                                            .clickable {
+                                            .clickable(role = Role.Button) {
                                                 selectedAdjustmentType = type
                                                 // A toggle: at 0 it jumps to 100% (the full computed correction), again resets all eight fields to 0
                                                 if (type == AdjustmentType.AUTO_ENHANCE) {
@@ -915,7 +916,7 @@ fun PhotoEditorScreen(
                                             Text(
                                                 text = if (counterValue > 0) "+$counterValue" else "$counterValue",
                                                 color = chromeColor,
-                                                fontSize = 13.sp,
+                                                fontSize = AppText.Body,
                                                 fontWeight = FontWeight.Bold
                                             )
                                         } else {
@@ -924,8 +925,8 @@ fun PhotoEditorScreen(
                                     }
                                     Text(
                                         type.label,
-                                        color = if (selected) Color(0xFFFFD60A) else chromeColor.copy(alpha = 0.7f),
-                                        fontSize = 11.sp,
+                                        color = if (selected) AppColors.SelectedYellow else chromeColor.copy(alpha = 0.7f),
+                                        fontSize = AppText.Caption,
                                         modifier = Modifier.padding(top = 4.dp)
                                     )
                                 }
@@ -953,94 +954,72 @@ fun PhotoEditorScreen(
                         )
                     }
                     EditorMode.CROP -> {
-                        GlassPillContainer(modifier = Modifier.padding(vertical = 4.dp), backgroundColor = pillBackground, border = pillBorder) {
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                val bitmap = sourceBitmap
-                                AspectPreset.entries.forEach { preset ->
-                                    val selected = preset == selectedAspectPreset
-                                    Text(
-                                        preset.label,
-                                        color = if (selected) Color(0xFFFFD60A) else chromeColor,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                        modifier = Modifier
-                                            .clickable {
-                                                selectedAspectPreset = preset
-                                                if (bitmap != null) {
-                                                    val swapped = rotationDegrees % 180f != 0f
-                                                    val imageAspect = if (swapped) {
-                                                        bitmap.height.toFloat() / bitmap.width.toFloat()
-                                                    } else {
-                                                        bitmap.width.toFloat() / bitmap.height.toFloat()
-                                                    }
-                                                    cropRect = if (preset.ratio == null) {
-                                                        CropRect()
-                                                    } else {
-                                                        cropRectForAspect(preset.ratio, imageAspect)
-                                                    }
-                                                }
-                                            }
-                                    )
+                        GeometryTools(
+                            chromeColor = chromeColor,
+                            tools = GeometryTool.entries,
+                            values = mapOf(
+                                GeometryTool.STRAIGHTEN to straightenDegrees,
+                                GeometryTool.VERTICAL to perspectiveV,
+                                GeometryTool.HORIZONTAL to perspectiveH
+                            ),
+                            onValueChange = { tool, newValue ->
+                                when (tool) {
+                                    GeometryTool.STRAIGHTEN -> straightenDegrees = newValue
+                                    GeometryTool.VERTICAL -> perspectiveV = newValue
+                                    GeometryTool.HORIZONTAL -> perspectiveH = newValue
                                 }
                             }
-                        }
-                        GeometrySliderRow(
-                            chromeColor = chromeColor,
-                            label = appString(R.string.photo_editor_straighten),
-                            value = straightenDegrees,
-                            valueRange = -45f..45f,
-                            displayValue = (if (straightenDegrees > 0f) "+" else "") + "%.1f".format(straightenDegrees) + "°",
-                            onValueChange = { straightenDegrees = it }
                         )
-                        GeometrySliderRow(
-                            chromeColor = chromeColor,
-                            label = appString(R.string.photo_editor_vertical),
-                            value = perspectiveV,
-                            valueRange = -1f..1f,
-                            displayValue = (perspectiveV * 100).toInt().let { if (it > 0) "+$it" else "$it" },
-                            onValueChange = { perspectiveV = it }
-                        )
-                        GeometrySliderRow(
-                            chromeColor = chromeColor,
-                            label = appString(R.string.photo_editor_horizontal),
-                            value = perspectiveH,
-                            valueRange = -1f..1f,
-                            displayValue = (perspectiveH * 100).toInt().let { if (it > 0) "+$it" else "$it" },
-                            onValueChange = { perspectiveH = it }
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            IconButton(onClick = {
-                                rotationDegrees = (rotationDegrees + 90f) % 360f
-                                cropRect = CropRect()
-                            }) {
-                                Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = appString(R.string.photo_editor_rotate), tint = chromeColor)
-                            }
-                            IconButton(onClick = { flipHorizontal = !flipHorizontal }) {
-                                Icon(Icons.Filled.Flip, contentDescription = appString(R.string.photo_editor_flip_horizontal), tint = chromeColor)
-                            }
-                            IconButton(onClick = { flipVertical = !flipVertical }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Flip,
-                                    contentDescription = appString(R.string.photo_editor_flip_vertical),
-                                    tint = chromeColor,
-                                    modifier = Modifier.graphicsLayer { rotationZ = 90f }
-                                )
-                            }
-                        }
                     }
                 }
 
-                BottomModeBar(editorMode, chromeColor, pillBackground, pillBorder) { editorMode = it }
+                EditorModeBar(
+                    items = listOf(
+                        EditorModeItem(EditorMode.STYLES, Icons.Filled.AutoAwesome, appString(R.string.photo_editor_styles)),
+                        EditorModeItem(EditorMode.ADJUST, Icons.Filled.Tune, appString(R.string.photo_editor_adjust)),
+                        EditorModeItem(EditorMode.CROP, Icons.Filled.Crop, appString(R.string.photo_editor_crop))
+                    ),
+                    selected = editorMode,
+                    chromeColor = chromeColor,
+                    pillBackground = pillBackground,
+                    pillBorder = pillBorder
+                ) { editorMode = it }
             }
         }
     ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+        if (editorMode == EditorMode.CROP && sourceBitmap != null) {
+            CropTopRow(
+                chromeColor = chromeColor,
+                pillBackground = pillBackground,
+                pillBorder = pillBorder,
+                selectedPreset = selectedAspectPreset,
+                onSelectPreset = { preset ->
+                    selectedAspectPreset = preset
+                    val bitmap = sourceBitmap
+                    if (bitmap != null) {
+                        val swapped = rotationDegrees % 180f != 0f
+                        val imageAspect = if (swapped) {
+                            bitmap.height.toFloat() / bitmap.width.toFloat()
+                        } else {
+                            bitmap.width.toFloat() / bitmap.height.toFloat()
+                        }
+                        cropRect = if (preset.ratio == null) CropRect() else cropRectForAspect(preset.ratio, imageAspect)
+                    }
+                },
+                onRotate = {
+                    rotationDegrees = (rotationDegrees + 90f) % 360f
+                    cropRect = CropRect()
+                },
+                onFlipHorizontal = { flipHorizontal = !flipHorizontal },
+                onFlipVertical = { flipVertical = !flipVertical },
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
         Box(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = if (editorMode == EditorMode.CROP) CropTopRowHeight else 0.dp),
             contentAlignment = Alignment.Center
         ) {
             val bitmap = sourceBitmap
@@ -1173,6 +1152,7 @@ fun PhotoEditorScreen(
                 }
             }
         }
+        }
     }
 
     if (showRevertConfirm) {
@@ -1194,11 +1174,11 @@ fun PhotoEditorScreen(
                     Modifier
                         .clip(RoundedCornerShape(50))
                         .background(Color.Red.copy(alpha = 0.15f))
-                        .clickable {
+                        .clickable(role = Role.Button) {
                             showRevertConfirm = false
                             onRevertConfirmed()
                         }
-                        .padding(horizontal = 20.dp, vertical = 10.dp)
+                        .padding(horizontal = Spacing.Lg, vertical = Spacing.Md)
                 ) {
                     Text(if (isEditedCopy) appString(R.string.photo_editor_delete_edit) else appString(R.string.photo_editor_revert_to_original_2), color = Color.Red)
                 }
@@ -1225,11 +1205,11 @@ fun PhotoEditorScreen(
                     Modifier
                         .clip(RoundedCornerShape(50))
                         .background(Color.Red.copy(alpha = 0.15f))
-                        .clickable {
+                        .clickable(role = Role.Button) {
                             showDiscardConfirm = false
                             onBack()
                         }
-                        .padding(horizontal = 20.dp, vertical = 10.dp)
+                        .padding(horizontal = Spacing.Lg, vertical = Spacing.Md)
                 ) {
                     Text(appString(R.string.photo_editor_discard_changes_2), color = Color.Red)
                 }
@@ -1240,79 +1220,6 @@ fun PhotoEditorScreen(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun GeometrySliderRow(
-    chromeColor: Color,
-    label: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    displayValue: String,
-    onValueChange: (Float) -> Unit
-) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label, color = chromeColor, fontSize = 13.sp)
-                if (value != 0f) {
-                    IconButton(
-                        onClick = { onValueChange(0f) },
-                        modifier = Modifier.size(28.dp).padding(start = 4.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.RestartAlt,
-                            contentDescription = appString(R.string.photo_editor_reset, label),
-                            tint = chromeColor.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            }
-            Text(displayValue, color = chromeColor.copy(alpha = 0.7f), fontSize = 13.sp)
-        }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange
-        )
-    }
-}
-
-@Composable
-private fun BottomModeBar(
-    mode: EditorMode,
-    chromeColor: Color,
-    pillBackground: Color,
-    pillBorder: BorderStroke?,
-    onModeChange: (EditorMode) -> Unit
-) {
-    GlassPillContainer(backgroundColor = pillBackground, border = pillBorder) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            listOf(
-                Triple(EditorMode.STYLES, Icons.Filled.AutoAwesome, appString(R.string.photo_editor_styles)),
-                Triple(EditorMode.ADJUST, Icons.Filled.Tune, appString(R.string.photo_editor_adjust)),
-                Triple(EditorMode.CROP, Icons.Filled.Crop, appString(R.string.photo_editor_crop))
-            ).forEach { (m, icon, label) ->
-                val selected = m == mode
-                val tint = if (selected) Color(0xFFFFD60A) else chromeColor
-                Column(
-                    Modifier.clickable { onModeChange(m) },
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(icon, contentDescription = label, tint = tint)
-                    Text(label, color = tint, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
-                }
-            }
-        }
     }
 }
 

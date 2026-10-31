@@ -3,6 +3,7 @@ package org.nooklin.photos.ui
 import org.nooklin.photos.data.HiddenItem
 
 import org.nooklin.photos.ui.calendar.CalendarScreen
+import org.nooklin.photos.ui.calendar.HiddenCalendarScreen
 import org.nooklin.photos.ui.duplicates.DuplicatesScreen
 import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.ui.common.ZoomReturnOverlay
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,9 +60,22 @@ import androidx.compose.animation.core.tween
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.nooklin.photos.data.MediaStoreRepository
+import org.nooklin.photos.data.createExifStrippedShareUri
+import org.nooklin.photos.appString
 import kotlinx.coroutines.launch
 import org.nooklin.photos.data.MediaCategory
 import org.nooklin.photos.data.MediaItem
+import org.nooklin.photos.ui.settings.SettingsHiddenImportScreen
+import org.nooklin.photos.ui.settings.LibraryTransferViewModel
+import org.nooklin.photos.ui.settings.SettingsBackupImportScreen
+import org.nooklin.photos.ui.settings.SettingsLibraryBackupScreen
+import org.nooklin.photos.toMediaStoreId
 import org.nooklin.photos.data.local.AppThemeMode
 import org.nooklin.photos.ui.albums.AlbumDetailScreen
 import org.nooklin.photos.ui.albums.AlbumPhotoPickerScreen
@@ -114,7 +129,7 @@ import org.nooklin.photos.ui.theme.NooklinTheme
 import org.nooklin.photos.ui.viewer.PhotoViewerScreen
 import org.nooklin.photos.ui.editor.VideoTrimScreen
 import org.nooklin.photos.R
-import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.Motion
 
 // READ_MEDIA_VIDEO must be requested too, else MediaStore silently hides every video
 private fun mediaPermissions(): Array<String> =
@@ -142,6 +157,7 @@ private const val ROUTE_HIDDEN_SCREENSHOTS = "hiddenscreenshots"
 private const val ROUTE_HIDDEN_PANORAMAS = "hiddenpanoramas"
 private const val ROUTE_HIDDEN_SCREEN_RECORDINGS = "hiddenscreenrecordings"
 private const val ROUTE_HIDDEN_RECENTLY_SAVED = "hiddenrecentlysaved"
+private const val ROUTE_HIDDEN_CALENDAR = "hiddencalendar"
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_SEARCH = "search"
 private const val ROUTE_CALENDAR = "calendar"
@@ -162,6 +178,7 @@ fun NooklinPhotosApp(
     val hiddenViewModel: HiddenViewModel = viewModel()
     val settingsViewModel: SettingsViewModel = viewModel()
     val albumViewModel: AlbumViewModel = viewModel()
+    val libraryTransferViewModel: LibraryTransferViewModel = viewModel()
     val discoveredViewModel: DiscoveredViewModel = viewModel()
     val petViewModel: PetViewModel = viewModel()
     val peopleViewModel: PeopleViewModel = viewModel()
@@ -220,13 +237,17 @@ fun NooklinPhotosApp(
         )
     }
 
+    // Set when the permission dialog was answered, so a file opened from another app knows whether to wait or fall back
+    var permissionAnswered by remember { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { results -> hasPermission = mediaPermissions().all { results[it] == true } }
+    ) { results ->
+        hasPermission = mediaPermissions().all { results[it] == true }
+        permissionAnswered = true
+    }
 
     LaunchedEffect(Unit) {
-        // A file opened from another app needs no library access
-        if (!hasPermission && externalRequest !is org.nooklin.photos.ExternalRequest.View) launcher.launch(mediaPermissions())
+        if (!hasPermission) launcher.launch(mediaPermissions())
     }
 
     LaunchedEffect(hasPermission) {
@@ -234,8 +255,28 @@ fun NooklinPhotosApp(
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // A file opened from another app (for example the camera): find it in the library once that is loaded,
+    // so it opens in the normal viewer. Not found, or no permission: the single file screen is used.
+    val externalView = externalRequest as? org.nooklin.photos.ExternalRequest.View
+    var externalItem by remember(externalView?.uri) { mutableStateOf<MediaItem?>(null) }
+    var externalLookupDone by remember(externalView?.uri) { mutableStateOf(false) }
+    LaunchedEffect(externalView?.uri, hasPermission, uiState.isLoading) {
+        if (externalView == null || !hasPermission || uiState.isLoading) return@LaunchedEffect
+        val id = externalView.uri.toMediaStoreId()
+        externalItem = if (id == null) null else uiState.allItems.find { it.id == id } ?: viewModel.findMediaItemById(id)
+        externalLookupDone = true
+    }
     val recycleBinEntries by viewModel.recycleBinEntries.collectAsStateWithLifecycle()
     val hiddenUiState by hiddenViewModel.uiState.collectAsStateWithLifecycle()
+    // Hidden albums without their folders, and the add-to list with the folders named Album / Folder
+    val hiddenTopAlbums = remember(hiddenUiState.albums) { hiddenUiState.albums.filter { it.parentId == null } }
+    val hiddenTargets = remember(hiddenUiState.albums) {
+        hiddenTopAlbums.flatMap { album ->
+            listOf(album) + hiddenUiState.albums.filter { it.parentId == album.id }
+                .map { folder -> folder.copy(name = album.name + " / " + folder.name) }
+        }
+    }
 
     // Hidden content must stay out of recents and screen capture even when the optional setting is off
     val secureWindow = disableScreenshots || hiddenUiState.isAuthenticated
@@ -255,24 +296,56 @@ fun NooklinPhotosApp(
     val petEntities by petViewModel.pets.collectAsStateWithLifecycle()
     val petMemberships by petViewModel.memberships.collectAsStateWithLifecycle()
 
-    val albumsWithPreview = remember(albumEntities, albumMemberships, uiState.allItems) {
+    // Albums and their folders in one list, a folder has a parentId
+    val allCollections = remember(albumEntities, albumMemberships, uiState.allItems) {
         val membershipsByAlbum = albumMemberships.groupBy { it.albumId }
+        val folderCounts = albumEntities.mapNotNull { it.parentId }.groupingBy { it }.eachCount()
+        val idsByAlbum = albumEntities.associate { album ->
+            album.id to membershipsByAlbum[album.id].orEmpty().map { it.mediaId }.toSet()
+        }
+        val foldersByParent = albumEntities.filter { it.parentId != null }.groupBy { it.parentId }
+        fun frontOf(album: org.nooklin.photos.data.local.AlbumEntity, memberItems: List<org.nooklin.photos.data.MediaItem>) =
+            memberItems.find { it.id == album.coverMediaId } ?: memberItems.firstOrNull()
         albumEntities.map { album ->
-            val memberIds = membershipsByAlbum[album.id].orEmpty().map { it.mediaId }.toSet()
+            val memberIds = idsByAlbum[album.id].orEmpty()
             // Filter the sorted items so the first 4 are the newest
             val memberItems = uiState.allItems.filter { it.id in memberIds }
+            // The chosen cover comes first in the preview
+            val cover = memberItems.find { it.id == album.coverMediaId }
+            val folders = foldersByParent[album.id].orEmpty()
+            // An album with folders shows the front of its first 4 folders, and counts the photos of its folders too
+            val folderFronts = folders.mapNotNull { folder ->
+                frontOf(folder, uiState.allItems.filter { it.id in idsByAlbum[folder.id].orEmpty() })
+            }.take(4)
+            val totalIds = memberIds + folders.flatMap { idsByAlbum[it.id].orEmpty() }
             AlbumWithPreview(
                 id = album.id,
                 name = album.name,
-                itemCount = memberItems.size,
-                previewItems = memberItems.take(4)
+                itemCount = if (totalIds.size == memberIds.size) memberItems.size else uiState.allItems.count { it.id in totalIds },
+                previewItems = when {
+                    folderFronts.isNotEmpty() -> folderFronts
+                    cover != null -> listOf(cover) + memberItems.filter { it !== cover }.take(3)
+                    else -> memberItems.take(4)
+                },
+                parentId = album.parentId,
+                folderCount = folders.size
             )
+        }
+    }
+    // Only albums: Albums screen, Home and Merge
+    val albumsWithPreview = remember(allCollections) { allCollections.filter { it.parentId == null } }
+    // Every place where a photo is added to an album also offers the folders, named Album / Folder
+    val albumTargets = remember(allCollections) {
+        val topLevel = allCollections.filter { it.parentId == null }
+        topLevel.flatMap { album ->
+            listOf(album) + allCollections.filter { it.parentId == album.id }
+                .map { folder -> folder.copy(name = album.name + " / " + folder.name) }
         }
     }
 
     // One set of selection actions for every group screen (Media Types, albums, Search, pets)
     val groupActions = GroupActions(
-        albums = albumsWithPreview,
+        albums = albumTargets,
         removeExifOnShare = removeExifOnShare,
         onToggleFavorite = { item -> viewModel.toggleFavorite(item) },
         onMoveToRecycleBin = { item -> viewModel.moveToRecycleBin(item) },
@@ -438,9 +511,22 @@ fun NooklinPhotosApp(
         }
 
         // After the app lock, so a locked app does not open files for other apps
-        if (externalRequest is org.nooklin.photos.ExternalRequest.View) {
-            org.nooklin.photos.ui.external.ExternalViewScreen(externalRequest, onClose = { onExternalFinish(null) })
-            return@NooklinTheme
+        if (externalView != null) {
+            if (!hasPermission && !permissionAnswered) {
+                // The permission dialog is open
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                return@NooklinTheme
+            }
+            if (hasPermission && !externalLookupDone) {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+                return@NooklinTheme
+            }
+            if (!hasPermission || externalItem == null) {
+                org.nooklin.photos.ui.external.ExternalViewScreen(externalView, onClose = { onExternalFinish(null) })
+                return@NooklinTheme
+            }
         }
 
         if (!hasPermission) {
@@ -488,7 +574,13 @@ fun NooklinPhotosApp(
         // Entry points without bounds clear it so the viewer doesn't replay an old rect.
         var capturedZoomLaunch by remember { mutableStateOf<ZoomLaunch?>(null) }
         // Pages through only these photos (Album, Category), not the whole library
-        var viewerItemsOverride by remember { mutableStateOf<StableList<MediaItem>?>(null) }
+        // A file opened from another app that the library list does not show (a hidden screenshot, for example) pages through itself only
+        val externalStartIndex = remember { externalItem?.let { item -> uiState.visibleItems.indexOfFirst { it.id == item.id } } ?: -1 }
+        var viewerItemsOverride by remember {
+            mutableStateOf<StableList<MediaItem>?>(
+                externalItem?.takeIf { externalStartIndex < 0 }?.let { StableList(listOf(it)) }
+            )
+        }
         var hiddenViewerItemsOverride by remember { mutableStateOf<List<HiddenItem>?>(null) }
         // For grids that don't capture their own bounds
         fun openViewerZoomed(key: Any, route: String) {
@@ -513,24 +605,25 @@ fun NooklinPhotosApp(
         Box(Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
-            startDestination = ROUTE_HOME,
+            // Opened from another app: straight into the viewer, back closes this screen and returns to that app
+            startDestination = if (externalItem != null) "viewer/${externalStartIndex.coerceAtLeast(0)}" else ROUTE_HOME,
             // iOS-style 300ms push instead of the 700ms default fade.
             // Grid and viewer pairs are instant, the viewer animates itself.
             enterTransition = {
                 if (isZoomPair(initialState.destination.route, targetState.destination.route)) EnterTransition.None
-                else slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(300))
+                else slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(Motion.Medium))
             },
             exitTransition = {
                 if (isZoomPair(initialState.destination.route, targetState.destination.route)) ExitTransition.None
-                else slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(300))
+                else slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(Motion.Medium))
             },
             popEnterTransition = {
                 if (isZoomPair(initialState.destination.route, targetState.destination.route)) EnterTransition.None
-                else slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(300))
+                else slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(Motion.Medium))
             },
             popExitTransition = {
                 if (isZoomPair(initialState.destination.route, targetState.destination.route)) ExitTransition.None
-                else slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(300))
+                else slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(Motion.Medium))
             }
         ) {
             composable(
@@ -540,14 +633,14 @@ fun NooklinPhotosApp(
                     if (targetState.destination.route == "viewer/{index}") {
                         ExitTransition.None
                     } else {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(300))
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(Motion.Medium))
                     }
                 },
                 popEnterTransition = {
                     if (initialState.destination.route == "viewer/{index}") {
                         EnterTransition.None
                     } else {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(300))
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(Motion.Medium))
                     }
                 }
             ) {
@@ -619,14 +712,14 @@ fun NooklinPhotosApp(
                     if (targetState.destination.route == "viewer/{index}") {
                         ExitTransition.None
                     } else {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(300))
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(Motion.Medium))
                     }
                 },
                 popEnterTransition = {
                     if (initialState.destination.route == "viewer/{index}") {
                         EnterTransition.None
                     } else {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(300))
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(Motion.Medium))
                     }
                 }
             ) {
@@ -639,7 +732,7 @@ fun NooklinPhotosApp(
                     gridColumns = gridColumns,
                     onGridColumnsChange = settingsViewModel::setGridColumns,
                     groupBy = if (gridColumns == 1) GroupBy.NONE else groupBy,
-                    existingAlbums = albumsWithPreview,
+                    existingAlbums = albumTargets,
                     onFilterChange = viewModel::setFilter,
                     onHideScreenshotsChange = viewModel::setHideScreenshots,
                     sortOrder = uiState.sortOrder,
@@ -649,13 +742,29 @@ fun NooklinPhotosApp(
                         viewerItemsOverride = null
                         navController.navigate("viewer/$index")
                     },
-                    onItemLongClick = { item -> viewModel.toggleFavorite(item) },
                     onToggleFavorite = { item -> viewModel.toggleFavorite(item) },
                     onMoveToRecycleBin = { item -> viewModel.moveToRecycleBin(item) },
                     hideEnabled = hiddenSectionEnabled,
                     onHideSelected = { items -> hideItems(items) },
                     onAddToAlbum = { albumId, item -> albumViewModel.addToAlbum(albumId, item.id) },
                     onOpenSearch = { navController.navigate(ROUTE_SEARCH) },
+                    onDuplicate = { item ->
+                        coroutineScope.launch {
+                            if (MediaStoreRepository(context).duplicate(item)) viewModel.load()
+                        }
+                    },
+                    onCopy = { item ->
+                        coroutineScope.launch {
+                            val copyUri = withContext(Dispatchers.IO) {
+                                createExifStrippedShareUri(context, item, removeExifOnShare)
+                            }
+                            if (copyUri != null) {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newUri(context.contentResolver, appString(R.string.photo_viewer_photo), copyUri))
+                            }
+                        }
+                    },
+                    shareEnabled = !sharingDisabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() }
                 )
@@ -667,8 +776,12 @@ fun NooklinPhotosApp(
                     onAlbumClick = { albumId -> navController.navigate("album/$albumId") },
                     onCreateAlbum = { name -> albumViewModel.createAlbum(name) },
                     onDeleteAlbums = { ids -> ids.forEach { albumViewModel.deleteAlbum(it) } },
+                    onRenameAlbum = { id, name -> albumViewModel.renameAlbum(id, name) },
+                    onCreateFolder = { parentId, name -> albumViewModel.createFolder(parentId, name) },
+                    onMergeAlbum = { id -> navController.navigate("album/$id/merge") },
                     itemsOfAlbums = { ids ->
-                        val memberIds = albumMemberships.filter { it.albumId in ids }.map { it.mediaId }.toSet()
+                        val allIds = ids + albumEntities.filter { it.parentId in ids }.map { it.id }
+                        val memberIds = albumMemberships.filter { it.albumId in allIds }.map { it.mediaId }.toSet()
                         uiState.allItems.filter { it.id in memberIds }
                     },
                     removeExifOnShare = removeExifOnShare,
@@ -682,19 +795,20 @@ fun NooklinPhotosApp(
                     if (targetState.destination.route == "viewer/{index}") {
                         ExitTransition.None
                     } else {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(300))
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(Motion.Medium))
                     }
                 },
                 popEnterTransition = {
                     if (initialState.destination.route == "viewer/{index}") {
                         EnterTransition.None
                     } else {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(300))
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(Motion.Medium))
                     }
                 }
             ) { entry ->
                 val albumId = entry.arguments?.getString("id")?.toLongOrNull() ?: 0L
-                val album = albumsWithPreview.find { it.id == albumId }
+                val album = allCollections.find { it.id == albumId }
+                val albumFolders = remember(allCollections, albumId) { allCollections.filter { it.parentId == albumId } }
                 val memberIds = remember(albumMemberships, albumId) {
                     albumMemberships.filter { it.albumId == albumId }.map { it.mediaId }.toSet()
                 }
@@ -716,12 +830,21 @@ fun NooklinPhotosApp(
                     onRename = { newName -> albumViewModel.renameAlbum(albumId, newName) },
                     onMergeRequested = { navController.navigate("album/$albumId/merge") },
                     onDeleteAlbum = { albumViewModel.deleteAlbum(albumId) { navController.popBackStack() } },
-                    onAddPhotos = { navController.navigate("album/$albumId/pick") }
+                    onAddPhotos = { navController.navigate("album/$albumId/pick") },
+                    isFolder = album?.parentId != null,
+                    folders = albumFolders,
+                    totalCount = album?.itemCount ?: albumPhotos.size,
+                    onFolderClick = { folderId -> navController.navigate("album/$folderId") },
+                    onRenameFolder = { id, name -> albumViewModel.renameAlbum(id, name) },
+                    onDeleteFolder = { id -> albumViewModel.deleteAlbum(id) },
+                    onCreateFolder = { name -> albumViewModel.createFolder(albumId, name) },
+                    coverMediaId = albumEntities.find { it.id == albumId }?.coverMediaId,
+                    onSetCover = { mediaId -> albumViewModel.setCover(albumId, mediaId) }
                 )
             }
             composable("album/{id}/pick") { entry ->
                 val albumId = entry.arguments?.getString("id")?.toLongOrNull() ?: 0L
-                val album = albumsWithPreview.find { it.id == albumId }
+                val album = allCollections.find { it.id == albumId }
                 val memberIds = remember(albumMemberships, albumId) {
                     albumMemberships.filter { it.albumId == albumId }.map { it.mediaId }.toSet()
                 }
@@ -778,7 +901,7 @@ fun NooklinPhotosApp(
                     label = album?.label ?: MlTag.fromId(tagId)?.label ?: tagId,
                     photos = photos,
                     gridColumns = gridColumns,
-                    existingAlbums = albumsWithPreview,
+                    existingAlbums = albumTargets,
                     isPetsCategory = tagId == MlTag.PETS.id,
                     existingPets = petsWithPreview,
                     onAddToPet = { petId, item -> petViewModel.addToPet(petId, item.id) },
@@ -895,7 +1018,7 @@ fun NooklinPhotosApp(
                     photos = photos,
                     facesByMediaId = facesByMediaId,
                     gridColumns = gridColumns,
-                    existingAlbums = albumsWithPreview,
+                    existingAlbums = albumTargets,
                     otherPeople = otherPeople,
                     onRename = { newName -> peopleViewModel.rename(personId, newName) },
                     onMergeWith = { otherId -> peopleViewModel.merge(personId, otherId) },
@@ -950,7 +1073,7 @@ fun NooklinPhotosApp(
                     )
                     else -> HiddenHomeScreen(
                         items = hiddenUiState.items,
-                        albums = hiddenUiState.albums,
+                        albums = hiddenTopAlbums,
                         hiddenAlbumsEnabled = hiddenAlbumsEnabled,
                         gridColumns = gridColumns,
                         hiddenSections = hiddenHomeHiddenSections,
@@ -969,17 +1092,28 @@ fun NooklinPhotosApp(
                         onOpenFavorites = { navController.navigate(ROUTE_HIDDEN_FAVORITES) },
                         onOpenRecentlyDeleted = { navController.navigate(ROUTE_HIDDEN_RECYCLE_BIN) },
                         onOpenRecentlySaved = { navController.navigate(ROUTE_HIDDEN_RECENTLY_SAVED) },
+                        onOpenCalendar = { navController.navigate(ROUTE_HIDDEN_CALENDAR) },
                         onItemClick = { index -> hiddenViewerItemsOverride = null; openViewerZoomed(hiddenUiState.items[index].file.absolutePath, "hiddenviewer/$index") },
                         onBack = { navController.popBackStack() }
                     )
                 }
+            }
+            composable(ROUTE_HIDDEN_CALENDAR) {
+                HiddenCalendarScreen(
+                    items = hiddenUiState.items,
+                    onBack = { navController.popBackStack() },
+                    onOpenDay = { dayItems ->
+                        hiddenViewerItemsOverride = dayItems
+                        openViewerZoomed(dayItems.first().file.absolutePath, "hiddenviewer/0")
+                    }
+                )
             }
             composable(ROUTE_HIDDEN_LIBRARY) {
                 HiddenGalleryScreen(
                     items = hiddenUiState.visibleItems,
                     gridColumns = gridColumns,
                     onGridColumnsChange = settingsViewModel::setGridColumns,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     onItemClick = { index -> openViewerZoomed(hiddenUiState.visibleItems[index].file.absolutePath, "hiddenlibraryviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1000,11 +1134,15 @@ fun NooklinPhotosApp(
             }
             composable(ROUTE_HIDDEN_FAVORITES) {
                 val hiddenFavorites = hiddenUiState.items.filter { it.isFavorite }
+                val hiddenFavoritesCover by remember { LocalMetadataStore(context).hiddenFavoritesCover }.collectAsStateWithLifecycle(initialValue = null)
                 HiddenGalleryScreen(
                     items = hiddenFavorites,
                     gridColumns = gridColumns,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     title = appString(R.string.common_favorites),
+                    showHero = true,
+                    heroCoverName = hiddenFavoritesCover,
+                    onSetHeroCover = { name -> coroutineScope.launch { LocalMetadataStore(context).setHiddenFavoritesCover(name) } },
                     onItemClick = { index -> openViewerZoomed(hiddenFavorites[index].file.absolutePath, "hiddenfavoritesviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
                     onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
@@ -1022,7 +1160,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },
@@ -1043,7 +1181,7 @@ fun NooklinPhotosApp(
                 HiddenGalleryScreen(
                     items = hiddenVideos,
                     gridColumns = gridColumns,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     title = appString(R.string.common_videos),
                     onItemClick = { index -> openViewerZoomed(hiddenVideos[index].file.absolutePath, "hiddenvideosviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
@@ -1062,7 +1200,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },
@@ -1084,7 +1222,7 @@ fun NooklinPhotosApp(
                 HiddenGalleryScreen(
                     items = hiddenSlowMotion,
                     gridColumns = gridColumns,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     title = appString(R.string.common_slow_motion),
                     onItemClick = { index -> openViewerZoomed(hiddenSlowMotion[index].file.absolutePath, "hiddenslowmotionviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
@@ -1103,7 +1241,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },
@@ -1124,7 +1262,7 @@ fun NooklinPhotosApp(
                 HiddenGalleryScreen(
                     items = hiddenRaw,
                     gridColumns = gridColumns,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     title = appString(R.string.common_raw),
                     onItemClick = { index -> openViewerZoomed(hiddenRaw[index].file.absolutePath, "hiddenrawviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
@@ -1143,7 +1281,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },
@@ -1164,7 +1302,7 @@ fun NooklinPhotosApp(
                 HiddenGalleryScreen(
                     items = hiddenScreenshots,
                     gridColumns = gridColumns,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     title = appString(R.string.common_screenshots),
                     onItemClick = { index -> openViewerZoomed(hiddenScreenshots[index].file.absolutePath, "hiddenscreenshotsviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
@@ -1183,7 +1321,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },
@@ -1204,7 +1342,7 @@ fun NooklinPhotosApp(
                 HiddenGalleryScreen(
                     items = hiddenPanoramas,
                     gridColumns = gridColumns,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     title = appString(R.string.common_panoramas),
                     onItemClick = { index -> openViewerZoomed(hiddenPanoramas[index].file.absolutePath, "hiddenpanoramasviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
@@ -1223,7 +1361,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },
@@ -1244,7 +1382,7 @@ fun NooklinPhotosApp(
                 HiddenGalleryScreen(
                     items = hiddenScreenRecordings,
                     gridColumns = gridColumns,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     title = appString(R.string.common_screen_recordings),
                     onItemClick = { index -> openViewerZoomed(hiddenScreenRecordings[index].file.absolutePath, "hiddenscreenrecordingsviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
@@ -1263,7 +1401,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },
@@ -1288,7 +1426,7 @@ fun NooklinPhotosApp(
                 HiddenGalleryScreen(
                     items = hiddenRecentlySaved,
                     gridColumns = gridColumns,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     title = appString(R.string.common_recently_saved),
                     onItemClick = { index -> openViewerZoomed(hiddenRecentlySaved[index].file.absolutePath, "hiddenrecentlysavedviewer/$index") },
                     onToggleFavorite = { item -> hiddenViewModel.toggleFavorite(item) },
@@ -1310,7 +1448,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },
@@ -1348,11 +1486,13 @@ fun NooklinPhotosApp(
             }
             composable(ROUTE_HIDDEN_ALBUMS) {
                 HiddenAlbumsScreen(
-                    albums = hiddenUiState.albums,
+                    albums = hiddenTopAlbums,
                     gridColumns = gridColumns,
                     onAlbumClick = { albumId -> navController.navigate("hiddenalbums/$albumId") },
                     onCreateAlbum = { name -> hiddenViewModel.createAlbum(name) },
                     onDeleteAlbums = { ids -> ids.forEach { hiddenViewModel.deleteAlbum(it) } },
+                    onRenameAlbum = { id, name -> hiddenViewModel.renameAlbum(id, name) },
+                    onCreateFolder = { parentId, name -> hiddenViewModel.createFolder(parentId, name) },
                     onBack = { navController.popBackStack() }
                 )
             }
@@ -1368,8 +1508,9 @@ fun NooklinPhotosApp(
                 HiddenAlbumDetailScreen(
                     albumName = album?.name ?: appString(R.string.nooklin_photos_app_album),
                     items = albumItems,
+                    totalCount = album?.itemCount ?: albumItems.size,
                     gridColumns = gridColumns,
-                    existingAlbums = hiddenUiState.albums.filter { it.id != albumId },
+                    existingAlbums = hiddenTargets.filter { it.id != albumId },
                     onItemClick = { index ->
                         // The viewer pages through only this album's photos
                         hiddenViewerItemsOverride = albumItems
@@ -1381,13 +1522,28 @@ fun NooklinPhotosApp(
                     onAddToAlbum = { targetAlbumId, item -> hiddenViewModel.addToAlbum(targetAlbumId, item.file.name) },
                     onRemoveFromAlbum = { item -> hiddenViewModel.removeFromAlbum(albumId, item.file.name) },
                     onRenameAlbum = { newName -> hiddenViewModel.renameAlbum(albumId, newName) },
-                    // Leave the screen too: the album is gone
+                    // Leaves the screen itself. A folder goes back to its album, an album to the albums overview,
+                    // or to Hidden Home when it was the last album.
                     onDeleteAlbum = {
+                        val isTopLevel = album?.parentId == null
+                        val othersLeft = hiddenUiState.albums.any { it.parentId == null && it.id != albumId }
                         hiddenViewModel.deleteAlbum(albumId)
-                        navController.popBackStack()
+                        when {
+                            !isTopLevel -> navController.popBackStack()
+                            !othersLeft -> navController.popBackStack(ROUTE_HIDDEN, inclusive = false)
+                            !navController.popBackStack(ROUTE_HIDDEN_ALBUMS, inclusive = false) -> navController.popBackStack()
+                        }
                     },
                     onAddPhotos = { navController.navigate("hiddenalbums/$albumId/pick") },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    isFolder = album?.parentId != null,
+                    folders = hiddenUiState.albums.filter { it.parentId == albumId },
+                    onFolderClick = { folderId -> navController.navigate("hiddenalbums/$folderId") },
+                    onRenameFolder = { id, name -> hiddenViewModel.renameAlbum(id, name) },
+                    onDeleteFolder = { id -> hiddenViewModel.deleteAlbum(id) },
+                    onCreateFolder = { name -> hiddenViewModel.createFolder(albumId, name) },
+                    coverFileName = album?.coverFileName,
+                    onSetCover = { fileName -> hiddenViewModel.setAlbumCover(albumId, fileName) }
                 )
             }
             composable("hiddenalbums/{albumId}/pick") { entry ->
@@ -1416,6 +1572,11 @@ fun NooklinPhotosApp(
                     // Re-lock first, the backup exports real hidden photos
                     hiddenViewModel.lock()
                     navController.navigate("settings/hiddenbackup")
+                },
+                onOpenHiddenImport = {
+                    // Re-lock first, the import writes into the Hidden Section
+                    hiddenViewModel.lock()
+                    navController.navigate("settings/hiddenimport")
                 }
             )
             composable("settings/hiddenbackup") {
@@ -1440,6 +1601,62 @@ fun NooklinPhotosApp(
                             onExportFlat = { uri, onResult -> hiddenViewModel.exportFlatZip(uri, onResult) },
                             onExportOrganized = { uri, onResult -> hiddenViewModel.exportOrganizedZip(uri, onResult) },
                             onNavigateToSelectExport = { navController.navigate("settings/hiddenbackup/select") },
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                }
+            }
+            composable("settings/backupimport") {
+                SettingsBackupImportScreen(
+                    onNavigate = { navController.navigate("settings/$it") },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("settings/librarybackup") {
+                val exportProgress by libraryTransferViewModel.exportProgress.collectAsStateWithLifecycle()
+                SettingsLibraryBackupScreen(
+                    progress = exportProgress,
+                    onExport = { uri, organized, onResult -> libraryTransferViewModel.exportZip(uri, organized, onResult) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("settings/libraryimport") {
+                val importProgress by libraryTransferViewModel.importProgress.collectAsStateWithLifecycle()
+                SettingsHiddenImportScreen(
+                    progress = importProgress,
+                    onScan = { source, onResult -> libraryTransferViewModel.scanImport(source, onResult) },
+                    onImport = { source, entries, merge, deleteAfter, onResult ->
+                        libraryTransferViewModel.startImport(source, entries, merge, deleteAfter, onResult)
+                    },
+                    onCancel = { libraryTransferViewModel.cancelImport() },
+                    onBack = { navController.popBackStack() },
+                    hidden = false
+                )
+            }
+            composable("settings/hiddenimport") {
+                // Same three step gate as the backup
+                when {
+                    !hiddenUiState.isAuthenticated -> HiddenFolderGate(
+                        onAuthenticated = { hiddenViewModel.onAuthenticated() },
+                        onCancelled = { navController.popBackStack() }
+                    )
+                    hiddenPinSet == null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                    hiddenPinSet == true && !hiddenUiState.pinVerified -> HiddenPinGate(
+                        verifyPin = settingsViewModel::verifyHiddenPin,
+                        verifyRecoveryCode = settingsViewModel::verifyHiddenPinRecoveryCode,
+                        setNewPin = settingsViewModel::setHiddenPin,
+                        onUnlocked = { hiddenViewModel.onPinVerified() },
+                        onCancel = { navController.popBackStack() }
+                    )
+                    else -> {
+                        val importProgress by hiddenViewModel.importProgress.collectAsStateWithLifecycle()
+                        SettingsHiddenImportScreen(
+                            progress = importProgress,
+                            onScan = { source, onResult -> hiddenViewModel.scanImport(source, onResult) },
+                            onImport = { source, entries, merge, deleteAfter, onResult ->
+                                hiddenViewModel.startImport(source, entries, merge, deleteAfter, onResult)
+                            },
+                            onCancel = { hiddenViewModel.cancelImport() },
                             onBack = { navController.popBackStack() }
                         )
                     }
@@ -1504,6 +1721,7 @@ fun NooklinPhotosApp(
                 val category = MediaCategory.entries.find { it.name == name }
                 if (category != null) {
                     var duplicateMediaIds by remember { mutableStateOf(emptySet<Long>()) }
+                    val favoritesCoverId by remember { LocalMetadataStore(context).favoritesCover }.collectAsStateWithLifecycle(initialValue = null)
                     LaunchedEffect(category, uiState.allItems) {
                         if (category == MediaCategory.DUPLICATES) {
                             val validIds = uiState.allItems.map { it.id }.toSet()
@@ -1517,6 +1735,8 @@ fun NooklinPhotosApp(
                         gridStyleSetting = gridStyle,
                         gridColumns = gridColumns,
                         duplicateMediaIds = duplicateMediaIds,
+                        heroCoverId = favoritesCoverId,
+                        onSetHeroCover = { id -> coroutineScope.launch { LocalMetadataStore(context).setFavoritesCover(id) } },
                         onBack = { navController.popBackStack() },
                         onItemClick = { item, categoryItems ->
                             viewerItemsOverride = StableList(categoryItems)
@@ -1534,14 +1754,14 @@ fun NooklinPhotosApp(
                     if (isZoomPair(initialState.destination.route, targetState.destination.route)) {
                         EnterTransition.None
                     } else {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(300))
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(Motion.Medium))
                     }
                 },
                 popExitTransition = {
                     if (isZoomPair(initialState.destination.route, targetState.destination.route)) {
                         ExitTransition.None
                     } else {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(300))
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(Motion.Medium))
                     }
                 }
             ) { entry ->
@@ -1556,10 +1776,10 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = albumsWithPreview,
+                    existingAlbums = albumTargets,
                     removeExifOnShare = removeExifOnShare,
                     shareEnabled = !sharingDisabled,
-                    onBack = { navController.popBackStack() },
+                    onBack = { if (externalItem != null) onExternalFinish(null) else navController.popBackStack() },
                     onToggleFavorite = { item -> viewModel.toggleFavorite(item) },
                     onMoveToRecycleBin = { item -> viewModel.moveToRecycleBin(item) },
                     hideEnabled = hiddenSectionEnabled,
@@ -1583,7 +1803,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },
@@ -1606,7 +1826,7 @@ fun NooklinPhotosApp(
                     zoomLaunch = capturedZoomLaunch,
                     darkTheme = resolvedDarkTheme,
                     startIndex = index,
-                    existingAlbums = hiddenUiState.albums,
+                    existingAlbums = hiddenTargets,
                     shareEnabled = hiddenImageSharingEnabled,
                     removeExifOnShare = removeExifOnShare,
                     onBack = { navController.popBackStack() },

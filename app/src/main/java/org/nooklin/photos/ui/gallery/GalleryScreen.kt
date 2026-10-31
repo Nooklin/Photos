@@ -115,11 +115,15 @@ import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.PillListRow
 import org.nooklin.photos.ui.common.dragToSelect
+import org.nooklin.photos.ui.common.orderedKeys
 import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
 import org.nooklin.photos.ui.common.prefetchScreenTierImage
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.deleteWording
+import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.AppText
 
 // Library grid with its own top bar. The title count is the visible count (after filter and hide screenshots).
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -139,13 +143,15 @@ fun GalleryScreen(
     onSortOrderChange: (SortOrder) -> Unit,
     // Tapped cell bounds in window coordinates at tap time, the viewer animates its entrance from them
     onItemClick: (Int, Rect, ImageBitmap?) -> Unit,
-    onItemLongClick: (MediaItem) -> Unit,
     onToggleFavorite: (MediaItem) -> Unit,
     onMoveToRecycleBin: (MediaItem) -> Unit,
     hideEnabled: Boolean = true,
     onHideSelected: (List<MediaItem>) -> Unit,
     onAddToAlbum: (albumId: Long, item: MediaItem) -> Unit,
     onOpenSearch: () -> Unit,
+    onDuplicate: (MediaItem) -> Unit,
+    onCopy: (MediaItem) -> Unit,
+    shareEnabled: Boolean = true,
     // Starting value of the metadata switch in the share sheet (Settings, Sharing)
     removeExifOnShare: Boolean = true,
     onBack: () -> Unit
@@ -157,6 +163,10 @@ fun GalleryScreen(
     var showAddToAlbumDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
+    // Long press preview: the photo shown small with a menu, and the photo the menu actions work on
+    var previewItem by remember { mutableStateOf<MediaItem?>(null) }
+    var actionItemId by remember { mutableStateOf<Long?>(null) }
+    val actionIds: Set<Long> = actionItemId?.let { setOf(it) } ?: selectedIds
     // Years and Months are overviews, All is the grid below. The bar shows while scrolling and in the overviews.
     var timelineMode by rememberSaveable { mutableStateOf(TimelineMode.ALL) }
     var focusYear by remember { mutableStateOf<Int?>(null) }
@@ -168,6 +178,7 @@ fun GalleryScreen(
     // One-shot backdrop capture: record() is free, the readback is the expensive step
     val backdropGraphicsLayer = rememberGraphicsLayer()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     // After backing out on a photo that wasn't on screen, scroll to it so the return zoom lands
     ScrollToPendingZoomKey(
         lazyIndexOf = { key ->
@@ -185,7 +196,10 @@ fun GalleryScreen(
     fun exitSelection() {
         isSelecting = false
         selectedIds = emptySet()
+        actionItemId = null
     }
+
+    val onItemLongClick: (MediaItem) -> Unit = { item -> if (!isSelecting) previewItem = item }
 
     fun toggleSelect(item: MediaItem) {
         selectedIds = if (item.id in selectedIds) selectedIds - item.id else selectedIds + item.id
@@ -236,7 +250,7 @@ fun GalleryScreen(
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(appString(R.string.common_library), fontWeight = FontWeight.Bold)
                         Spacer(Modifier.width(6.dp))
-                        Text(appString(R.string.common_items, items.size), color = Color.Gray, fontSize = 13.sp)
+                        Text(appString(R.string.common_items, items.size), color = Color.Gray, fontSize = AppText.Body)
                     }
                 },
                 navigationIcon = {
@@ -377,11 +391,7 @@ fun GalleryScreen(
                                 }
                             }
                         }
-                        CircleIconButton(
-                            icon = Icons.Filled.Close,
-                            contentDescription = appString(R.string.common_cancel_selection),
-                            onClick = { exitSelection() }
-                        )
+                        PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                     } else {
                         PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
@@ -466,6 +476,9 @@ fun GalleryScreen(
                             .dragToSelect(
                                 enabled = isSelecting,
                                 hitTest = hitTestSquareGrid,
+                                orderedKeys = {
+                                    orderedKeys(gridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is Long }
+                                },
                                 isSelected = { key -> key is Long && key in selectedIds },
                                 onItemDragged = { key, select ->
                                     if (key is Long) {
@@ -506,6 +519,9 @@ fun GalleryScreen(
                             .dragToSelect(
                                 enabled = isSelecting,
                                 hitTest = hitTestSquareGrid,
+                                orderedKeys = {
+                                    orderedKeys(gridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is Long }
+                                },
                                 isSelected = { key -> key is Long && key in selectedIds },
                                 onItemDragged = { key, select ->
                                     if (key is Long) {
@@ -562,6 +578,9 @@ fun GalleryScreen(
                         .dragToSelect(
                             enabled = isSelecting,
                             hitTest = hitTestStaggeredGrid,
+                            orderedKeys = {
+                                orderedKeys(staggeredGridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is Long }
+                            },
                             isSelected = { key -> key is Long && key in selectedIds },
                             onItemDragged = { key, select ->
                                 if (key is Long) {
@@ -616,12 +635,7 @@ fun GalleryScreen(
                                 )
                             }
                             if (isSelecting && selected) {
-                                Icon(
-                                    imageVector = Icons.Filled.CheckCircle,
-                                    contentDescription = appString(R.string.common_selected),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-                                )
+                                SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
                             }
                         }
                     }
@@ -630,11 +644,35 @@ fun GalleryScreen(
         }
     }
 
+    previewItem?.let { item ->
+        PhotoPreviewMenu(
+            item = item,
+            shareEnabled = shareEnabled,
+            hideEnabled = hideEnabled,
+            onOpen = {
+                previewItem = null
+                prefetchScreenTierImage(context, item)
+                coroutineScope.launch {
+                    val backdrop = runCatching { backdropGraphicsLayer.toImageBitmap() }.getOrNull()
+                    onItemClick(items.indexOfFirst { it.id == item.id }.coerceAtLeast(0), (ZoomSources.boundsOf(item.id) ?: Rect.Zero), backdrop)
+                }
+            },
+            onShare = { previewItem = null; actionItemId = item.id; showShareSheet = true },
+            onFavorite = { previewItem = null; onToggleFavorite(item) },
+            onDelete = { previewItem = null; actionItemId = item.id; showDeleteConfirm = true },
+            onCopy = { previewItem = null; onCopy(item) },
+            onDuplicate = { previewItem = null; onDuplicate(item) },
+            onHide = { previewItem = null; onHideSelected(listOf(item)) },
+            onAddToAlbum = { previewItem = null; actionItemId = item.id; showAddToAlbumDialog = true },
+            onDismiss = { previewItem = null }
+        )
+    }
+
     if (showShareSheet) {
         ShareSelectionSheet(
-            selectedItems = items.filter { it.id in selectedIds },
+            selectedItems = items.filter { it.id in actionIds },
             removeMetadataDefault = removeExifOnShare,
-            onDismiss = { showShareSheet = false },
+            onDismiss = { showShareSheet = false; actionItemId = null },
             onFinished = {
                 showShareSheet = false
                 exitSelection()
@@ -644,7 +682,7 @@ fun GalleryScreen(
 
     if (showAddToAlbumDialog) {
         AlertDialog(
-            onDismissRequest = { showAddToAlbumDialog = false },
+            onDismissRequest = { showAddToAlbumDialog = false; actionItemId = null },
             shape = GlassPill.shape,
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -659,7 +697,7 @@ fun GalleryScreen(
                             PillListRow(
                                 label = album.name,
                                 onClick = {
-                                    items.filter { it.id in selectedIds }.forEach { onAddToAlbum(album.id, it) }
+                                    items.filter { it.id in actionIds }.forEach { onAddToAlbum(album.id, it) }
                                     showAddToAlbumDialog = false
                                     exitSelection()
                                 }
@@ -669,27 +707,23 @@ fun GalleryScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
+                TextButton(onClick = { showAddToAlbumDialog = false; actionItemId = null }) { Text(appString(R.string.common_cancel)) }
             }
         )
     }
 
     if (showDeleteConfirm) {
-        val count = selectedIds.size
+        val wording = deleteWording(items.filter { it.id in actionIds }.map { it.isVideo })
         ConfirmDeleteDialog(
             title = appString(R.string.common_move_to_recycle_bin_2),
-            text = if (count == 1) {
-                appString(R.string.common_this_photo_will_be_deleted)
-            } else {
-                appString(R.string.common_these_photos_will_be_deleted)
-            },
-            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
+            text = wording.text,
+            confirmLabel = wording.confirmLabel,
             onConfirm = {
                 showDeleteConfirm = false
-                items.filter { it.id in selectedIds }.forEach { onMoveToRecycleBin(it) }
+                items.filter { it.id in actionIds }.forEach { onMoveToRecycleBin(it) }
                 exitSelection()
             },
-            onDismiss = { showDeleteConfirm = false }
+            onDismiss = { showDeleteConfirm = false; actionItemId = null }
         )
     }
 }
@@ -741,12 +775,7 @@ private fun GridCell(
             )
         }
         if (isSelecting && isSelected) {
-            Icon(
-                imageVector = Icons.Filled.CheckCircle,
-                contentDescription = appString(R.string.common_selected),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-            )
+            SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
         }
     }
 }

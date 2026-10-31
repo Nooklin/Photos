@@ -21,9 +21,35 @@ class MainActivity : FragmentActivity() {
     // Set when another app opened a file or asked for one, null for a normal launch
     private var externalRequest by mutableStateOf<ExternalRequest?>(null)
 
+    // Android also calls onUserLeaveHint when the app itself opens a picker or prompt, so those starts are marked here
+    private var leftByUser = false
+    private var startedByApp = false
+
+    override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) {
+        startedByApp = true
+        super.startActivityForResult(intent, requestCode, options)
+    }
+
+    override fun startIntentSenderForResult(
+        intent: android.content.IntentSender, requestCode: Int, fillInIntent: Intent?,
+        flagsMask: Int, flagsValues: Int, extraFlags: Int, options: Bundle?
+    ) {
+        startedByApp = true
+        super.startIntentSenderForResult(intent, requestCode, fillInIntent, flagsMask, flagsValues, extraFlags, options)
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        leftByUser = true
+    }
+
     override fun onStop() {
         super.onStop()
         stoppedAtMs = SystemClock.elapsedRealtime()
+        // Locked at once, no grace period
+        if (leftByUser && !startedByApp && !isChangingConfigurations) hiddenViewModel.lock()
+        leftByUser = false
+        startedByApp = false
     }
 
     override fun onStart() {

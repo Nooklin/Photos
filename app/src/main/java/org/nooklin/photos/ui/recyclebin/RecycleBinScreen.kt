@@ -79,7 +79,12 @@ import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
 import org.nooklin.photos.ui.common.rememberScreenGridColumns
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.common.EmptyState
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppColors
 
 private const val RETENTION_DAYS = 30
 private const val MILLIS_PER_DAY = 24L * 60 * 60 * 1000
@@ -223,11 +228,7 @@ fun RecycleBinScreen(
                                     }
                                 }
                             }
-                            CircleIconButton(
-                                icon = Icons.Filled.Close,
-                                contentDescription = appString(R.string.common_cancel_selection),
-                                onClick = { exitSelection() }
-                            )
+                            PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                         } else {
                             PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                         }
@@ -241,7 +242,7 @@ fun RecycleBinScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(appString(R.string.recycle_bin_recently_deleted_is_empty))
+                EmptyState(message = appString(R.string.recycle_bin_recently_deleted_is_empty), actionLabel = appString(R.string.common_back), onAction = onBack)
             }
             return@Scaffold
         }
@@ -267,7 +268,7 @@ fun RecycleBinScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .zoomSource(entry.mediaId)
-                        .clickable {
+                        .clickable(role = Role.Button) {
                             if (isSelecting) toggleSelect(entry.mediaId) else onItemClick(index)
                         }
                 ) {
@@ -287,12 +288,7 @@ fun RecycleBinScreen(
                             .padding(4.dp)
                     )
                     if (isSelecting && entry.mediaId in selectedIds) {
-                        Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = appString(R.string.common_selected),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-                        )
+                        SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
                     }
                 }
             }
@@ -321,7 +317,7 @@ fun RecycleBinScreen(
                         deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
                     }
                 }) {
-                    Text(appString(R.string.common_delete), color = Color(0xFFFF3B30))
+                    Text(appString(R.string.common_delete), color = AppColors.DestructiveText)
                 }
             },
             dismissButton = {
@@ -359,8 +355,8 @@ private fun PillAction(icon: androidx.compose.ui.graphics.vector.ImageVector, la
     Row(
         Modifier
             .widthIn(min = 180.dp)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = Spacing.Lg, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)

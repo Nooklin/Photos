@@ -63,6 +63,7 @@ enum class ContrastColor(val storageKey: String, @StringRes val labelRes: Int, v
 
 // Two fonts only: Helvetica has no free license to bundle
 enum class AppFont(val storageKey: String, @StringRes val labelRes: Int) {
+    INTER("inter", R.string.app_font_inter),
     SYSTEM_DEFAULT("system_default", R.string.app_font_stock_android_font),
     WORK_SANS("work_sans", R.string.app_font_work_sans);
     val label: String get() = appString(labelRes)
@@ -73,7 +74,8 @@ enum class AppFont(val storageKey: String, @StringRes val labelRes: Int) {
 
 private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
 private val CONTRAST_COLOR_KEY = stringPreferencesKey("contrast_color")
-private val APP_FONT_KEY = stringPreferencesKey("app_font")
+// v2: Inter became the default for everyone, so the earlier "app_font" choice is no longer read
+private val APP_FONT_KEY = stringPreferencesKey("app_font_v2")
 
 private val GRID_STYLE_KEY = stringPreferencesKey("grid_style")
 private val GRID_COLUMNS_KEY = intPreferencesKey("grid_columns")
@@ -139,7 +141,7 @@ class AppPreferences(private val context: Context) {
     }
 
     val appFont: Flow<AppFont> = context.appSettingsDataStore.data.map { prefs ->
-        prefs[APP_FONT_KEY]?.let { AppFont.fromKey(it) } ?: AppFont.SYSTEM_DEFAULT
+        prefs[APP_FONT_KEY]?.let { AppFont.fromKey(it) } ?: AppFont.INTER
     }
 
     suspend fun setAppFont(font: AppFont) {

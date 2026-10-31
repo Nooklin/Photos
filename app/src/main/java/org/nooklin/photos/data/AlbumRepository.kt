@@ -37,8 +37,16 @@ class AlbumRepository(context: Context) {
         dao.insertAlbum(AlbumEntity(name = name))
     }
 
+    suspend fun createFolder(parentId: Long, name: String): Long = withContext(Dispatchers.IO) {
+        dao.insertAlbum(AlbumEntity(name = name, parentId = parentId))
+    }
+
     suspend fun renameAlbum(albumId: Long, newName: String) = withContext(Dispatchers.IO) {
         dao.renameAlbum(albumId, newName)
+    }
+
+    suspend fun setCover(albumId: Long, mediaId: Long?) = withContext(Dispatchers.IO) {
+        dao.setCover(albumId, mediaId)
     }
 
     suspend fun deleteAlbum(albumId: Long) = withContext(Dispatchers.IO) {

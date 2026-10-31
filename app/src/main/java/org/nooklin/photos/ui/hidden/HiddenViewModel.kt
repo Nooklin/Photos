@@ -16,7 +16,15 @@ import org.nooklin.photos.data.HiddenAlbumWithPreview
 import org.nooklin.photos.data.HiddenItem
 import org.nooklin.photos.data.HiddenMediaRepository
 import org.nooklin.photos.data.MediaItem
+import org.nooklin.photos.data.ImportEntry
+import org.nooklin.photos.data.ImportProgress
+import org.nooklin.photos.data.ImportResult
+import org.nooklin.photos.data.ImportSource
 import org.nooklin.photos.data.UnhideResult
+import org.nooklin.photos.data.HiddenImportSink
+import org.nooklin.photos.data.runImport
+import org.nooklin.photos.data.scanImportFolder
+import org.nooklin.photos.data.scanImportZip
 import org.nooklin.photos.data.local.LocalMetadataStore
 import org.nooklin.photos.ui.MediaFilter
 import org.nooklin.photos.ui.SortOrder
@@ -66,6 +74,53 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _exportProgress = MutableStateFlow<HiddenExportProgress?>(null)
     val exportProgress: StateFlow<HiddenExportProgress?> = _exportProgress
+
+    private val _importProgress = MutableStateFlow<ImportProgress?>(null)
+    val importProgress: StateFlow<ImportProgress?> = _importProgress
+    private var importJob: Job? = null
+
+    // Looks through the folder or zip, nothing is copied. Null when it cannot be read.
+    fun scanImport(source: ImportSource, onResult: (List<ImportEntry>?, Set<String>) -> Unit) {
+        importJob?.cancel()
+        importJob = viewModelScope.launch {
+            val entries = try {
+                if (source.isZip) scanImportZip(getApplication(), source.uri)
+                else scanImportFolder(getApplication(), source.uri)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            onResult(entries, HiddenImportSink(getApplication(), repository).topLevelAlbumNames())
+        }
+    }
+
+    fun startImport(
+        source: ImportSource,
+        entries: List<ImportEntry>,
+        merge: Boolean,
+        deleteAfter: Boolean,
+        onResult: (ImportResult?) -> Unit
+    ) {
+        _importProgress.value = ImportProgress(true, 0, 0)
+        importJob = viewModelScope.launch {
+            val result = try {
+                runImport(getApplication(), HiddenImportSink(getApplication(), repository), source, entries, merge, deleteAfter) { _importProgress.value = it }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                null
+            } catch (e: Exception) {
+                null
+            }
+            _importProgress.value = null
+            refresh()
+            onResult(result)
+        }
+    }
+
+    // Files that were imported before Cancel stay
+    fun cancelImport() {
+        importJob?.cancel()
+    }
 
     fun onAuthenticated() {
         _uiState.update { it.copy(isAuthenticated = true) }
@@ -217,6 +272,20 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
             val id = repository.createAlbum(name)
             refresh()
             onCreated(id)
+        }
+    }
+
+    fun createFolder(parentId: Long, name: String) {
+        viewModelScope.launch {
+            repository.createFolder(parentId, name)
+            refresh()
+        }
+    }
+
+    fun setAlbumCover(albumId: Long, fileName: String?) {
+        viewModelScope.launch {
+            repository.setAlbumCover(albumId, fileName)
+            refresh()
         }
     }
 

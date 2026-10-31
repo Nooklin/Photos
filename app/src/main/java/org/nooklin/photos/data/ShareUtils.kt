@@ -19,8 +19,6 @@ import org.nooklin.photos.data.local.AppPreferences
 import org.nooklin.photos.data.local.ShareStripOptions
 import java.nio.ByteBuffer
 
-private const val SHARE_AUTHORITY = "org.nooklin.photos.fileprovider"
-
 // Exif tags per kind of data, as chosen in Settings, Sharing. Orientation is never removed so photos aren't sideways.
 private val LOCATION_TAGS = listOf(
     ExifInterface.TAG_GPS_ALTITUDE, ExifInterface.TAG_GPS_ALTITUDE_REF,
@@ -155,7 +153,7 @@ private fun copyToShareCache(
     }
 
     return try {
-        FileProvider.getUriForFile(context, SHARE_AUTHORITY, outFile)
+        FileProvider.getUriForFile(context, context.packageName + ".fileprovider", outFile)
     } catch (e: Exception) {
         outFile.delete()
         null

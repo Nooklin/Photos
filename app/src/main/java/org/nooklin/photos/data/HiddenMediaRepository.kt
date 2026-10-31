@@ -19,6 +19,7 @@ import org.nooklin.photos.data.local.HiddenMediaEntity
 import org.nooklin.photos.data.local.LocalMetadataStore
 import org.nooklin.photos.data.local.NooklinDatabase
 import java.io.File
+import org.json.JSONObject
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -41,14 +42,23 @@ data class HiddenItem(
     val width: Int? = null,
     val height: Int? = null,
     val mimeType: String? = null,
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    val originalName: String? = null,
+    val originalModified: Long? = null,
+    val originalTaken: Long? = null
 )
 
 data class HiddenAlbumWithPreview(
     val id: Long,
     val name: String,
     val itemCount: Int,
-    val previewFiles: List<File>
+    val previewFiles: List<File>,
+    // Set for a folder, the id of its hidden album
+    val parentId: Long? = null,
+    // Folders inside this hidden album, shown in the delete warning
+    val folderCount: Int = 0,
+    // File name of the chosen cover photo, null: the newest photo
+    val coverFileName: String? = null
 )
 
 sealed class UnhideResult {
@@ -63,19 +73,19 @@ class HiddenMediaRepository(
     // Only the recycle bin lives here
     private val localMetadataStore: LocalMetadataStore
 ) {
-    private val hiddenDao = HiddenDatabase.getInstance(context).hiddenDao()
+    internal val hiddenDao = HiddenDatabase.getInstance(context).hiddenDao()
     private val libraryDb = NooklinDatabase.getInstance(context)
 
     // Editor originals (for Revert) follow the photo through hide and unhide
     private val originals = OriginalsStore(context)
 
-    private val hiddenDir: File
+    internal val hiddenDir: File
         get() = File(context.filesDir, "hidden").apply { mkdirs() }
 
-    private val thumbsDir: File
+    internal val thumbsDir: File
         get() = File(context.filesDir, "hidden_thumbs").apply { mkdirs() }
 
-    private fun generateVideoThumbnail(videoFile: File, destination: File): Boolean = try {
+    internal fun generateVideoThumbnail(videoFile: File, destination: File): Boolean = try {
         val bitmap = ThumbnailUtils.createVideoThumbnail(videoFile, Size(512, 512), null)
         destination.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 85, it) }
         bitmap.recycle()
@@ -113,7 +123,7 @@ class HiddenMediaRepository(
         null
     }
 
-    private fun generatePhotoThumbnail(sourceUri: Uri, destination: File) {
+    internal fun generatePhotoThumbnail(sourceUri: Uri, destination: File) {
         try {
             val targetSize = 512
             val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -178,6 +188,7 @@ class HiddenMediaRepository(
             destination.delete()
             return@withContext null
         }
+        if (item.dateModified > 0L) destination.setLastModified(item.dateModified * 1000)
         if (item.isVideo) {
             generateVideoThumbnail(destination, File(thumbsDir, destination.name))
         } else {
@@ -199,7 +210,10 @@ class HiddenMediaRepository(
                 width = item.width,
                 height = item.height,
                 mimeType = mimeType,
-                dateAdded = item.dateAdded
+                dateAdded = item.dateAdded,
+                originalName = item.displayName,
+                originalModified = item.dateModified.takeIf { it > 0L }?.times(1000),
+                originalTaken = item.dateTaken
             )
         )
         destination
@@ -258,7 +272,10 @@ class HiddenMediaRepository(
                     width = thumbnailSize?.first ?: entry.width,
                     height = thumbnailSize?.second ?: entry.height,
                     mimeType = entry.mimeType,
-                    deletedAt = entry.deletedAt
+                    deletedAt = entry.deletedAt,
+                    originalName = entry.originalName,
+                    originalModified = entry.originalModified,
+                    originalTaken = entry.originalTaken
                 )
             } else null
         }
@@ -303,6 +320,13 @@ class HiddenMediaRepository(
 
     suspend fun createAlbum(name: String): Long = hiddenDao.insertAlbum(HiddenAlbumEntity(name = name))
 
+    suspend fun createFolder(parentId: Long, name: String): Long =
+        hiddenDao.insertAlbum(HiddenAlbumEntity(name = name, parentId = parentId))
+
+    suspend fun setAlbumCover(albumId: Long, fileName: String?) {
+        hiddenDao.setCover(albumId, fileName)
+    }
+
     suspend fun renameAlbum(albumId: Long, newName: String) {
         hiddenDao.renameAlbum(albumId, newName)
     }
@@ -323,16 +347,77 @@ class HiddenMediaRepository(
         val albums = hiddenDao.allAlbums()
         val membership = hiddenDao.allMemberships()
         val membershipByAlbum = membership.groupBy({ it.albumId }, { it.fileName })
-        albums.map { album ->
-            val memberNames = membershipByAlbum[album.id].orEmpty().toSet()
+        val folderCounts = albums.mapNotNull { it.parentId }.groupingBy { it }.eachCount()
+        val foldersByParent = albums.filter { it.parentId != null }.groupBy { it.parentId }
+        fun membersOf(albumId: Long): List<HiddenItem> {
+            val names = membershipByAlbum[albumId].orEmpty().toSet()
             // Filter the sorted items so the first 4 are the newest
-            val files = items.filter { it.file.name in memberNames }.map { it.thumbnailFile }
-            HiddenAlbumWithPreview(album.id, album.name, files.size, files.take(4))
+            return items.filter { it.file.name in names }
+        }
+        albums.map { album ->
+            val members = membersOf(album.id)
+            // The chosen cover comes first in the preview
+            val cover = members.find { it.file.name == album.coverFileName }
+            val folders = foldersByParent[album.id].orEmpty()
+            // An album with folders shows the front of its first 4 folders, and counts the photos of its folders too
+            val folderFronts = folders.mapNotNull { folder ->
+                val inFolder = membersOf(folder.id)
+                (inFolder.find { it.file.name == folder.coverFileName } ?: inFolder.firstOrNull())?.thumbnailFile
+            }.take(4)
+            val total = (members + folders.flatMap { membersOf(it.id) }).distinctBy { it.file.name }.size
+            val files = when {
+                folderFronts.isNotEmpty() -> folderFronts
+                cover != null -> (listOf(cover) + members.filter { it !== cover }).map { it.thumbnailFile }
+                else -> members.map { it.thumbnailFile }
+            }
+            HiddenAlbumWithPreview(album.id, album.name, total, files.take(4), album.parentId, folders.size, album.coverFileName)
         }
     }
 
     suspend fun albumMembershipSnapshot(): List<Pair<Long, String>> = withContext(Dispatchers.IO) {
         hiddenDao.allMemberships().map { it.albumId to it.fileName }
+    }
+
+    // Entry names in a zip: the original name, only characters a zip cannot hold are replaced, " (2)" for the same name in one directory
+    private class EntryNamer {
+        private val used = HashSet<String>()
+        fun entry(dir: String, item: HiddenItem): String {
+            val name = (item.originalName ?: item.file.name).replace(Regex("[/\\\\:*?\"<>|]"), "_")
+            val prefix = if (dir.isEmpty()) "" else "$dir/"
+            var candidate = prefix + name
+            var n = 2
+            val base = name.substringBeforeLast('.', name)
+            val ext = name.substringAfterLast('.', "")
+            while (!used.add(candidate)) {
+                candidate = "$prefix$base ($n)" + if (ext.isNotEmpty()) ".$ext" else ""
+                n++
+            }
+            return candidate
+        }
+    }
+
+    // metadata.json first, then the files with their original modified date as entry time
+    private fun writeHiddenZip(
+        zip: ZipOutputStream,
+        writes: List<Pair<String, HiddenItem>>,
+        onProgress: (done: Int, total: Int) -> Unit
+    ) {
+        zip.setLevel(Deflater.NO_COMPRESSION)
+        val files = JSONObject()
+        writes.forEach { (entryName, item) ->
+            files.put(entryName, JSONObject().apply {
+                item.originalName?.let { put("name", it) }
+                item.originalModified?.let { put("modified", it) }
+                item.originalTaken?.let { put("taken", it) }
+            })
+        }
+        zip.putNextEntry(ZipEntry(METADATA_FILE))
+        zip.write(JSONObject().put("version", 1).put("files", files).toString().toByteArray(Charsets.UTF_8))
+        zip.closeEntry()
+        writes.forEachIndexed { index, (entryName, item) ->
+            writeFileToZip(zip, item, entryName)
+            onProgress(index + 1, writes.size)
+        }
     }
 
     // Backup zip, files are wiped on uninstall
@@ -342,16 +427,10 @@ class HiddenMediaRepository(
         onProgress: (done: Int, total: Int) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            val items = listHidden()
+            val namer = EntryNamer()
+            val writes = listHidden().map { namer.entry("", it) to it }
             context.contentResolver.openOutputStream(destination)?.use { out ->
-                ZipOutputStream(out).use { zip ->
-                    // Already compressed, deflate only costs CPU
-                    zip.setLevel(Deflater.NO_COMPRESSION)
-                    items.forEachIndexed { index, item ->
-                        writeFileToZip(zip, item.file, item.file.name)
-                        onProgress(index + 1, items.size)
-                    }
-                }
+                ZipOutputStream(out).use { zip -> writeHiddenZip(zip, writes, onProgress) }
             } ?: return@withContext deleteDestination(context, destination)
             true
         } catch (e: Exception) {
@@ -366,15 +445,10 @@ class HiddenMediaRepository(
         onProgress: (done: Int, total: Int) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            val items = listHidden().filter { it.file.name in fileNames }
+            val namer = EntryNamer()
+            val writes = listHidden().filter { it.file.name in fileNames }.map { namer.entry("", it) to it }
             context.contentResolver.openOutputStream(destination)?.use { out ->
-                ZipOutputStream(out).use { zip ->
-                    zip.setLevel(Deflater.NO_COMPRESSION)
-                    items.forEachIndexed { index, item ->
-                        writeFileToZip(zip, item.file, item.file.name)
-                        onProgress(index + 1, items.size)
-                    }
-                }
+                ZipOutputStream(out).use { zip -> writeHiddenZip(zip, writes, onProgress) }
             } ?: return@withContext deleteDestination(context, destination)
             true
         } catch (e: Exception) {
@@ -397,36 +471,34 @@ class HiddenMediaRepository(
             val namesInAnyAlbum = membership.map { it.fileName }.toSet()
             val loose = items.filter { it.file.name !in namesInAnyAlbum }
 
-            // Count writes, not items, or progress overshoots
-            val albumWriteCount = albums.sumOf { album ->
-                membershipByAlbum[album.id].orEmpty().count { it in filesByName }
-            }
-            val total = loose.size + albumWriteCount
-            var done = 0
-
             val usedFolderNames = mutableSetOf<String>()
+            // A folder is written inside the directory of its album: Hidden Albums/Album/Folder
+            val albumsById = albums.associateBy { it.id }
+            val folderNames = mutableMapOf<Long, String>()
             fun uniqueFolderName(album: HiddenAlbumEntity): String {
-                val base = album.name.replace(Regex("[/\\\\:*?\"<>|]"), "_").ifBlank { "Untitled" }
+                folderNames[album.id]?.let { return it }
+                val clean = album.name.replace(Regex("[/\\\\:*?\"<>|]"), "_").ifBlank { "Untitled" }
+                val parent = album.parentId?.let { albumsById[it] }
+                val base = if (parent != null) uniqueFolderName(parent) + "/" + clean else clean
                 val candidate = if (usedFolderNames.add(base)) base else "${base}_${album.id}".also { usedFolderNames.add(it) }
+                folderNames[album.id] = candidate
                 return candidate
             }
 
-            context.contentResolver.openOutputStream(destination)?.use { out ->
-                ZipOutputStream(out).use { zip ->
-                    zip.setLevel(Deflater.NO_COMPRESSION)
-                    loose.forEach { item ->
-                        writeFileToZip(zip, item.file, "Hidden Images/${item.file.name}")
-                        onProgress(++done, total)
-                    }
-                    albums.forEach { album ->
-                        val folder = uniqueFolderName(album)
-                        membershipByAlbum[album.id].orEmpty().forEach { fileName ->
-                            val file = filesByName[fileName]?.file ?: return@forEach
-                            writeFileToZip(zip, file, "Hidden Albums/$folder/$fileName")
-                            onProgress(++done, total)
-                        }
-                    }
+            // Decided first so progress counts writes, not items
+            val namer = EntryNamer()
+            val writes = mutableListOf<Pair<String, HiddenItem>>()
+            loose.forEach { writes.add(namer.entry("Hidden Images", it) to it) }
+            albums.forEach { album ->
+                val folder = uniqueFolderName(album)
+                membershipByAlbum[album.id].orEmpty().forEach { fileName ->
+                    val item = filesByName[fileName] ?: return@forEach
+                    writes.add(namer.entry("Hidden Albums/$folder", item) to item)
                 }
+            }
+
+            context.contentResolver.openOutputStream(destination)?.use { out ->
+                ZipOutputStream(out).use { zip -> writeHiddenZip(zip, writes, onProgress) }
             } ?: return@withContext deleteDestination(context, destination)
             true
         } catch (e: Exception) {
@@ -444,9 +516,11 @@ class HiddenMediaRepository(
         return false
     }
 
-    private fun writeFileToZip(zip: ZipOutputStream, file: File, entryName: String) {
-        zip.putNextEntry(ZipEntry(entryName))
-        file.inputStream().use { it.copyTo(zip, 64 * 1024) }
+    private fun writeFileToZip(zip: ZipOutputStream, item: HiddenItem, entryName: String) {
+        val entry = ZipEntry(entryName)
+        entry.time = item.originalModified ?: item.file.lastModified()
+        zip.putNextEntry(entry)
+        item.file.inputStream().use { it.copyTo(zip, 64 * 1024) }
         zip.closeEntry()
     }
 
@@ -460,7 +534,16 @@ class HiddenMediaRepository(
             val resolver = context.contentResolver
             val mimeType = entry.mimeType ?: if (entry.isVideo) "video/mp4" else "image/jpeg"
             // An edit can change the format, so the extension follows the type
-            val displayName = if (entry.isVideo) {
+            val original = entry.originalName
+            val displayName = if (original != null) {
+                // The original name stays. Only when the format changed (an edit) the extension follows the new type.
+                val kind = mediaKind(original, null)
+                if (kind == null || kind == mimeType.lowercase()) {
+                    original
+                } else {
+                    original.substringBeforeLast('.', original) + "." + fileExtensionFor(mimeType, entry.isVideo)
+                }
+            } else if (entry.isVideo) {
                 fileName.substringBeforeLast('.') + "." + fileExtensionFor(mimeType, true)
             } else {
                 ImageNaming.fileName(context, fileExtensionFor(mimeType, false))
@@ -469,6 +552,7 @@ class HiddenMediaRepository(
                 put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
                 put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
+                (entry.originalTaken ?: entry.originalModified)?.let { put(MediaStore.MediaColumns.DATE_TAKEN, it) }
             }
             val collection = if (entry.isVideo) {
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI
@@ -495,7 +579,15 @@ class HiddenMediaRepository(
                 return@withContext UnhideResult.Failed
             }
 
-            resolver.update(newUri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+            resolver.update(
+                newUri,
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    entry.originalModified?.let { put(MediaStore.MediaColumns.DATE_MODIFIED, it / 1000) }
+                },
+                null,
+                null
+            )
 
             // New library id: carry the stored original over
             originals.copy(OriginalsStore.hiddenKey(fileName), OriginalsStore.mediaKey(ContentUris.parseId(newUri)))

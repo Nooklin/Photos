@@ -73,6 +73,7 @@ import org.nooklin.photos.ui.common.videoUriOf
 import kotlinx.coroutines.delay
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.Spacing
 
 // No edit/favorite/hide here, these are pending deletion
 @OptIn(ExperimentalMaterial3Api::class)
@@ -174,7 +175,7 @@ fun RecycleBinViewerScreen(
                     .chromeGate(chromeVisible) { chromeVisible = true }
                     .background(Color.Black)
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 28.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = Spacing.Xl)
             ) {
                 currentEntry?.let { entry ->
                     Button(

@@ -85,7 +85,14 @@ import org.nooklin.photos.ui.common.GlassPillTextField
 import org.nooklin.photos.ui.common.PillListRow
 import org.nooklin.photos.ui.pets.PetWithPreview
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.deleteWording
+import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.common.touchTarget
+import org.nooklin.photos.ui.common.EmptyState
+import org.nooklin.photos.ui.theme.AppText
+import org.nooklin.photos.ui.common.TouchTargetBox
 
 // Matches GalleryScreen's top bar, select mode and filter
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -257,11 +264,7 @@ fun DiscoveredDetailScreen(
                                 }
                             }
                         }
-                        CircleIconButton(
-                            icon = Icons.Filled.Close,
-                            contentDescription = appString(R.string.common_cancel_selection),
-                            onClick = { exitSelection() }
-                        )
+                        PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                     } else {
                         PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
@@ -274,7 +277,7 @@ fun DiscoveredDetailScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(if (photos.isEmpty()) appString(R.string.common_no_photos_here) else appString(R.string.discovered_detail_nothing_matches_this_filter))
+                EmptyState(message = if (photos.isEmpty()) appString(R.string.common_no_photos_here) else appString(R.string.discovered_detail_nothing_matches_this_filter), actionLabel = appString(R.string.common_back), onAction = onBack)
             }
         } else {
             LazyVerticalGrid(
@@ -312,33 +315,32 @@ fun DiscoveredDetailScreen(
                             )
                         }
                         if (isSelecting && selected) {
-                            Icon(
-                                imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = appString(R.string.common_selected),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-                            )
+                            SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
                         }
                         // Quick add: opens the Add to Pet dialog for this photo without select mode
                         if (isPetsCategory && !isSelecting) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(4.dp)
-                                    .size(22.dp)
-                                    .background(Color.Black.copy(alpha = 0.55f), CircleShape)
-                                    .clickable {
-                                        quickAddPetItem = item
-                                        showAddToPetDialog = true
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Add,
-                                    contentDescription = appString(R.string.discovered_detail_add_to_pet),
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                            TouchTargetBox(
+                                onClick = {
+                                    quickAddPetItem = item
+                                    showAddToPetDialog = true
+                                },
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                            ) { feedback ->
+                                Box(
+                                    Modifier
+                                        .size(22.dp)
+                                        .background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                                        .clip(CircleShape)
+                                        .then(feedback),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Add,
+                                        contentDescription = appString(R.string.discovered_detail_add_to_pet),
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -404,7 +406,7 @@ fun DiscoveredDetailScreen(
                         Text(
                             appString(R.string.discovered_detail_or_add_to_an_existing),
                             color = Color.Gray,
-                            fontSize = 12.sp,
+                            fontSize = AppText.Caption,
                             modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
                         )
                         Column {
@@ -413,7 +415,7 @@ fun DiscoveredDetailScreen(
                                     headlineContent = { Text(pet.name) },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
+                                        .clickable(role = Role.Button) {
                                             targets.forEach { onAddToPet(pet.id, it) }
                                             closeAddToPetDialog()
                                             if (quickAddPetItem == null) exitSelection()
@@ -444,15 +446,11 @@ fun DiscoveredDetailScreen(
     }
 
     if (showDeleteConfirm) {
-        val count = selectedIds.size
+        val wording = deleteWording(filtered.filter { it.id in selectedIds }.map { it.isVideo })
         ConfirmDeleteDialog(
             title = appString(R.string.common_move_to_recycle_bin_2),
-            text = if (count == 1) {
-                appString(R.string.common_this_photo_will_be_deleted)
-            } else {
-                appString(R.string.common_these_photos_will_be_deleted)
-            },
-            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
+            text = wording.text,
+            confirmLabel = wording.confirmLabel,
             onConfirm = {
                 showDeleteConfirm = false
                 filtered.filter { it.id in selectedIds }.forEach { onMoveToRecycleBin(it) }

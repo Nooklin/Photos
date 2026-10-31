@@ -110,7 +110,9 @@ import org.nooklin.photos.ui.common.VideoPrewarm
 import org.nooklin.photos.ui.common.videoUriOf
 import kotlinx.coroutines.delay
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.deleteWording
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.Spacing
 
 // Share is opt-in (Hidden Image Sharing in Settings), easy sharing works against hiding
 @OptIn(ExperimentalMaterial3Api::class)
@@ -502,7 +504,7 @@ fun HiddenPhotoViewerScreen(
                         backgroundColor = toolbarBackground,
                         border = toolbarBorder,
                         contentColor = chromeColor,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = Spacing.Sm)
                     )
                 }
                 PhotoFilmstrip(
@@ -531,7 +533,13 @@ fun HiddenPhotoViewerScreen(
             titleContentColor = chromeColor,
             textContentColor = chromeColor,
             title = { Text(appString(R.string.common_unhide)) },
-            text = { Text(appString(R.string.hidden_photo_viewer_move_this_photo_back_to)) },
+            text = {
+                Text(
+                    appString(
+                        if (currentItem.isVideo) R.string.hidden_photo_viewer_move_this_video_back_to else R.string.hidden_photo_viewer_move_this_photo_back_to
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showUnhideConfirm = false
@@ -550,8 +558,8 @@ fun HiddenPhotoViewerScreen(
     if (showTrashConfirm && currentItem != null) {
         ConfirmDeleteDialog(
             title = appString(R.string.common_move_to_recycle_bin_2),
-            text = appString(R.string.common_this_photo_will_be_deleted),
-            confirmLabel = appString(R.string.common_delete_photo),
+            text = deleteWording(listOf(currentItem.isVideo)).text,
+            confirmLabel = deleteWording(listOf(currentItem.isVideo)).confirmLabel,
             containerColor = popupBackground,
             contentColor = chromeColor,
             onConfirm = {

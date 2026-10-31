@@ -115,7 +115,10 @@ import org.nooklin.photos.ui.common.videoUriOf
 import org.nooklin.photos.ui.common.prefetchScreenTierImage
 import kotlinx.coroutines.delay
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.deleteWording
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -530,7 +533,7 @@ fun PhotoViewerScreen(
                         backgroundColor = toolbarBackground,
                         border = toolbarBorder,
                         contentColor = chromeColor,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = Spacing.Sm)
                     )
                 }
                 PhotoFilmstrip(
@@ -569,8 +572,8 @@ fun PhotoViewerScreen(
             if (showTrashConfirm && currentItem != null) {
                 ConfirmDeleteDialog(
                     title = appString(R.string.common_move_to_recycle_bin_2),
-                    text = appString(R.string.common_this_photo_will_be_deleted),
-                    confirmLabel = appString(R.string.common_delete_photo),
+                    text = deleteWording(listOf(currentItem.isVideo)).text,
+                    confirmLabel = deleteWording(listOf(currentItem.isVideo)).confirmLabel,
                     containerColor = popupBackground,
                     contentColor = chromeColor,
                     onConfirm = {
@@ -654,7 +657,7 @@ fun ViewerCircleButton(
             .clip(CircleShape)
             .background(backgroundColor)
             .then(if (border != null) Modifier.border(border, CircleShape) else Modifier)
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = contentDescription, tint = tint)

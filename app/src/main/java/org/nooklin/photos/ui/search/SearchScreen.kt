@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.common.EmptyState
 
 // Filename search only (DISPLAY_NAME), no full-text or EXIF
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,7 +117,7 @@ fun SearchScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(appString(R.string.search_no_matches))
+                EmptyState(message = appString(R.string.search_no_matches), actionLabel = appString(R.string.common_back), onAction = onBack)
             }
             return@Scaffold
         }

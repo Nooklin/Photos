@@ -97,6 +97,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.widthIn
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.common.touchTarget
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
+import org.nooklin.photos.ui.common.TouchTargetBox
 
 // Single scroll home, no bottom nav. Sections are collapsible glass cards (translucent, no real backdrop blur).
 @OptIn(ExperimentalMaterial3Api::class)
@@ -278,7 +283,7 @@ private fun LibraryBlock(
                                     .padding(1.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .zoomSource(libraryItems[index].id)
-                                    .clickable {
+                                    .clickable(role = Role.Button) {
                                         prefetchScreenTierImage(context, libraryItems[index])
                                         coroutineScope.launch {
                                             val backdrop = runCatching { backdropGraphicsLayer.toImageBitmap() }.getOrNull()
@@ -319,9 +324,9 @@ private fun AlbumsBlock(
                     items(homeAlbums.size, key = { homeAlbums[it].id }) { index ->
                         val album = homeAlbums[index]
                         Column(
-                            Modifier.width(120.dp).clickable { onOpenAlbumDetail(album.id) }
+                            Modifier.width(120.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
                         ) {
-                            AlbumThumbnail(album.previewItems, size = 120.dp)
+                            AlbumThumbnail(album.previewItems, size = 120.dp, fillSlots = album.folderCount >= 2)
                             Text(album.name, maxLines = 1)
                             Text("${album.itemCount}", color = Color.Gray)
                         }
@@ -356,7 +361,7 @@ private fun DiscoveredBlock(
                     items(homeDiscovered.size, key = { homeDiscovered[it].tagId }) { index ->
                         val album = homeDiscovered[index]
                         Column(
-                            Modifier.width(120.dp).clickable { onOpenDiscoveredDetail(album.tagId) }
+                            Modifier.width(120.dp).clickable(role = Role.Button) { onOpenDiscoveredDetail(album.tagId) }
                         ) {
                             AlbumThumbnail(album.previewItems, size = 120.dp)
                             Text(album.label, maxLines = 1)
@@ -433,7 +438,7 @@ private fun SettingsRowBlock(onOpenSettings: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .clickable { onOpenSettings() },
+                .clickable(role = Role.Button) { onOpenSettings() },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
@@ -450,7 +455,7 @@ private fun ReorderHomeRowBlock(onOpenReorderHome: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .clickable { onOpenReorderHome() },
+                .clickable(role = Role.Button) { onOpenReorderHome() },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Filled.Reorder, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
@@ -469,7 +474,7 @@ private fun GlassBlock(content: @Composable () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             // 2dp horizontal so pills reach the screen edge, one shared value for every Home section
-            .padding(horizontal = 2.dp, vertical = 6.dp)
+            .padding(horizontal = 2.dp, vertical = Spacing.Sm)
     ) {
         content()
     }
@@ -496,28 +501,30 @@ private fun SectionHeader(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .let { if (onTitleClick != null) it.clickable { onTitleClick() } else it }
+                .let { if (onTitleClick != null) it.clickable(role = Role.Button) { onTitleClick() } else it }
         ) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = titleFontSize)
             if (subtitle != null) {
-                Text(subtitle, color = Color.Gray, fontSize = 13.sp)
+                Text(subtitle, color = Color.Gray, fontSize = AppText.Body)
             }
         }
         if (showChevron) {
-            Box(
-                Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(GlassPill.adaptiveGlassBackground)
-                    .border(GlassPill.adaptiveBorder, CircleShape)
-                    .clickable { onToggle() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown,
-                    contentDescription = if (expanded) appString(R.string.common_collapse) else appString(R.string.common_expand),
-                    modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f }
-                )
+            TouchTargetBox(onClick = { onToggle() }) { feedback ->
+                Box(
+                    Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(GlassPill.adaptiveGlassBackground)
+                        .then(feedback)
+                        .border(GlassPill.adaptiveBorder, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (expanded) appString(R.string.common_collapse) else appString(R.string.common_expand),
+                        modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f }
+                    )
+                }
             }
         }
     }
@@ -578,7 +585,7 @@ private fun CategoryRow(label: String, icon: ImageVector, onClick: () -> Unit) {
         Modifier
             .widthIn(min = 180.dp)
             .padding(vertical = 8.dp, horizontal = 4.dp)
-            .clickable { onClick() },
+            .clickable(role = Role.Button) { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp))

@@ -23,8 +23,8 @@ android {
         applicationId = "org.nooklin.photos"
         minSdk = 33
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -51,6 +51,15 @@ android {
         // For judging scrolling speed on a phone: not debuggable, like release, but signed with the debug key so it
         // installs without a keystore. Debug builds make Compose lists look slower than they are.
         // To also try R8, change enable to true here (not tried, the release build keeps it off).
+        // Installs next to the release: other application id, own name, own data. Same speed as release, signed with
+        // the debug key so it installs without a keystore.
+        create("dev") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
         create("perftest") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
@@ -106,6 +115,8 @@ dependencies {
     implementation(libs.androidx.exifinterface)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
+    implementation(libs.media3.transformer)
+    implementation(libs.media3.effect)
     // Room, backing the virtual-album system (album membership is stored
     // here, decoupled from the photo's actual file location).
     implementation(libs.androidx.room.runtime)

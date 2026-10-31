@@ -26,7 +26,9 @@ data class MediaItem(
     val displayName: String?,
     val mimeType: String? = null,
     val captureFrameRate: Float? = null,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    // Capture time in milliseconds, null when MediaStore has none
+    val dateTaken: Long? = null
 ) {
     // Heuristic, bucket names vary by OEM
     val isScreenshot: Boolean
@@ -220,7 +222,8 @@ private val MEDIA_PROJECTION = arrayOf(
     MediaStore.Files.FileColumns.SIZE,
     MediaStore.Files.FileColumns.DISPLAY_NAME,
     MediaStore.Files.FileColumns.MIME_TYPE,
-    MediaStore.Files.FileColumns.CAPTURE_FRAMERATE
+    MediaStore.Files.FileColumns.CAPTURE_FRAMERATE,
+    MediaStore.MediaColumns.DATE_TAKEN
 )
 
 private fun Cursor.toMediaItem(): MediaItem {
@@ -237,6 +240,7 @@ private fun Cursor.toMediaItem(): MediaItem {
     val displayNameCol = getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
     val mimeCol = getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
     val frameRateCol = getColumnIndex(MediaStore.Files.FileColumns.CAPTURE_FRAMERATE)
+    val takenCol = getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
 
     val id = getLong(idCol)
     val isVideo = getInt(typeCol) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
@@ -259,7 +263,8 @@ private fun Cursor.toMediaItem(): MediaItem {
     return MediaItem(
         id, contentUri, getLong(dateCol), getLong(dateModifiedCol), isVideo,
         getStringOrNull(bucketIdCol), getStringOrNull(bucketNameCol),
-        width, height, sizeBytes, displayName, mimeType, captureFrameRate
+        width, height, sizeBytes, displayName, mimeType, captureFrameRate,
+        dateTaken = if (takenCol >= 0 && !isNull(takenCol)) getLong(takenCol).takeIf { it > 0 } else null
     )
 }
 

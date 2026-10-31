@@ -25,6 +25,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import org.nooklin.photos.ui.albums.AlbumHero
+import org.nooklin.photos.ui.albums.CoverPickerDialog
+import org.nooklin.photos.ui.albums.FolderRow
+import org.nooklin.photos.ui.albums.SlideshowDialog
+import org.nooklin.photos.ui.albums.SlideshowPhoto
+import org.nooklin.photos.ui.albums.NewFolderDialog
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,6 +60,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -68,16 +76,22 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.nooklin.photos.ui.common.freshImageRequest
+import org.nooklin.photos.ui.common.heroImageRequest
 import org.nooklin.photos.data.HiddenAlbumWithPreview
 import org.nooklin.photos.data.HiddenItem
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
+import org.nooklin.photos.ui.albums.AlbumContextMenu
+import org.nooklin.photos.ui.albums.RenameAlbumDialog
 import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.GlassPillTextField
 import org.nooklin.photos.ui.common.PillListRow
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.deleteWording
+import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.common.EmptyState
 
 // Mirrors HiddenGalleryScreen on purpose, like DiscoveredDetailScreen and PersonDetailScreen
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -96,7 +110,18 @@ fun HiddenAlbumDetailScreen(
     onRenameAlbum: (String) -> Unit,
     onDeleteAlbum: () -> Unit,
     onAddPhotos: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    // A folder is a hidden album inside a hidden album, one level deep
+    isFolder: Boolean = false,
+    folders: List<HiddenAlbumWithPreview> = emptyList(),
+    onFolderClick: (Long) -> Unit = {},
+    onRenameFolder: (Long, String) -> Unit = { _, _ -> },
+    onDeleteFolder: (Long) -> Unit = {},
+    onCreateFolder: (String) -> Unit = {},
+    // File name of the photo chosen for the top of the screen, null: the newest photo
+    totalCount: Int = items.size,
+    coverFileName: String? = null,
+    onSetCover: (String?) -> Unit = {}
 ) {
     // Own column count, set by pinching
     val screenColumns = rememberScreenGridColumns("albums", gridColumns)
@@ -104,7 +129,18 @@ fun HiddenAlbumDetailScreen(
     val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    // A long press on a folder in the list opens its menu
+    var menuFolderId by remember { mutableStateOf<Long?>(null) }
+    var renameFolder by remember { mutableStateOf<HiddenAlbumWithPreview?>(null) }
+    var deleteFolder by remember { mutableStateOf<HiddenAlbumWithPreview?>(null) }
     var showDeleteAlbumConfirm by remember { mutableStateOf(false) }
+    var showNewFolderDialog by remember { mutableStateOf(false) }
+    var showCoverPicker by remember { mutableStateOf(false) }
+    var showSlideshow by remember { mutableStateOf(false) }
+    // Big photo at the top: the chosen cover, else the newest photo
+    val heroItem = items.firstOrNull { it.file.name == coverFileName } ?: items.firstOrNull()
+    val hasHero = heroItem != null
+    val headerCount = (if (hasHero) 1 else 0) + folders.size
     var isSelecting by remember { mutableStateOf(false) }
     var selectedNames by remember { mutableStateOf(setOf<String>()) }
     var actionsMenuExpanded by remember { mutableStateOf(false) }
@@ -123,7 +159,10 @@ fun HiddenAlbumDetailScreen(
 
     val hiddenAlbumGridState = rememberLazyGridState()
     ScrollToPendingZoomKey(
-        lazyIndexOf = { key -> items.indexOfFirst { it.file.absolutePath == key }.takeIf { it >= 0 } },
+        // The big photo and the folder rows come before the photos in the grid
+        lazyIndexOf = { key ->
+            items.indexOfFirst { it.file.absolutePath == key }.takeIf { it >= 0 }?.plus(headerCount)
+        },
         scrollToIndex = { i -> hiddenAlbumGridState.scrollToItemCentered(i) }
     )
 
@@ -131,10 +170,24 @@ fun HiddenAlbumDetailScreen(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
-                title = { Text(albumName, fontWeight = FontWeight.Bold) },
+                // With the big photo the bar is see-through, the title is on the photo
+                colors = if (hasHero) {
+                    TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
+                } else {
+                    TopAppBarDefaults.topAppBarColors()
+                },
+                title = { if (!hasHero) Text(albumName, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
+                    if (hasHero) {
+                        CircleIconButton(
+                            icon = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = appString(R.string.common_back),
+                            onClick = onBack
+                        )
+                    } else {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
+                        }
                     }
                 },
                 actions = {
@@ -198,11 +251,7 @@ fun HiddenAlbumDetailScreen(
                                 }
                             }
                         }
-                        CircleIconButton(
-                            icon = Icons.Filled.Close,
-                            contentDescription = appString(R.string.common_cancel_selection),
-                            onClick = { exitSelection() }
-                        )
+                        PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                     } else {
                         CircleIconButton(
                             icon = Icons.Filled.Add,
@@ -223,14 +272,36 @@ fun HiddenAlbumDetailScreen(
                         ) {
                             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                 DropdownMenuItem(
-                                    text = { Text(appString(R.string.common_rename)) },
+                                    text = { Text(appString(if (isFolder) R.string.folder_rename else R.string.album_rename)) },
                                     onClick = {
                                         menuExpanded = false
                                         showRenameDialog = true
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(appString(R.string.common_delete_album), color = GlassPill.destructiveText) },
+                                    text = { Text(appString(R.string.album_set_cover)) },
+                                    enabled = items.isNotEmpty(),
+                                    onClick = {
+                                        menuExpanded = false
+                                        showCoverPicker = true
+                                    }
+                                )
+                                if (!isFolder) {
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.folder_new)) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            showNewFolderDialog = true
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            appString(if (isFolder) R.string.folder_delete else R.string.common_delete_album),
+                                            color = GlassPill.destructiveText
+                                        )
+                                    },
                                     onClick = {
                                         menuExpanded = false
                                         showDeleteAlbumConfirm = true
@@ -243,19 +314,62 @@ fun HiddenAlbumDetailScreen(
             )
         }
     ) { padding ->
-        if (items.isEmpty()) {
+        if (items.isEmpty() && folders.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(appString(R.string.hidden_album_detail_no_photos_in_this_album))
+                EmptyState(message = appString(R.string.hidden_album_detail_no_photos_in_this_album), actionLabel = appString(R.string.common_back), onAction = onBack)
             }
         } else {
             LazyVerticalGrid(
                 state = hiddenAlbumGridState,
                 columns = GridCells.Fixed(cols),
-                contentPadding = PaddingValues(2.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(padding).pinchToChangeGridColumns(!isSelecting, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
+                contentPadding = if (hasHero) PaddingValues(bottom = 2.dp) else PaddingValues(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (hasHero) 2.dp else 4.dp),
+                verticalArrangement = Arrangement.spacedBy(if (hasHero) 2.dp else 4.dp),
+                // The big photo goes under the see-through bar, so the top padding is left out
+                modifier = (if (hasHero) Modifier.padding(bottom = padding.calculateBottomPadding()) else Modifier.padding(padding))
+                    .pinchToChangeGridColumns(!isSelecting, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
             ) {
+                if (heroItem != null) {
+                    item(key = "hero", span = { GridItemSpan(maxLineSpan) }) {
+                        AlbumHero(
+                            title = if (isSelecting) appString(R.string.share_sheet_selected, selectedNames.size) else albumName,
+                            itemCount = totalCount,
+                            showPlay = items.any { !it.isVideo },
+                            onPlay = { showSlideshow = true },
+                            image = {
+                                // A video has no photo file, its thumbnail is used
+                                val heroFile = if (heroItem.isVideo) heroItem.thumbnailFile else heroItem.file
+                                AsyncImage(
+                                    model = heroImageRequest(context, heroFile, heroFile.lastModified()),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        )
+                    }
+                }
+                items(folders, key = { "folder_" + it.id }, span = { GridItemSpan(maxLineSpan) }) { folder ->
+                    FolderRow(
+                        name = folder.name,
+                        itemCount = folder.itemCount,
+                        onClick = { onFolderClick(folder.id) },
+                        onLongClick = { menuFolderId = folder.id },
+                        menu = {
+                            AlbumContextMenu(
+                                expanded = menuFolderId == folder.id,
+                                onDismiss = { menuFolderId = null },
+                                onShare = null,
+                                onRename = { renameFolder = folder },
+                                onNewFolder = null,
+                                onMerge = null,
+                                onDelete = { deleteFolder = folder },
+                                isFolder = true
+                            )
+                        },
+                        thumbnail = { size -> HiddenAlbumThumbnail(folder.previewFiles.take(1), size = size) }
+                    )
+                }
                 items(items.size, key = { items[it].file.name }) { index ->
                     val item = items[index]
                     val selected = item.file.name in selectedNames
@@ -287,17 +401,57 @@ fun HiddenAlbumDetailScreen(
                             )
                         }
                         if (isSelecting && selected) {
-                            Icon(
-                                imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = appString(R.string.common_selected),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-                            )
+                            SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showSlideshow) {
+        SlideshowDialog(
+            photos = items.filter { !it.isVideo }.map {
+                SlideshowPhoto(
+                    model = it.file,
+                    thumbnail = it.thumbnailFile,
+                    freshness = it.thumbnailFile.lastModified(),
+                    aspect = if (it.width != null && it.height != null && it.height > 0) it.width.toFloat() / it.height.toFloat() else null
+                )
+            },
+            title = albumName,
+            // Hidden photos stay out of screenshots in the slideshow window too
+            secure = true,
+            onClose = { showSlideshow = false }
+        )
+    }
+
+    if (showCoverPicker) {
+        CoverPickerDialog(
+            count = items.size,
+            key = { items[it].file.name },
+            thumbnail = { index ->
+                AsyncImage(
+                    model = freshImageRequest(context, items[index].thumbnailFile, items[index].thumbnailFile.lastModified()),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            },
+            onPick = { index ->
+                onSetCover(items[index].file.name)
+                showCoverPicker = false
+            },
+            onUseNewest = {
+                onSetCover(null)
+                showCoverPicker = false
+            },
+            onDismiss = { showCoverPicker = false }
+        )
+    }
+
+    if (showNewFolderDialog) {
+        NewFolderDialog(onCreate = onCreateFolder, onDismiss = { showNewFolderDialog = false })
     }
 
     if (showRenameDialog) {
@@ -308,7 +462,7 @@ fun HiddenAlbumDetailScreen(
             containerColor = GlassPill.adaptivePopupBackground,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text(appString(R.string.hidden_album_detail_rename_hidden_album)) },
+            title = { Text(appString(if (isFolder) R.string.folder_rename else R.string.hidden_album_detail_rename_hidden_album)) },
             text = {
                 GlassPillTextField(
                     value = newName,
@@ -332,30 +486,51 @@ fun HiddenAlbumDetailScreen(
         )
     }
 
+    renameFolder?.let { folder ->
+        RenameAlbumDialog(
+            current = folder.name,
+            onRename = { onRenameFolder(folder.id, it) },
+            onDismiss = { renameFolder = null },
+            isFolder = true
+        )
+    }
+    deleteFolder?.let { folder ->
+        ConfirmDeleteDialog(
+            title = appString(R.string.folder_delete_title),
+            text = appString(R.string.folder_delete_hidden_text, folder.itemCount),
+            confirmLabel = appString(R.string.folder_delete),
+            onConfirm = {
+                deleteFolder = null
+                onDeleteFolder(folder.id)
+            },
+            onDismiss = { deleteFolder = null }
+        )
+    }
+
     if (showDeleteAlbumConfirm) {
         ConfirmDeleteDialog(
-            title = appString(R.string.common_delete_this_album),
-            text = appString(R.string.hidden_album_detail_this_only_removes_the_album, items.size),
-            confirmLabel = appString(R.string.common_delete_album),
+            title = appString(if (isFolder) R.string.folder_delete_title else R.string.common_delete_this_album),
+            text = when {
+                isFolder -> appString(R.string.folder_delete_hidden_text, items.size)
+                // Deleting an album deletes its folders too, so say so first
+                folders.isNotEmpty() -> appString(R.string.album_delete_with_folders_hidden, folders.size)
+                else -> appString(R.string.hidden_album_detail_this_only_removes_the_album, items.size)
+            },
+            confirmLabel = appString(if (isFolder) R.string.folder_delete else R.string.common_delete_album),
             onConfirm = {
                 showDeleteAlbumConfirm = false
                 onDeleteAlbum()
-                onBack()
             },
             onDismiss = { showDeleteAlbumConfirm = false }
         )
     }
 
     if (showDeleteConfirm) {
-        val count = selectedNames.size
+        val wording = deleteWording(items.filter { it.file.name in selectedNames }.map { it.isVideo })
         ConfirmDeleteDialog(
             title = appString(R.string.common_move_to_recycle_bin_2),
-            text = if (count == 1) {
-                appString(R.string.common_this_photo_will_be_deleted)
-            } else {
-                appString(R.string.common_these_photos_will_be_deleted)
-            },
-            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
+            text = wording.text,
+            confirmLabel = wording.confirmLabel,
             onConfirm = {
                 showDeleteConfirm = false
                 items.filter { it.file.name in selectedNames }.forEach { onMoveToRecycleBin(it) }

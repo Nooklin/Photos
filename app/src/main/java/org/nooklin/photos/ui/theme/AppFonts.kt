@@ -2,7 +2,10 @@ package org.nooklin.photos.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.font.FontWeight
 import org.nooklin.photos.R
 import org.nooklin.photos.data.local.AppFont
 
@@ -10,9 +13,23 @@ import org.nooklin.photos.data.local.AppFont
 private val WorkSansFontFamily = FontFamily(Font(R.font.work_sans))
 
 // SYSTEM_DEFAULT is FontFamily.Default, not hardcoded Roboto: some OEM skins substitute their own
+// Variable font, one entry per weight so Regular, Medium, SemiBold and Bold are real weights. Licence in THIRD-PARTY-LICENSES/inter/OFL.txt
+@OptIn(ExperimentalTextApi::class)
+private val InterFontFamily = FontFamily(
+    listOf(
+        FontWeight.Normal to 400,
+        FontWeight.Medium to 500,
+        FontWeight.SemiBold to 600,
+        FontWeight.Bold to 700
+    ).map { (weight, value) ->
+        Font(R.font.inter, weight, variationSettings = FontVariation.Settings(FontVariation.weight(value)))
+    }
+)
+
 fun fontFamilyFor(font: AppFont): FontFamily = when (font) {
     AppFont.SYSTEM_DEFAULT -> FontFamily.Default
     AppFont.WORK_SANS -> WorkSansFontFamily
+    AppFont.INTER -> InterFontFamily
 }
 
 fun typographyFor(font: AppFont): Typography {

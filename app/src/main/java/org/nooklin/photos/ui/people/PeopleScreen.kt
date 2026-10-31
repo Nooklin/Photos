@@ -57,6 +57,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.common.touchTarget
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
+import org.nooklin.photos.ui.common.TouchTargetBox
 
 // Grid of detected people (named and "Unknown N"), each card shows a cropped face
 @OptIn(ExperimentalMaterial3Api::class)
@@ -123,13 +128,13 @@ fun PeopleScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.Lg)
             ) {
                 items(people, key = { it.id }) { person ->
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .clickable { onPersonClick(person.id) }
+                            .clickable(role = Role.Button) { onPersonClick(person.id) }
                     ) {
                         Box(Modifier.fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
                             FaceThumbnail(
@@ -141,36 +146,40 @@ fun PeopleScreen(
                                 modifier = Modifier.fillMaxSize()
                             )
                             if (!person.isNamed) {
-                                Box(
+                                TouchTargetBox(
+                                    onClick = { namingPersonId = person.id },
+                                    modifier = Modifier.align(Alignment.BottomEnd)
+                                ) { feedback ->
+                                  Box(
                                     Modifier
-                                        .align(Alignment.BottomEnd)
                                         .size(28.dp)
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.primary)
-                                        .clickable { namingPersonId = person.id },
+                                        .then(feedback),
                                     contentAlignment = Alignment.Center
-                                ) {
+                                  ) {
                                     Icon(
                                         Icons.Filled.Add,
                                         contentDescription = appString(R.string.people_add_name),
                                         tint = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.size(18.dp)
                                     )
+                                  }
                                 }
                             }
                         }
                         Text(
                             person.displayName,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = AppText.Body,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 6.dp)
+                            modifier = Modifier.padding(top = Spacing.Sm)
                         )
                         Text(
                             appString(R.string.common_items, person.itemCount),
                             color = Color.Gray,
-                            fontSize = 12.sp,
+                            fontSize = AppText.Caption,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -203,7 +212,7 @@ fun PeopleScreen(
                         Text(
                             appString(R.string.people_or_pick_an_existing_person),
                             color = Color.Gray,
-                            fontSize = 12.sp,
+                            fontSize = AppText.Caption,
                             modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
                         )
                         Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
@@ -212,8 +221,8 @@ fun PeopleScreen(
                                     existingName,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { name = existingName }
-                                        .padding(vertical = 10.dp)
+                                        .clickable(role = Role.Button) { name = existingName }
+                                        .padding(vertical = Spacing.Md)
                                 )
                             }
                         }

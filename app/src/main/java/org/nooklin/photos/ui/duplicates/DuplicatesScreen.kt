@@ -48,6 +48,10 @@ import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.GridThumbnail
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.common.EmptyState
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
 
 // The photo to keep by default: most pixels, then the biggest file
 private fun bestOf(group: List<MediaItem>): MediaItem =
@@ -91,7 +95,7 @@ fun DuplicatesScreen(
     ) { padding ->
         if (groups.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(appString(R.string.category_nothing_here_yet))
+                EmptyState(message = appString(R.string.category_nothing_here_yet), actionLabel = appString(R.string.common_back), onAction = onBack)
             }
             return@Scaffold
         }
@@ -110,7 +114,7 @@ fun DuplicatesScreen(
                     border = GlassPill.adaptiveBorder,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(Spacing.Md)) {
                         Text(
                             appString(R.string.duplicates_group_count, group.size),
                             fontWeight = FontWeight.Bold,
@@ -126,7 +130,7 @@ fun DuplicatesScreen(
                                         Modifier
                                             .size(132.dp)
                                             .clip(RoundedCornerShape(10.dp))
-                                            .clickable { onOpenGroup(group, group.indexOf(item)) }
+                                            .clickable(role = Role.Button) { onOpenGroup(group, group.indexOf(item)) }
                                     ) {
                                         GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = Modifier.fillMaxSize())
                                         val isKept = item.id == keep.id
@@ -136,21 +140,21 @@ fun DuplicatesScreen(
                                             tint = if (isKept) MaterialTheme.colorScheme.primary else Color.White,
                                             modifier = Modifier
                                                 .align(Alignment.TopEnd)
-                                                .padding(6.dp)
+                                                .padding(Spacing.Sm)
                                                 .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(50))
-                                                .clickable { keepChoice[groupKey] = item.id }
+                                                .clickable(role = Role.Button) { keepChoice[groupKey] = item.id }
                                                 .padding(2.dp)
                                         )
                                         if (item.id == best.id) {
                                             Text(
                                                 appString(R.string.duplicates_best),
                                                 color = Color.White,
-                                                fontSize = 11.sp,
+                                                fontSize = AppText.Caption,
                                                 modifier = Modifier
                                                     .align(Alignment.BottomStart)
-                                                    .padding(6.dp)
+                                                    .padding(Spacing.Sm)
                                                     .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(6.dp))
-                                                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                                                    .padding(horizontal = Spacing.Sm, vertical = 1.dp)
                                             )
                                         }
                                     }
@@ -158,7 +162,7 @@ fun DuplicatesScreen(
                                     val resolution = if (item.width != null && item.height != null) "${item.width} x ${item.height}" else null
                                     Text(
                                         listOfNotNull(resolution, sizeText).joinToString(" · "),
-                                        fontSize = 11.sp,
+                                        fontSize = AppText.Caption,
                                         color = Color.Gray,
                                         maxLines = 2,
                                         modifier = Modifier.padding(top = 4.dp)

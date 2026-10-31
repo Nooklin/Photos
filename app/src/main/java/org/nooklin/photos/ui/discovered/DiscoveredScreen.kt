@@ -55,7 +55,10 @@ import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
 
 // Smart albums from detection results, same collage grid as AlbumsScreen
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -118,11 +121,7 @@ fun DiscoveredScreen(
                                 }
                             }
                         }
-                        CircleIconButton(
-                            icon = Icons.Filled.Close,
-                            contentDescription = appString(R.string.common_cancel_selection),
-                            onClick = { exitSelection() }
-                        )
+                        PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                     } else {
                         PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
@@ -143,7 +142,7 @@ fun DiscoveredScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.Lg)
             ) {
                 items(visibleAlbums, key = { it.tagId }) { album ->
                     val selected = album.tagId in selectedTagIds
@@ -164,26 +163,21 @@ fun DiscoveredScreen(
                                 AlbumThumbnail(album.previewItems, size = maxWidth)
                             }
                             if (isSelecting && selected) {
-                                Icon(
-                                    imageVector = Icons.Filled.CheckCircle,
-                                    contentDescription = appString(R.string.common_selected),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-                                )
+                                SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
                             }
                         }
                         Text(
                             album.label,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = AppText.Body,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 6.dp)
+                            modifier = Modifier.padding(top = Spacing.Sm)
                         )
                         Text(
                             appString(R.string.common_items, album.itemCount),
                             color = Color.Gray,
-                            fontSize = 12.sp,
+                            fontSize = AppText.Caption,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

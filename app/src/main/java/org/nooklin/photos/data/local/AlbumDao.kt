@@ -21,11 +21,32 @@ interface AlbumDao {
     @Insert
     suspend fun insertAlbum(album: AlbumEntity): Long
 
+    @Query("UPDATE albums SET coverMediaId = :mediaId WHERE id = :albumId")
+    suspend fun setCover(albumId: Long, mediaId: Long?)
+
     @Query("UPDATE albums SET name = :newName WHERE id = :albumId")
     suspend fun renameAlbum(albumId: Long, newName: String)
 
     @Query("DELETE FROM albums WHERE id = :albumId")
-    suspend fun deleteAlbum(albumId: Long)
+    suspend fun deleteAlbumRow(albumId: Long)
+
+    // The memberships of a deleted album or folder go with the cascade, the photos themselves are never touched
+    @Query("DELETE FROM albums WHERE parentId = :albumId")
+    suspend fun deleteFoldersOf(albumId: Long)
+
+    @Query("SELECT parentId FROM albums WHERE id = :albumId")
+    suspend fun parentOf(albumId: Long): Long?
+
+    // A deleted folder gives its photos to the album it sat in
+    @Transaction
+    suspend fun deleteAlbum(albumId: Long) {
+        parentOf(albumId)?.let { reassignMembership(albumId, it) }
+        deleteFoldersOf(albumId)
+        deleteAlbumRow(albumId)
+    }
+
+    @Query("UPDATE albums SET parentId = :targetAlbumId WHERE parentId = :sourceAlbumId")
+    suspend fun moveFolders(sourceAlbumId: Long, targetAlbumId: Long)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertMembership(membership: AlbumMembershipEntity)
@@ -49,6 +70,8 @@ interface AlbumDao {
     @Transaction
     suspend fun mergeAlbums(sourceAlbumId: Long, targetAlbumId: Long) {
         reassignMembership(sourceAlbumId, targetAlbumId)
+        // The folders of the merged album move to the target, their photos stay in them
+        moveFolders(sourceAlbumId, targetAlbumId)
         deleteAlbum(sourceAlbumId)
     }
 }

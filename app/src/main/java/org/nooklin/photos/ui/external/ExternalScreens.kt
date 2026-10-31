@@ -38,11 +38,14 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.nooklin.photos.ExternalRequest
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.ui.common.VideoPlayerView
 import org.nooklin.photos.ui.common.ZoomableImage
 import org.nooklin.photos.ui.common.freshImageRequest
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.Spacing
 
 // One file opened from another app. Shows only that file, never the library.
 @Composable
@@ -119,7 +122,7 @@ fun ExternalPickScreen(
                         .aspectRatio(1f)
                         .padding(1.dp)
                         .clip(MaterialTheme.shapes.small)
-                        .clickable {
+                        .clickable(role = Role.Button) {
                             if (!allowMultiple) {
                                 onResult(listOf(item.uri))
                             } else {
@@ -134,12 +137,7 @@ fun ExternalPickScreen(
                         modifier = Modifier.fillMaxSize().alpha(if (isSelected) 0.6f else 1f)
                     )
                     if (isSelected) {
-                        Icon(
-                            Icons.Filled.CheckCircle,
-                            contentDescription = appString(R.string.common_selected),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
-                        )
+                        SelectionBadge(Modifier.align(Alignment.TopEnd).padding(Spacing.Sm))
                     }
                 }
             }

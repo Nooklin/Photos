@@ -33,6 +33,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import android.view.LayoutInflater
 import org.nooklin.photos.R
 import org.nooklin.photos.data.VideoTrims
+import org.nooklin.photos.ui.theme.Motion
 
 // ExoPlayer playback for a pager page
 internal fun videoUriOf(model: Any): Uri = when (model) {
@@ -193,13 +194,13 @@ fun VideoPlayerView(
     }
     val posterAlpha by animateFloatAsState(
         targetValue = if (firstFrameRendered) 0f else 1f,
-        animationSpec = tween(150),
+        animationSpec = tween(Motion.Short),
         label = "videoPosterAlpha"
     )
     val currentOnTap by rememberUpdatedState(onTap)
     val videoAlpha by animateFloatAsState(
         targetValue = if (firstFrameRendered) 1f else 0f,
-        animationSpec = tween(150),
+        animationSpec = tween(Motion.Short),
         label = "videoAlpha"
     )
     Box(

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
 
 // Shared by both pickers, identity is MediaItem.id or HiddenItem.file.name
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,17 +101,12 @@ fun <T, K : Any> SelectionGridPickerScreen(
                                 .aspectRatio(1f)
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable {
+                                .clickable(role = Role.Button) {
                                     selectedKeys = if (selected) selectedKeys - itemKey else selectedKeys + itemKey
                                 }
                         )
                         if (selected) {
-                            Icon(
-                                imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = appString(R.string.common_selected),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-                            )
+                            SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
                         }
                     }
                 }

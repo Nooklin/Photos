@@ -38,8 +38,11 @@ import kotlinx.coroutines.delay
 import org.nooklin.photos.data.local.PinAttemptGuard
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.AppText
+import org.nooklin.photos.ui.theme.AppColors
 
-private val AccentBlue = Color(0xFF0A84FF)
+private val AccentBlue = AppColors.AccentBlue
 private const val MIN_PIN_LENGTH = 4
 
 private fun String.isValidPinFormat() = length >= MIN_PIN_LENGTH && all { it.isDigit() }
@@ -141,12 +144,12 @@ fun HiddenPinEntryScreen(
         Text(
             appString(R.string.hidden_pin_screens_forgot_pin),
             color = AccentBlue,
-            modifier = Modifier.padding(top = 16.dp).clickable { onForgotPin() }
+            modifier = Modifier.padding(top = 16.dp).clickable(role = Role.Button) { onForgotPin() }
         )
         Text(
             appString(R.string.common_cancel),
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 8.dp).clickable { onCancel() }
+            modifier = Modifier.padding(top = 8.dp).clickable(role = Role.Button) { onCancel() }
         )
     }
 }
@@ -211,7 +214,7 @@ fun HiddenPinSetupScreen(
         Text(
             appString(R.string.common_cancel),
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 16.dp).clickable { onCancel() }
+            modifier = Modifier.padding(top = 16.dp).clickable(role = Role.Button) { onCancel() }
         )
     }
 }
@@ -230,7 +233,7 @@ fun HiddenPinRecoveryCodeScreen(code: String, onAcknowledged: () -> Unit) {
             code,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.Bold,
-            fontSize = 28.sp,
+            fontSize = AppText.Headline,
             modifier = Modifier.padding(vertical = 16.dp)
         )
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
@@ -300,7 +303,7 @@ fun HiddenPinRecoveryEntryScreen(
         Text(
             appString(R.string.common_cancel),
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 16.dp).clickable { onCancel() }
+            modifier = Modifier.padding(top = 16.dp).clickable(role = Role.Button) { onCancel() }
         )
     }
 }

@@ -30,7 +30,7 @@
 ## Verify
 
 - File: photos-v1.1.0.apk
-- APK SHA-256: 49E0CD8DD8440252DD9630F8C71E182D8C8052F9D5B9A33EAC8DAFB326E2293A
-- Signing certificate SHA-256: 40eb22ac6822635e18d6b65cd2d14c85e459f42dbd0b775927675e2880f9f6a8
+- APK SHA-256: `<paste Get-FileHash output>`
+- Signing certificate SHA-256: `<paste from apksigner verify --print-certs>`
 
 Requires Android 13 or newer.

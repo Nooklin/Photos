@@ -70,7 +70,7 @@ fun SettingsAboutScreen(onOpenChangelog: () -> Unit, onBack: () -> Unit) {
                 listOf(
                     {
                         Row(
-                            Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+                            Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -81,7 +81,7 @@ fun SettingsAboutScreen(onOpenChangelog: () -> Unit, onBack: () -> Unit) {
                     { SettingsNavRow(appString(R.string.settings_about_changelog), Icons.Filled.History) { onOpenChangelog() } }
                 )
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             SettingsGroup(
                 null,
                 listOf(

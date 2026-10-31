@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.Spacing
 
 // State shared by the player and the control bar, they live in different places (pager page and bottom bar)
 @Stable
@@ -61,7 +62,7 @@ fun VideoControlBar(
         modifier = modifier
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = Spacing.Sm, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
@@ -72,7 +73,7 @@ fun VideoControlBar(
                     }
                 },
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(48.dp)
                     .semantics { contentDescription = if (state.isPlaying) appString(R.string.common_pause) else appString(R.string.common_play) }
             ) {
                 Canvas(Modifier.size(22.dp)) {
@@ -87,7 +88,7 @@ fun VideoControlBar(
             IconButton(
                 onClick = { state.isMuted = !state.isMuted },
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(48.dp)
                     .semantics { contentDescription = if (state.isMuted) appString(R.string.video_control_bar_unmute) else appString(R.string.video_control_bar_mute) }
             ) {
                 Canvas(Modifier.size(22.dp)) {

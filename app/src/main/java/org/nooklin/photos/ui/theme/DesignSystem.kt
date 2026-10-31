@@ -26,14 +26,14 @@ val IosTokens = DesignTokens(
     style = DesignStyle.IOS,
     cornerRadius = 10.dp,
     gridSpacing = 2.dp,
-    accentColor = Color(0xFF0A84FF)
+    accentColor = AppColors.AccentBlue
 )
 
 val AndroidTokens = DesignTokens(
     style = DesignStyle.ANDROID,
     cornerRadius = 16.dp,
     gridSpacing = 4.dp,
-    accentColor = Color(0xFF6750A4)
+    accentColor = AppColors.AndroidAccent
 )
 
 val LocalDesignTokens = staticCompositionLocalOf { IosTokens }
@@ -48,7 +48,7 @@ fun NooklinTheme(
     style: DesignStyle,
     darkTheme: Boolean = isSystemInDarkTheme(),
     contrastColor: ContrastColor = ContrastColor.DEFAULT,
-    appFont: AppFont = AppFont.SYSTEM_DEFAULT,
+    appFont: AppFont = AppFont.INTER,
     blackMode: Boolean = false,
     content: @Composable () -> Unit
 ) {

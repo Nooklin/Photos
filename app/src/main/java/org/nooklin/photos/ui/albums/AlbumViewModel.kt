@@ -34,6 +34,15 @@ class AlbumViewModel(application: Application) :
     }
 
     fun createAlbum(name: String, onCreated: (Long) -> Unit = {}) = create(name, onCreated)
+    fun createFolder(parentId: Long, name: String) {
+        viewModelScope.launch { repository.createFolder(parentId, name) }
+    }
+
+    // Null goes back to the newest photo
+    fun setCover(albumId: Long, mediaId: Long?) {
+        viewModelScope.launch { repository.setCover(albumId, mediaId) }
+    }
+
     fun renameAlbum(albumId: Long, newName: String) = rename(albumId, newName)
     fun addToAlbum(albumId: Long, mediaId: Long) = addToCollection(albumId, mediaId)
 
@@ -69,5 +78,9 @@ data class AlbumWithPreview(
     val id: Long,
     val name: String,
     val itemCount: Int,
-    val previewItems: List<MediaItem>
+    val previewItems: List<MediaItem>,
+    // Set for a folder, the id of its album
+    val parentId: Long? = null,
+    // Folders inside this album, shown in the delete warning
+    val folderCount: Int = 0
 )

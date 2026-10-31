@@ -22,8 +22,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.Spacing
 
 private class ChangelogCategory(@param:StringRes val title: Int, val items: List<Int>)
+
+// What is new in 1.2.0, grouped by the part of the app
+private val changelog120 = listOf(
+    ChangelogCategory(
+        R.string.changelog_cat_editing,
+        listOf(R.string.changelog_120_1, R.string.changelog_120_2, R.string.changelog_120_3, R.string.changelog_120_4)
+    ),
+    ChangelogCategory(R.string.changelog_cat_library, listOf(R.string.changelog_120_5, R.string.changelog_120_6, R.string.changelog_120_7, R.string.changelog_120_8, R.string.changelog_120_10, R.string.changelog_120_11, R.string.changelog_120_12, R.string.changelog_120_13, R.string.changelog_120_14, R.string.changelog_120_15, R.string.changelog_120_16, R.string.changelog_120_17, R.string.changelog_120_18, R.string.changelog_120_19, R.string.changelog_120_20, R.string.changelog_120_21, R.string.changelog_120_22, R.string.changelog_120_23, R.string.changelog_120_24, R.string.changelog_120_25, R.string.changelog_120_26, R.string.changelog_120_27, R.string.changelog_120_28)),
+    ChangelogCategory(R.string.common_hidden_section, listOf(R.string.changelog_120_9))
+)
 
 // What is new in 1.1.0, grouped by the part of the app
 private val changelog110 = listOf(
@@ -57,18 +68,28 @@ fun SettingsChangelogScreen(onBack: () -> Unit) {
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-            changelog110.forEach { category ->
-                SettingsGroup(
-                    appString(category.title),
-                    category.items.map { id ->
-                        @Composable {
-                            Text(
-                                appString(id),
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-                            )
-                        }
-                    }
+            listOf(
+                R.string.changelog_version_120 to changelog120,
+                R.string.changelog_version_110 to changelog110
+            ).forEach { (versionTitle, categories) ->
+                Text(
+                    appString(versionTitle),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                 )
+                categories.forEach { category ->
+                    SettingsGroup(
+                        appString(category.title),
+                        category.items.map { id ->
+                            @Composable {
+                                Text(
+                                    appString(id),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = Spacing.Md)
+                                )
+                            }
+                        }
+                    )
+                }
             }
             Spacer(Modifier.height(24.dp))
         }

@@ -44,6 +44,9 @@ import org.nooklin.photos.data.local.ShareStripOptions
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
 
 // The settings that change what the app does, read live so the How To always matches this device
 data class HowToState(
@@ -282,10 +285,10 @@ private fun styled(text: String, terms: List<String>): AnnotatedString {
     }
 }
 
-// Numbered steps stay one line each, other text is cut into short paragraphs of two sentences
+// Numbered steps and bullets stay one line each, other text is cut into short paragraphs of two sentences
 private fun paragraphs(text: String): List<String> =
     text.split("\n").flatMap { line ->
-        if (line.firstOrNull()?.isDigit() == true) listOf(line) else line.split(sentenceSplit).chunked(2).map { it.joinToString(" ") }
+        if (line.firstOrNull()?.isDigit() == true || line.startsWith("•")) listOf(line) else line.split(sentenceSplit).chunked(2).map { it.joinToString(" ") }
     }.map { it.trim() }.filter { it.isNotEmpty() }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -328,7 +331,7 @@ fun SettingsHowToScreen(
     ) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(Spacing.Md)
         ) {
             groups.forEach { group ->
                 Surface(
@@ -368,8 +371,8 @@ private fun TreeRow(title: String, expanded: Boolean, fontSize: Int, startPaddin
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(start = startPadding.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = startPadding.dp, end = 12.dp, top = Spacing.Lg, bottom = Spacing.Lg),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(title, fontSize = fontSize.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -383,7 +386,7 @@ private fun TreeRow(title: String, expanded: Boolean, fontSize: Int, startPaddin
 @Composable
 private fun TopicBody(topic: HowToTopic, terms: List<String>, onOpenSetting: (String) -> Unit) {
     Column(
-        Modifier.fillMaxWidth().padding(start = 28.dp, end = 16.dp, bottom = 16.dp),
+        Modifier.fillMaxWidth().padding(start = Spacing.Xl, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         paragraphs(topic.text).forEach { paragraph -> Text(styled(paragraph, terms)) }
@@ -412,7 +415,7 @@ private fun TopicBody(topic: HowToTopic, terms: List<String>, onOpenSetting: (St
                         Text(
                             if (link.on) appString(R.string.settings_how_to_on) else appString(R.string.settings_how_to_off),
                             color = if (link.on) MaterialTheme.colorScheme.primary else Color.Gray,
-                            fontSize = 13.sp,
+                            fontSize = AppText.Body,
                             fontWeight = FontWeight.Bold
                         )
                     }

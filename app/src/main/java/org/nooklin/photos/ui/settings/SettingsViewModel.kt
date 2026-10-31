@@ -51,7 +51,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     val appFont: StateFlow<AppFont> = preferences.appFont
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppFont.SYSTEM_DEFAULT)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppFont.INTER)
 
     fun setAppFont(font: AppFont) {
         viewModelScope.launch { preferences.setAppFont(font) }

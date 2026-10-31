@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
 
 // One row in a "pick an existing X" dialog list, with its own pill outline
 @Composable
@@ -27,7 +28,7 @@ fun PillListRow(
             .padding(vertical = 4.dp)
             .clip(GlassPill.shape)
             .border(BorderStroke(1.dp, contentColor.copy(alpha = 0.25f)), GlassPill.shape)
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Text(label, color = contentColor)

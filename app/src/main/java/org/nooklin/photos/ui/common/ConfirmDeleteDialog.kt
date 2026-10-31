@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
 
 @Composable
 fun ConfirmDeleteDialog(
@@ -42,7 +43,7 @@ fun ConfirmDeleteDialog(
                     .clip(GlassPill.shape)
                     .background(Color.Gray.copy(alpha = 0.15f))
                     .border(BorderStroke(1.dp, Color.Gray.copy(alpha = 0.25f)), GlassPill.shape)
-                    .clickable(onClick = onConfirm)
+                    .clickable(role = Role.Button, onClick = onConfirm)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(confirmLabel, color = GlassPill.destructiveText)

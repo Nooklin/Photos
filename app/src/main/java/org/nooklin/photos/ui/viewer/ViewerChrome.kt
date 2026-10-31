@@ -35,6 +35,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.AppText
 
 val ViewerPillHeight = 48.dp
 
@@ -94,8 +96,8 @@ fun DateTimePill(
             modifier = Modifier.height(ViewerPillHeight).padding(horizontal = 16.dp)
         ) {
             // Explicit line heights: the inherited 24sp line height made the two lines far taller than the text.
-            Text(dateLabel, color = contentColor, fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
-            Text(timeLabel, color = contentColor.copy(alpha = 0.8f), fontSize = 11.sp, lineHeight = 14.sp)
+            Text(dateLabel, color = contentColor, fontSize = AppText.Body, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
+            Text(timeLabel, color = contentColor.copy(alpha = 0.8f), fontSize = AppText.Caption, lineHeight = 14.sp)
         }
     }
 }
@@ -135,7 +137,7 @@ fun PhotoFilmstrip(
                             Modifier
                         }
                     )
-                    .clickable { onSelect(index) }
+                    .clickable(role = Role.Button) { onSelect(index) }
             )
         }
     }

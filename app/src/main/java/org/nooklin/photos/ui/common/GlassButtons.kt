@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
 
 // The Library style, used by every screen: round glass button and glass pill with a text.
 // Select, the "..." menu and the close button of a selection all use these.
@@ -36,7 +37,7 @@ fun CircleIconButton(
             .clip(CircleShape)
             .background(background)
             .border(GlassPill.adaptiveBorder, CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = contentDescription)
@@ -44,17 +45,17 @@ fun CircleIconButton(
 }
 
 @Composable
-fun PillButton(text: String, onClick: () -> Unit) {
+fun PillButton(text: String, onClick: () -> Unit, color: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified) {
     Box(
         Modifier
             .padding(4.dp)
             .clip(GlassPill.shape)
             .background(GlassPill.adaptivePopupBackground)
             .border(GlassPill.adaptiveBorder, GlassPill.shape)
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Text(text)
+        Text(text, color = color)
     }
 }
 

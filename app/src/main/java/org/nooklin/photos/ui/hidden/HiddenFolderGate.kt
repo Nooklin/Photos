@@ -26,6 +26,8 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.AppColors
 
 // BiometricPrompt with BIOMETRIC_STRONG or DEVICE_CREDENTIAL, the fallback is the phone's own lock
 @Composable
@@ -86,17 +88,17 @@ fun HiddenFolderGate(
                 Text(statusText, color = MaterialTheme.colorScheme.onBackground)
                 Text(
                     appString(R.string.hidden_folder_gate_tap_to_retry),
-                    color = Color(0xFF0A84FF),
+                    color = AppColors.AccentBlue,
                     modifier = Modifier
                         .padding(top = 12.dp)
-                        .clickable { retryCount++ }
+                        .clickable(role = Role.Button) { retryCount++ }
                 )
                 Text(
                     appString(R.string.common_cancel),
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
                         .padding(top = 8.dp)
-                        .clickable { onCancelled() }
+                        .clickable(role = Role.Button) { onCancelled() }
                 )
             }
         } else {

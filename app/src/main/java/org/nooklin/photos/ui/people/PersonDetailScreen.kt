@@ -71,7 +71,11 @@ import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.GlassPillTextField
 import org.nooklin.photos.ui.common.PillListRow
 import org.nooklin.photos.R
+import org.nooklin.photos.ui.common.deleteWording
+import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.common.EmptyState
 
 // A person's photos: rename like an album, select-mode actions like DiscoveredDetailScreen
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -128,7 +132,7 @@ fun PersonDetailScreen(
                         Text(
                             appString(R.string.person_detail_tap_to_name, displayName),
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { showRenameDialog = true }
+                            modifier = Modifier.clickable(role = Role.Button) { showRenameDialog = true }
                         )
                     } else {
                         Text(displayName, fontWeight = FontWeight.Bold)
@@ -192,11 +196,7 @@ fun PersonDetailScreen(
                                 }
                             }
                         }
-                        CircleIconButton(
-                            icon = Icons.Filled.Close,
-                            contentDescription = appString(R.string.common_cancel_selection),
-                            onClick = { exitSelection() }
-                        )
+                        PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                     } else {
                         PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                         CircleIconButton(
@@ -237,7 +237,7 @@ fun PersonDetailScreen(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(appString(R.string.common_no_photos_here))
+                EmptyState(message = appString(R.string.common_no_photos_here), actionLabel = appString(R.string.common_back), onAction = onBack)
             }
         } else {
             LazyVerticalGrid(
@@ -275,12 +275,7 @@ fun PersonDetailScreen(
                             )
                         }
                         if (isSelecting && selected) {
-                            Icon(
-                                imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = appString(R.string.common_selected),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-                            )
+                            SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
                         }
                     }
                 }
@@ -338,7 +333,7 @@ fun PersonDetailScreen(
                                 headlineContent = { Text(entry.label) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .clickable(role = Role.Button) {
                                         onMergeWith(entry.id)
                                         showMergeDialog = false
                                     }
@@ -386,15 +381,11 @@ fun PersonDetailScreen(
     }
 
     if (showDeleteConfirm) {
-        val count = selectedIds.size
+        val wording = deleteWording(photos.filter { it.id in selectedIds }.map { it.isVideo })
         ConfirmDeleteDialog(
             title = appString(R.string.common_move_to_recycle_bin_2),
-            text = if (count == 1) {
-                appString(R.string.common_this_photo_will_be_deleted)
-            } else {
-                appString(R.string.common_these_photos_will_be_deleted)
-            },
-            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
+            text = wording.text,
+            confirmLabel = wording.confirmLabel,
             onConfirm = {
                 showDeleteConfirm = false
                 photos.filter { it.id in selectedIds }.forEach { onMoveToRecycleBin(it) }

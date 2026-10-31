@@ -12,7 +12,8 @@ fun NavGraphBuilder.settingsNavGraph(
     navController: NavController,
     settingsViewModel: SettingsViewModel,
     galleryViewModel: GalleryViewModel,
-    onOpenHiddenBackup: () -> Unit
+    onOpenHiddenBackup: () -> Unit,
+    onOpenHiddenImport: () -> Unit
 ) {
     composable(ROUTE_SETTINGS) {
         SettingsScreen(
@@ -109,9 +110,20 @@ fun NavGraphBuilder.settingsNavGraph(
             onNavigate = { sub ->
                 if (sub == "hiddenbackup") {
                     onOpenHiddenBackup()
+                } else if (sub == "hiddenimport") {
+                    onOpenHiddenImport()
                 } else {
                     navController.navigate("settings/$sub")
                 }
+            },
+            onBack = { navController.popBackStack() }
+        )
+    }
+    composable("settings/hiddenbackupimport") {
+        SettingsBackupImportScreen(
+            hidden = true,
+            onNavigate = { sub ->
+                if (sub == "hiddenbackup") onOpenHiddenBackup() else onOpenHiddenImport()
             },
             onBack = { navController.popBackStack() }
         )

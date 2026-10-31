@@ -17,20 +17,22 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.nooklin.photos.ui.theme.LocalContrastColorState
+import org.nooklin.photos.ui.theme.AppColors
+import androidx.compose.ui.graphics.luminance
 
 // Shared glass pill styling, fixed and adaptive backgrounds use different opacity
 object GlassPill {
     val shape: Shape = RoundedCornerShape(24.dp)
 
     val fixedGlassBackground: Color = Color.White.copy(alpha = 0.1f)
-    val fixedPopupBackground: Color = Color(0xFF1C1C1E).copy(alpha = 0.94f)
+    val fixedPopupBackground: Color = AppColors.PopupDark.copy(alpha = 0.94f)
 
     val adaptiveGlassBackground: Color
         @Composable get() {
             val contrast = LocalContrastColorState.current
             if (contrast.isBlackMode) {
                 // Dark grey: true black would hide the edge of a subtle card
-                return Color(0xFF1C1C1E).copy(alpha = 0.9f)
+                return AppColors.PopupDark.copy(alpha = 0.9f)
             }
             return if (contrast.color != null) {
                 // Tinted glass in both themes, low alpha because it sits over photos
@@ -46,7 +48,7 @@ object GlassPill {
             val contrast = LocalContrastColorState.current
             if (contrast.isBlackMode) {
                 // Dark grey, near opaque for readable rows and dialogs
-                return Color(0xFF1C1C1E).copy(alpha = 0.97f)
+                return AppColors.PopupDark.copy(alpha = 0.97f)
             }
             return if (contrast.color != null) {
                 // Popups stay near opaque: blend the color into the surface, a low-alpha tint looks washed out
@@ -59,8 +61,13 @@ object GlassPill {
     val adaptiveBorder: BorderStroke
         @Composable get() = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 
-    // iOS system red for destructive text
-    val destructiveText: Color = Color(0xFFFF3B30)
+    // Destructive text: the iOS red on dark grounds, a darker red on light grounds so it reaches 4.5:1
+    val destructiveText: Color
+        @Composable get() = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
+            AppColors.DestructiveButton
+        } else {
+            AppColors.DestructiveText
+        }
 }
 
 @Composable

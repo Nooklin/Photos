@@ -74,6 +74,8 @@ import org.nooklin.photos.data.createShareUris
 import org.nooklin.photos.data.saveToFolder
 import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.ui.common.GlassPill
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.Spacing
 
 // Share sheet for the Library selection: share, save to a folder, export the originals, copy
 @OptIn(ExperimentalMaterial3Api::class)
@@ -236,14 +238,14 @@ fun ShareSelectionSheet(
                 }
             }
 
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.Sm)) {
                 items(selectedItems, key = { it.id }) { item ->
                     val isIncluded = item.id in included
                     Box(
                         Modifier
                             .size(72.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable(enabled = !busy) {
+                            .clickable(enabled = !busy, role = Role.Button) {
                                 included = if (isIncluded) included - item.id else included + item.id
                             }
                     ) {
@@ -272,7 +274,7 @@ fun ShareSelectionSheet(
                             Modifier
                                 .width(64.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable(enabled = canAct) { startShare(ShareMode.APP, app) }
+                                .clickable(enabled = canAct, role = Role.Button) { startShare(ShareMode.APP, app) }
                                 .padding(vertical = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
@@ -347,7 +349,7 @@ private fun ShareActionRow(icon: ImageVector, text: String, enabled: Boolean, on
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
             .alpha(if (enabled) 1f else 0.4f)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = Spacing.Lg),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null)

@@ -12,6 +12,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -36,12 +38,15 @@ fun SettingsRadioRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
+            .heightIn(min = 44.dp)
             .clickable(role = Role.RadioButton) { onClick() }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        RadioButton(selected = selected, onClick = onClick)
+        // The row is the touch target, the 48 dp the button asks for would make the row taller than the main menu rows
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+            RadioButton(selected = selected, onClick = onClick)
+        }
         Text(label, fontFamily = fontFamily, modifier = Modifier.padding(start = 8.dp))
     }
 }
@@ -57,9 +62,9 @@ fun SettingsToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
+            .heightIn(min = 44.dp)
             .clickable(role = Role.Switch, enabled = enabled) { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -72,6 +77,8 @@ fun SettingsToggleRow(
             )
             Text(label, color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f))
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+            Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        }
     }
 }

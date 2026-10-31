@@ -42,6 +42,9 @@ import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.GlassPillTextField
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,13 +89,13 @@ fun PetsScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.Lg)
             ) {
                 items(pets, key = { it.id }) { pet ->
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .clickable { onPetClick(pet.id) }
+                            .clickable(role = Role.Button) { onPetClick(pet.id) }
                     ) {
                         BoxWithConstraints(Modifier.fillMaxWidth()) {
                             AlbumThumbnail(pet.previewItems, size = maxWidth)
@@ -100,15 +103,15 @@ fun PetsScreen(
                         Text(
                             pet.name,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = AppText.Body,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 6.dp)
+                            modifier = Modifier.padding(top = Spacing.Sm)
                         )
                         Text(
                             appString(R.string.common_items, pet.itemCount),
                             color = Color.Gray,
-                            fontSize = 12.sp,
+                            fontSize = AppText.Caption,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

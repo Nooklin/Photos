@@ -45,6 +45,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.common.TouchTargetBox
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,6 +115,7 @@ fun SettingsAppearanceScreen(
             SettingsGroup(
                 appString(R.string.settings_appearance_font),
                 listOf(
+                    AppFont.INTER to AppFont.INTER.label,
                     AppFont.SYSTEM_DEFAULT to AppFont.SYSTEM_DEFAULT.label,
                     AppFont.WORK_SANS to AppFont.WORK_SANS.label
                 ).map { (font, label) ->
@@ -148,36 +151,37 @@ fun SettingsAppearanceScreen(
 // DEFAULT is an outlined circle, not a filled swatch: it means "no tint"
 @Composable
 private fun ContrastColorSwatch(option: ContrastColor, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .padding(4.dp)
-            .size(40.dp)
-            .clip(CircleShape)
-            .then(
-                if (option.color != null) {
-                    Modifier.background(option.color)
-                } else {
-                    Modifier
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                }
-            )
-            .then(
-                if (selected) {
-                    Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                } else {
-                    Modifier
-                }
-            )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        if (selected) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = appString(R.string.common_selected),
-                tint = if (option.color != null) Color.White else MaterialTheme.colorScheme.onSurface
-            )
+    TouchTargetBox(onClick = onClick, role = Role.RadioButton) { feedback ->
+        Box(
+            Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .then(feedback)
+                .then(
+                    if (option.color != null) {
+                        Modifier.background(option.color)
+                    } else {
+                        Modifier
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    }
+                )
+                .then(
+                    if (selected) {
+                        Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                    } else {
+                        Modifier
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = appString(R.string.common_selected),
+                    tint = if (option.color != null) Color.White else MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }

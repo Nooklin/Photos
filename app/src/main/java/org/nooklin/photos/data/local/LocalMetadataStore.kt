@@ -2,6 +2,7 @@ package org.nooklin.photos.data.local
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -16,9 +17,27 @@ private object Keys {
     val RECYCLE_BIN_ENTRIES = stringSetPreferencesKey("recycle_bin_entries") // "id|uri|deletedAt"
     val SORT_DATES = stringSetPreferencesKey("sort_date_overrides") // "mediaId|dateAddedSeconds"
     val EDITED_COPIES = stringSetPreferencesKey("edited_copies") // mediaId of each copy saved by the editor
+    val FAVORITES_COVER = stringPreferencesKey("favorites_cover") // mediaId of the chosen big photo of Favorites
+    val HIDDEN_FAVORITES_COVER = stringPreferencesKey("hidden_favorites_cover") // file name of the chosen big photo of Hidden Favorites
 }
 
 class LocalMetadataStore(private val context: Context) {
+
+    // The big photo at the top of Favorites, null means the newest favorite
+    val favoritesCover: Flow<Long?> = context.dataStore.data.map { it[Keys.FAVORITES_COVER]?.toLongOrNull() }
+    val hiddenFavoritesCover: Flow<String?> = context.dataStore.data.map { it[Keys.HIDDEN_FAVORITES_COVER] }
+
+    suspend fun setFavoritesCover(mediaId: Long?) {
+        context.dataStore.edit { prefs ->
+            if (mediaId == null) prefs.remove(Keys.FAVORITES_COVER) else prefs[Keys.FAVORITES_COVER] = mediaId.toString()
+        }
+    }
+
+    suspend fun setHiddenFavoritesCover(fileName: String?) {
+        context.dataStore.edit { prefs ->
+            if (fileName == null) prefs.remove(Keys.HIDDEN_FAVORITES_COVER) else prefs[Keys.HIDDEN_FAVORITES_COVER] = fileName
+        }
+    }
 
     data class RecycleBinEntry(
         val mediaId: Long,

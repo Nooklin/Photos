@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +61,7 @@ fun AlbumMergeScreen(
                     supportingContent = { Text(appString(R.string.common_items, album.itemCount)) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { pendingTarget = album }
+                        .clickable(role = Role.Button) { pendingTarget = album }
                 )
             }
         }

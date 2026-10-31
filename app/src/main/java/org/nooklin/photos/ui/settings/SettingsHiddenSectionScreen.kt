@@ -4,11 +4,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.PhotoAlbum
@@ -59,17 +62,28 @@ fun SettingsHiddenSectionScreen(
                     modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp)
                 )
                 SettingsGroup(
-                    appString(R.string.settings_hidden_section_hidden_section_settings),
+                    appString(R.string.settings_hidden_group_security),
                     listOf(
-                        { SettingsNavRow(appString(R.string.common_hidden_albums), Icons.Filled.PhotoAlbum) { onNavigate("hiddenalbums") } },
-                        { SettingsNavRow(appString(R.string.common_hidden_image_sharing), Icons.Filled.Share) { onNavigate("hiddensharing") } },
                         {
                             SettingsNavRow(
                                 if (hiddenPinSet) appString(R.string.settings_hidden_section_extra_pin_on) else appString(R.string.settings_hidden_section_extra_pin_off),
                                 Icons.Filled.Password
                             ) { onNavigate("hiddensection/hidden_pin") }
-                        },
-                        { SettingsNavRow(appString(R.string.common_hidden_photos_backup), Icons.Filled.CloudUpload) { onNavigate("hiddenbackup") } }
+                        }
+                    )
+                )
+                SettingsGroup(
+                    appString(R.string.settings_hidden_group_display),
+                    listOf(
+                        { SettingsNavRow(appString(R.string.common_hidden_albums), Icons.Filled.PhotoAlbum) { onNavigate("hiddenalbums") } },
+                        { SettingsNavRow(appString(R.string.common_hidden_image_sharing), Icons.Filled.Share) { onNavigate("hiddensharing") } }
+                    )
+                )
+                Spacer(Modifier.height(8.dp))
+                SettingsGroup(
+                    null,
+                    listOf(
+                        { SettingsNavRow(appString(R.string.settings_backup_import_row), Icons.Filled.CloudUpload) { onNavigate("hiddenbackupimport") } }
                     )
                 )
             }

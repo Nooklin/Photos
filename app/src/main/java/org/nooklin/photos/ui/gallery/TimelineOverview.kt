@@ -44,6 +44,8 @@ import org.nooklin.photos.appString
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.freshImageRequest
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.theme.AppText
 
 // Years and Months give an overview with one photo per period, All is the normal Library grid
 enum class TimelineMode { YEARS, MONTHS, ALL }
@@ -114,7 +116,7 @@ fun TimelineOverview(
                 Modifier
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { if (months) onOpenMonth(period.firstItemId) else onOpenYear(period.year) }
+                    .clickable(role = Role.Button) { if (months) onOpenMonth(period.firstItemId) else onOpenYear(period.year) }
             ) {
                 AsyncImage(
                     model = freshImageRequest(context, period.cover.uri, period.cover.dateModified),
@@ -136,7 +138,7 @@ fun TimelineOverview(
                             fontWeight = FontWeight.Bold,
                             fontSize = if (months) 15.sp else 22.sp
                         )
-                        Text(appString(R.string.common_items, period.count), color = Color.White, fontSize = 12.sp)
+                        Text(appString(R.string.common_items, period.count), color = Color.White, fontSize = AppText.Caption)
                     }
                 }
             }
@@ -165,7 +167,7 @@ fun TimelineBar(selected: TimelineMode, onSelect: (TimelineMode) -> Unit, modifi
                     Modifier
                         .clip(CircleShape)
                         .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f) else Color.Transparent)
-                        .clickable { onSelect(mode) }
+                        .clickable(role = Role.Button) { onSelect(mode) }
                         .height(48.dp)
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.Center

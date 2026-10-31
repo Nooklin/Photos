@@ -35,6 +35,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.nooklin.photos.R
@@ -104,12 +107,7 @@ fun GroupSelectableCell(
         content()
         if (selected) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
-            Icon(
-                Icons.Filled.CheckCircle,
-                contentDescription = appString(R.string.common_selected),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-            )
+            SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
         }
     }
 }
@@ -181,11 +179,7 @@ fun GroupSelectionActions(selection: GroupSelection, items: List<MediaItem>, act
             }
         }
         }
-        CircleIconButton(
-            icon = Icons.Filled.Close,
-            contentDescription = appString(R.string.common_cancel_selection),
-            onClick = { selection.exit() }
-        )
+        PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { selection.exit() })
     }
 
     if (showShare) {
@@ -233,15 +227,11 @@ fun GroupSelectionActions(selection: GroupSelection, items: List<MediaItem>, act
     }
 
     if (showDelete) {
-        val count = chosen.size
+        val wording = deleteWording(chosen.map { it.isVideo })
         ConfirmDeleteDialog(
             title = appString(R.string.common_move_to_recycle_bin_2),
-            text = if (count == 1) {
-                appString(R.string.common_this_photo_will_be_deleted)
-            } else {
-                appString(R.string.common_these_photos_will_be_deleted)
-            },
-            confirmLabel = if (count == 1) appString(R.string.common_delete_photo) else appString(R.string.common_delete_photos, count),
+            text = wording.text,
+            confirmLabel = wording.confirmLabel,
             onConfirm = {
                 showDelete = false
                 chosen.forEach { actions.onMoveToRecycleBin(it) }
@@ -256,3 +246,22 @@ fun GroupSelectionActions(selection: GroupSelection, items: List<MediaItem>, act
 @Composable
 fun groupSelectionTitle(selection: GroupSelection, normal: String): String =
     if (selection.isSelecting) appString(R.string.share_sheet_selected, selection.selectedIds.size) else normal
+
+// Check mark of a selected photo or album: a white ring behind the colored circle, so it stays visible on any photo
+@androidx.compose.runtime.Composable
+fun SelectionBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(26.dp)
+            .shadow(2.dp, CircleShape)
+            .background(Color.White, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            Icons.Filled.CheckCircle,
+            contentDescription = appString(R.string.common_selected),
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}

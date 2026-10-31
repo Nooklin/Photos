@@ -40,6 +40,7 @@ import org.nooklin.photos.ml.PhotoAnalysisScanner
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.AppText
 
 // Content scrolls: with all tag rows it overflows a typical screen
 private fun iconFor(tag: MlTag): ImageVector = when (tag) {
@@ -106,7 +107,7 @@ fun SettingsMachineLearningScreen(
             Text(
                 appString(R.string.settings_machine_learning_machine_learning_takes_place_entirely),
                 color = Color.Gray,
-                fontSize = 13.sp,
+                fontSize = AppText.Body,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
 
@@ -131,7 +132,7 @@ fun SettingsMachineLearningScreen(
                 Text(
                     appString(R.string.settings_machine_learning_scans_your_library_on_this),
                     color = Color.Gray,
-                    fontSize = 13.sp,
+                    fontSize = AppText.Body,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
                 )
                 Button(
@@ -145,7 +146,7 @@ fun SettingsMachineLearningScreen(
                     Text(
                         appString(R.string.settings_machine_learning_turn_on_at_least_one),
                         color = Color.Gray,
-                        fontSize = 12.sp,
+                        fontSize = AppText.Caption,
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
                     )
                 }
@@ -157,7 +158,7 @@ fun SettingsMachineLearningScreen(
                     Text(
                         appString(R.string.settings_machine_learning_text, scanProgress.processed, scanProgress.total),
                         color = Color.Gray,
-                        fontSize = 12.sp,
+                        fontSize = AppText.Caption,
                         modifier = Modifier.padding(start = 16.dp)
                     )
                 }
@@ -165,7 +166,7 @@ fun SettingsMachineLearningScreen(
                     Text(
                         appString(R.string.settings_machine_learning_scan_complete),
                         color = Color.Gray,
-                        fontSize = 12.sp,
+                        fontSize = AppText.Caption,
                         modifier = Modifier.padding(start = 16.dp, top = 8.dp)
                     )
                 }
@@ -174,7 +175,7 @@ fun SettingsMachineLearningScreen(
                 Text(
                     appString(R.string.settings_machine_learning_clears_everything_detected_so_far),
                     color = Color.Gray,
-                    fontSize = 13.sp,
+                    fontSize = AppText.Body,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
                 )
                 OutlinedButton(

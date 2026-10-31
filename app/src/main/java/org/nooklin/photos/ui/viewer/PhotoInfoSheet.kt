@@ -19,13 +19,14 @@ import org.nooklin.photos.data.PhotoMetadata
 import org.nooklin.photos.data.formatFileSize
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.ui.theme.Spacing
 
 // Only fields with real data: no lens name (Apple infers it), no geocoded location (needs network)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoInfoSheet(metadata: PhotoMetadata, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = Spacing.Lg, vertical = 8.dp)) {
             Text(
                 appString(R.string.photo_info_sheet_u, metadata.weekdayDateLabel, metadata.timeLabel),
                 fontWeight = FontWeight.Medium
@@ -102,7 +103,7 @@ fun PhotoInfoSheet(metadata: PhotoMetadata, onDismiss: () -> Unit) {
                     tonalElevation = 2.dp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 20.dp)
+                        .padding(top = 12.dp, bottom = Spacing.Lg)
                 ) {
                     Text(coords, modifier = Modifier.padding(16.dp))
                 }

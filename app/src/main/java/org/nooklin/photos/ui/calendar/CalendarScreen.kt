@@ -44,15 +44,23 @@ import java.util.Locale
 import kotlinx.coroutines.launch
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.data.HiddenItem
 import org.nooklin.photos.data.MediaItem
+import org.nooklin.photos.ui.common.freshImageRequest
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil3.compose.AsyncImage
 import org.nooklin.photos.ui.common.GridThumbnail
 import org.nooklin.photos.ui.common.zoomBackdropSource
 import org.nooklin.photos.ui.common.zoomSource
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.common.EmptyState
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
 
 private fun dayKey(year: Int, month: Int, day: Int) = year * 10000 + month * 100 + day
 
 // Month per page, swipe left and right. A day with photos shows the first photo of that day, a tap opens the day.
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CalendarScreen(
     items: List<MediaItem>,
@@ -61,10 +69,53 @@ fun CalendarScreen(
     onOpenDay: (List<MediaItem>) -> Unit
 ) {
     // Same date as the Library headers and the timeline (dateAdded, seconds)
+    CalendarContent(
+        items = items,
+        timeMillis = { it.dateAdded * 1000L },
+        zoomKey = { it.id },
+        onBack = onBack,
+        onOpenDay = onOpenDay
+    ) { item, modifier -> GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = modifier) }
+}
+
+// Same calendar for the Hidden Section: the day is the date the photo was hidden (or its original date after an import)
+@Composable
+fun HiddenCalendarScreen(
+    items: List<HiddenItem>,
+    onBack: () -> Unit,
+    onOpenDay: (List<HiddenItem>) -> Unit
+) {
+    val context = LocalContext.current
+    CalendarContent(
+        items = items,
+        timeMillis = { it.hiddenAt },
+        zoomKey = { it.file.absolutePath },
+        onBack = onBack,
+        onOpenDay = onOpenDay
+    ) { item, modifier ->
+        AsyncImage(
+            model = freshImageRequest(context, item.thumbnailFile, item.thumbnailFile.lastModified()),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun <T> CalendarContent(
+    items: List<T>,
+    timeMillis: (T) -> Long,
+    zoomKey: (T) -> Any,
+    onBack: () -> Unit,
+    onOpenDay: (List<T>) -> Unit,
+    thumbnail: @Composable (T, Modifier) -> Unit
+) {
     val byDay = remember(items) {
         val calendar = Calendar.getInstance()
         items.groupBy { item ->
-            calendar.timeInMillis = item.dateAdded * 1000L
+            calendar.timeInMillis = timeMillis(item)
             dayKey(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
         }
     }
@@ -96,7 +147,7 @@ fun CalendarScreen(
     Scaffold(modifier = Modifier.zoomBackdropSource()) { padding ->
         if (months.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(appString(R.string.category_nothing_here_yet))
+                EmptyState(message = appString(R.string.category_nothing_here_yet), actionLabel = appString(R.string.common_back), onAction = onBack)
             }
             return@Scaffold
         }
@@ -128,14 +179,21 @@ fun CalendarScreen(
             )
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 val (pageYear, pageMonth) = months[page]
-                MonthPage(pageYear, pageMonth, byDay, onOpenDay)
+                MonthPage(pageYear, pageMonth, byDay, zoomKey, onOpenDay, thumbnail)
             }
         }
     }
 }
 
 @Composable
-private fun MonthPage(year: Int, month: Int, byDay: Map<Int, List<MediaItem>>, onOpenDay: (List<MediaItem>) -> Unit) {
+private fun <T> MonthPage(
+    year: Int,
+    month: Int,
+    byDay: Map<Int, List<T>>,
+    zoomKey: (T) -> Any,
+    onOpenDay: (List<T>) -> Unit,
+    thumbnail: @Composable (T, Modifier) -> Unit
+) {
     val firstDay = remember(year, month) { Calendar.getInstance().apply { clear(); set(year, month, 1) } }
     val firstDayOfWeek = Calendar.getInstance().firstDayOfWeek
     val offset = (firstDay.get(Calendar.DAY_OF_WEEK) - firstDayOfWeek + 7) % 7
@@ -155,7 +213,7 @@ private fun MonthPage(year: Int, month: Int, byDay: Map<Int, List<MediaItem>>, o
                 Text(
                     weekdays[weekday],
                     color = Color.Gray,
-                    fontSize = 12.sp,
+                    fontSize = AppText.Caption,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -168,7 +226,7 @@ private fun MonthPage(year: Int, month: Int, byDay: Map<Int, List<MediaItem>>, o
                     val day = row * 7 + column - offset + 1
                     Box(Modifier.weight(1f).aspectRatio(1f).padding(2.dp)) {
                         if (day in 1..daysInMonth) {
-                            DayCell(day, byDay[dayKey(year, month, day)], dayKey(year, month, day) == today, onOpenDay)
+                            DayCell(day, byDay[dayKey(year, month, day)], dayKey(year, month, day) == today, zoomKey, onOpenDay, thumbnail)
                         }
                     }
                 }
@@ -178,7 +236,14 @@ private fun MonthPage(year: Int, month: Int, byDay: Map<Int, List<MediaItem>>, o
 }
 
 @Composable
-private fun DayCell(day: Int, photos: List<MediaItem>?, isToday: Boolean, onOpenDay: (List<MediaItem>) -> Unit) {
+private fun <T> DayCell(
+    day: Int,
+    photos: List<T>?,
+    isToday: Boolean,
+    zoomKey: (T) -> Any,
+    onOpenDay: (List<T>) -> Unit,
+    thumbnail: @Composable (T, Modifier) -> Unit
+) {
     val shape = RoundedCornerShape(8.dp)
     val base = Modifier
         .fillMaxSize()
@@ -186,34 +251,34 @@ private fun DayCell(day: Int, photos: List<MediaItem>?, isToday: Boolean, onOpen
         .let { if (isToday) it.border(2.dp, MaterialTheme.colorScheme.primary, shape) else it }
     if (photos.isNullOrEmpty()) {
         Box(base.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)), contentAlignment = Alignment.TopStart) {
-            Text(day.toString(), color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(5.dp))
+            Text(day.toString(), color = Color.Gray, fontSize = AppText.Caption, modifier = Modifier.padding(Spacing.Xs))
         }
         return
     }
     val cover = photos.first()
-    Box(base.zoomSource(cover.id).clickable { onOpenDay(photos) }) {
-        GridThumbnail(uri = cover.uri, dateModified = cover.dateModified, modifier = Modifier.fillMaxSize())
+    Box(base.zoomSource(zoomKey(cover)).clickable(role = Role.Button) { onOpenDay(photos) }) {
+        thumbnail(cover, Modifier.fillMaxSize())
         Text(
             day.toString(),
             color = Color.White,
-            fontSize = 12.sp,
+            fontSize = AppText.Caption,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(4.dp)
                 .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                .padding(horizontal = 5.dp, vertical = 1.dp)
+                .padding(horizontal = Spacing.Xs, vertical = 1.dp)
         )
         if (photos.size > 1) {
             Text(
                 photos.size.toString(),
                 color = Color.White,
-                fontSize = 11.sp,
+                fontSize = AppText.Caption,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(4.dp)
                     .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                    .padding(horizontal = Spacing.Xs, vertical = 1.dp)
             )
         }
     }

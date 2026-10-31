@@ -1,6 +1,5 @@
 package org.nooklin.photos.ui.hidden
 
-import org.nooklin.photos.ui.common.previewWindowStartRow
 
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
 
@@ -13,7 +12,12 @@ import org.nooklin.photos.ui.common.zoomBackdropSource
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,7 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ScreenShare
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
@@ -78,6 +83,11 @@ import org.nooklin.photos.data.local.HomeSection
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import androidx.compose.ui.semantics.Role
+import org.nooklin.photos.ui.common.touchTarget
+import org.nooklin.photos.ui.theme.Spacing
+import org.nooklin.photos.ui.theme.AppText
+import org.nooklin.photos.ui.common.TouchTargetBox
 
 // Landing screen after the gate, mirrors HomeScreen's blocks. Media Types use flags captured at hide-time.
 // Duplicates isn't offered, it needs ML data hidden items don't have.
@@ -105,29 +115,23 @@ fun HiddenHomeScreen(
     onOpenFavorites: () -> Unit,
     onOpenRecentlyDeleted: () -> Unit,
     onOpenRecentlySaved: () -> Unit,
+    onOpenCalendar: () -> Unit = {},
     onItemClick: (Int) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val previewColumns = gridColumns.coerceAtLeast(2) // the small Home preview never goes to one huge column
     val maxPreviewRows = 3
-    // First preview row shown. Normally 0 (newest photos). When the viewer is
-    // exited on a photo outside the preview, the preview follows to that part
-    // of the library with the photo in its middle row, so the return zoom
-    // always lands on the photo's own thumbnail. Kept for the session.
-    var previewStartRow by rememberSaveable { mutableIntStateOf(0) }
-    val previewStart = previewStartRow.coerceIn(0, previewWindowStartRow(Int.MAX_VALUE / 2, items.size, previewColumns, maxPreviewRows)) * previewColumns
-    val previewItems = remember(items, previewStart, previewColumns, maxPreviewRows) {
-        val from = previewStart.coerceIn(0, items.size)
-        items.subList(from, minOf(items.size, from + previewColumns * maxPreviewRows))
-    }
+    // The Hidden Library card scrolls sideways through the whole Hidden library, newest first, like Library Home.
+    // Scrolls to a photo the viewer was closed on when it is out of view, so the return zoom lands on its thumbnail.
+    val libraryGridState = rememberLazyGridState()
     ScrollToPendingZoomKey(
         lazyIndexOf = { key -> items.indexOfFirst { it.file.absolutePath == key }.takeIf { it >= 0 } },
-        scrollToIndex = { i -> previewStartRow = previewWindowStartRow(i, items.size, previewColumns, maxPreviewRows) }
+        scrollToIndex = { i -> libraryGridState.scrollToItem(i) }
     )
     val neededRows = min(
         maxPreviewRows,
-        if (previewItems.isEmpty()) 0 else ceil(previewItems.size / previewColumns.toFloat()).toInt()
+        if (items.isEmpty()) 0 else ceil(items.size / previewColumns.toFloat()).toInt()
     )
 
     val homeAlbums = albums.sortedByDescending { it.itemCount }.take(10)
@@ -168,28 +172,28 @@ fun HiddenHomeScreen(
                                     .padding(top = 4.dp)
                             ) {
                                 val cellSize = maxWidth / previewColumns
-                                LazyVerticalGrid(
-                                    columns = GridCells.Fixed(previewColumns),
+                                LazyHorizontalGrid(
+                                    rows = GridCells.Fixed(neededRows),
+                                    state = libraryGridState,
                                     modifier = Modifier.fillMaxWidth().height(cellSize * neededRows),
-                                    userScrollEnabled = false,
                                     contentPadding = PaddingValues(2.dp)
                                 ) {
-                                    items(previewItems.size, key = { previewItems[it].file.name }) { index ->
+                                    items(items.size, key = { items[it].file.name }) { index ->
                                         AsyncImage(
                                             model = freshImageRequest(
                                                 context,
-                                                previewItems[index].thumbnailFile,
-                                                previewItems[index].thumbnailFile.lastModified()
+                                                items[index].thumbnailFile,
+                                                items[index].thumbnailFile.lastModified()
                                             ),
                                             contentDescription = null,
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier
+                                                .fillMaxHeight()
                                                 .aspectRatio(1f)
-                                                .fillMaxWidth()
                                                 .padding(1.dp)
                                                 .clip(RoundedCornerShape(8.dp))
-                                                .zoomSource(previewItems[index].file.absolutePath)
-                                                .clickable { onItemClick(previewStart + index) }
+                                                .zoomSource(items[index].file.absolutePath)
+                                                .clickable(role = Role.Button) { onItemClick(index) }
                                         )
                                     }
                                 }
@@ -218,9 +222,9 @@ fun HiddenHomeScreen(
                                     items(homeAlbums.size, key = { homeAlbums[it].id }) { index ->
                                         val album = homeAlbums[index]
                                         Column(
-                                            Modifier.width(120.dp).clickable { onOpenAlbumDetail(album.id) }
+                                            Modifier.width(120.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
                                         ) {
-                                            HiddenAlbumThumbnail(album.previewFiles, size = 120.dp)
+                                            HiddenAlbumThumbnail(album.previewFiles, size = 120.dp, fillSlots = album.folderCount >= 2)
                                             Text(album.name, maxLines = 1)
                                             Text("${album.itemCount}", color = Color.Gray)
                                         }
@@ -265,7 +269,8 @@ fun HiddenHomeScreen(
                                 mapOf(
                                     "FAVORITES" to HiddenCategoryRowSpec(appString(R.string.common_favorites), Icons.Filled.Favorite, onOpenFavorites),
                                     "RECENTLY_DELETED" to HiddenCategoryRowSpec(appString(R.string.common_recently_deleted), Icons.Filled.Delete, onOpenRecentlyDeleted),
-                                    "RECENTLY_SAVED" to HiddenCategoryRowSpec(appString(R.string.common_recently_saved), Icons.Filled.History, onOpenRecentlySaved)
+                                    "RECENTLY_SAVED" to HiddenCategoryRowSpec(appString(R.string.common_recently_saved), Icons.Filled.History, onOpenRecentlySaved),
+                                    "CALENDAR" to HiddenCategoryRowSpec(appString(R.string.home_calendar), Icons.Filled.CalendarMonth, onOpenCalendar)
                                 ).let { specs -> utilitiesOrder.mapNotNull { specs[it] } }
                             )
                         }
@@ -279,7 +284,7 @@ fun HiddenHomeScreen(
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable { onOpenCustomize() }
+                            .clickable(role = Role.Button) { onOpenCustomize() }
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -307,19 +312,20 @@ private fun HiddenCategoryGrid(rows: List<HiddenCategoryRowSpec>) {
             val row = rows[index]
             Row(
                 Modifier
-                    .width(180.dp)
+                    // At least 180dp but wide enough for the whole label, same as Library Home
+                    .widthIn(min = 180.dp)
                     .padding(vertical = 8.dp, horizontal = 4.dp)
-                    .clickable { row.onClick() },
+                    .clickable(role = Role.Button) { row.onClick() },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(row.icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
-                Text(row.label, maxLines = 1)
+                Text(row.label, maxLines = 1, softWrap = false)
             }
         }
     }
 }
 
-// Same as HomeScreen's GlassBlock
+// Same as HomeScreen's GlassBlock, 2dp horizontal so pills reach the screen edge
 @Composable
 private fun GlassBlock(content: @Composable () -> Unit) {
     Surface(
@@ -328,7 +334,7 @@ private fun GlassBlock(content: @Composable () -> Unit) {
         border = GlassPill.adaptiveBorder,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 2.dp, vertical = Spacing.Sm)
     ) {
         content()
     }
@@ -356,21 +362,31 @@ private fun SectionHeader(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .let { if (onTitleClick != null) it.clickable { onTitleClick() } else it }
+                .let { if (onTitleClick != null) it.clickable(role = Role.Button) { onTitleClick() } else it }
         ) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = titleFontSize)
             if (subtitle != null) {
-                Text(subtitle, color = Color.Gray, fontSize = 13.sp)
+                Text(subtitle, color = Color.Gray, fontSize = AppText.Body)
             }
         }
         if (showChevron) {
-            Icon(
-                imageVector = Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (expanded) appString(R.string.common_collapse) else appString(R.string.common_expand),
-                modifier = Modifier
-                    .clickable { onToggle() }
-                    .graphicsLayer { rotationZ = if (expanded) 180f else 0f }
-            )
+            TouchTargetBox(onClick = { onToggle() }) { feedback ->
+                Box(
+                    Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(GlassPill.adaptiveGlassBackground)
+                        .then(feedback)
+                        .border(GlassPill.adaptiveBorder, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (expanded) appString(R.string.common_collapse) else appString(R.string.common_expand),
+                        modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f }
+                    )
+                }
+            }
         }
     }
 }
