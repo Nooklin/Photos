@@ -48,7 +48,7 @@ import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 
-// The settings that change what the app does, read live so the How To always matches this device
+// the settings that change what the app does, read live so the How To always matches this device
 data class HowToState(
     val hiddenSectionEnabled: Boolean,
     val hiddenPinSet: Boolean,
@@ -73,7 +73,6 @@ private class HowToTopic(
     val links: List<HowToLink> = emptyList()
 )
 
-// The kinds of data that are removed, in the words of Settings, Sharing
 private fun stripNames(options: ShareStripOptions): String = listOfNotNull(
     if (options.location) appString(R.string.settings_exif_strip_location) else null,
     if (options.camera) appString(R.string.settings_exif_strip_camera) else null,
@@ -253,12 +252,10 @@ private fun howItWorksTopics(s: HowToState): List<HowToTopic> = listOf(
     )
 )
 
-// A group in the tree. A group with one topic shows that topic directly.
 private class HowToGroup(val title: String, val topics: List<HowToTopic>)
 
 private val sentenceSplit = Regex("(?<=[.!?])\\s+(?=[\\p{Lu}0-9])")
 
-// Names of screens and buttons, taken from the app's own labels so they match the language in use
 @Composable
 private fun boldTerms(): List<String> = listOf(
     R.string.common_library, R.string.common_albums, R.string.common_favorites, R.string.common_recently_saved,
@@ -285,7 +282,6 @@ private fun styled(text: String, terms: List<String>): AnnotatedString {
     }
 }
 
-// Numbered steps and bullets stay one line each, other text is cut into short paragraphs of two sentences
 private fun paragraphs(text: String): List<String> =
     text.split("\n").flatMap { line ->
         if (line.firstOrNull()?.isDigit() == true || line.startsWith("•")) listOf(line) else line.split(sentenceSplit).chunked(2).map { it.joinToString(" ") }
@@ -300,7 +296,6 @@ fun SettingsHowToScreen(
 ) {
     val topics = remember(state) { howToTopics(state) }
     val howItWorks = remember(state) { howItWorksTopics(state) }
-    // Same order as the Settings menu. Library, Albums and so on come first, they have no row in Settings.
     val browsingTitle = appString(R.string.settings_how_to_group_browsing)
     val howItWorksTitle = appString(R.string.settings_how_to_how_it_works)
     val groups = remember(topics, howItWorks, browsingTitle, howItWorksTitle) {
@@ -313,7 +308,6 @@ fun SettingsHowToScreen(
             HowToGroup(howItWorksTitle, howItWorks)
         )
     }
-    // Everything starts closed
     val open = remember { mutableStateMapOf<String, Boolean>() }
     val terms = boldTerms()
 

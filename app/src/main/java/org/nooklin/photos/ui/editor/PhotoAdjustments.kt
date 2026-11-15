@@ -9,7 +9,6 @@ import android.graphics.PorterDuffXfermode
 import android.graphics.RadialGradient
 import android.graphics.Shader
 
-// ColorMatrix generators for the sliders (4x5 row-major, same as PhotoFilters)
 data class Adjustments(
     val brightness: Float = 0f,  // -1..1, 0 = neutral
     val contrast: Float = 0f,    // -1..1, 0 = neutral
@@ -20,12 +19,10 @@ data class Adjustments(
     val tint: Float = 0f,        // -1..1, 0 = neutral (green/magenta axis, mirrors warmth's red/blue axis)
     val vignette: Float = 0f,    // -1..1, 0 = neutral (positive darkens edges, negative lightens them)
     val autoEnhance: Float = 0f, // 0..1, 0 = off (strength applied to the 8 fields AutoEnhanceTargets computes — see this file's own top doc comment)
-    // Not ColorMatrix-expressible, applied through the AGSL shaders in PhotoShaders.kt
     val highlights: Float = 0f, // -1..1, 0 = neutral (positive brightens bright areas, negative recovers/darkens them)
     val shadows: Float = 0f,    // -1..1, 0 = neutral (positive lifts dark areas, negative deepens them)
     val vibrance: Float = 0f,   // -1..1, 0 = neutral (boosts low-saturation pixels more than already-saturated ones)
     val sharpness: Float = 0f,  // -1..1, 0 = neutral (unsharp-mask edge enhancement; negative softens)
-    // Same AGSL pipeline
     val definition: Float = 0f, // -1..1, 0 = neutral (wider-radius local-contrast enhancement; negative softens broadly)
     val noiseReduction: Float = 0f // 0..1 only, no sensible negative direction
 ) {
@@ -81,7 +78,6 @@ private fun warmthMatrix(value: Float): FloatArray {
     )
 }
 
-// Multiplicative gain, unlike brightness' additive shift
 private fun exposureMatrix(value: Float): FloatArray {
     val scale = 1f + value
     return floatArrayOf(
@@ -92,7 +88,6 @@ private fun exposureMatrix(value: Float): FloatArray {
     )
 }
 
-// Levels-style shadow floor: positive crushes, negative fades. Symmetric like the other sliders.
 private fun blackPointMatrix(value: Float): FloatArray {
     val shift = value * 80f
     val scale = 255f / (255f - shift).coerceAtLeast(1f)
@@ -105,7 +100,6 @@ private fun blackPointMatrix(value: Float): FloatArray {
     )
 }
 
-// Green/magenta axis, like warmth's red/blue
 private fun tintMatrix(value: Float): FloatArray {
     val g = 1f - value * 0.15f
     val rb = 1f + value * 0.075f
@@ -117,7 +111,6 @@ private fun tintMatrix(value: Float): FloatArray {
     )
 }
 
-// 4x5 composition: 4x4 multiplied, 5th column added (what ColorMatrix.preConcat does)
 private fun multiplyColorMatrices(a: FloatArray, b: FloatArray): FloatArray {
     val result = FloatArray(20)
     for (row in 0 until 4) {
@@ -137,7 +130,7 @@ private fun multiplyColorMatrices(a: FloatArray, b: FloatArray): FloatArray {
     return result
 }
 
-// Filter plus all sliders in one matrix. Auto Enhance isn't here, it sets the sliders themselves.
+// Filter plus all sliders in one matrix.
 fun combinedColorMatrix(
     filterMatrix: FloatArray,
     adjustments: Adjustments
@@ -153,7 +146,6 @@ fun combinedColorMatrix(
     return result
 }
 
-// Suggested values for one photo, scaled by one 0..1 strength into Adjustments
 data class AutoEnhanceTargets(
     val exposure: Float,
     val contrast: Float,
@@ -165,7 +157,6 @@ data class AutoEnhanceTargets(
     val tint: Float
 )
 
-// Analyzes a 128px copy and derives a conservative correction per field, once per photo
 fun computeAutoEnhanceTargets(source: Bitmap): AutoEnhanceTargets {
     val maxDimension = 128
     val longerSide = maxOf(source.width, source.height)
@@ -226,23 +217,18 @@ fun computeAutoEnhanceTargets(source: Bitmap): AutoEnhanceTargets {
     val p95 = percentile(0.95f)
     val p99 = percentile(0.99f)
 
-    // Exposure: nudge toward a midtone, partially (snow or night scenes stay)
     val exposureTarget = ((0.48f - avgLuminance) * 1.2f).coerceIn(-0.35f, 0.35f)
 
-    // Contrast: only added, for flat photos
     val spread = (p95 - p05) / 255f
     val contrastTarget = ((0.78f - spread) * 0.6f).coerceIn(0f, 0.3f)
 
     // Black point: only crushed, when the shadow floor is above true black
     val blackPointTarget = ((p01 / 255f) * 0.7f).coerceIn(0f, 0.25f)
 
-    // Highlights: only recovered, when clipping
     val highlightsTarget = if (p99 >= 253) -0.25f else 0f
 
-    // Shadows: only lifted, when crushed
     val shadowsTarget = if (p01 <= 2) 0.25f else 0f
 
-    // Vibrance: only added, for flat photos
     val vibranceTarget = ((0.32f - avgSaturation) * 0.9f).coerceIn(0f, 0.3f)
 
     // Warmth and tint: gray-world white balance, corrected gently, never a full snap (skin tones)

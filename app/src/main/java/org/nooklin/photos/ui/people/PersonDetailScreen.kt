@@ -1,5 +1,8 @@
 package org.nooklin.photos.ui.people
 
+import org.nooklin.photos.ui.common.GroupActions
+import org.nooklin.photos.ui.common.GroupItemMenu
+import androidx.activity.compose.BackHandler
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
 import org.nooklin.photos.ui.common.zoomSource
 import org.nooklin.photos.ui.common.zoomBackdropSource
@@ -9,6 +12,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import org.nooklin.photos.ui.common.gridDragToSelect
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,8 +34,6 @@ import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -77,7 +79,6 @@ import org.nooklin.photos.appString
 import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.common.EmptyState
 
-// A person's photos: rename like an album, select-mode actions like DiscoveredDetailScreen
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PersonDetailScreen(
@@ -95,8 +96,8 @@ fun PersonDetailScreen(
     onAddToAlbum: (albumId: Long, item: MediaItem) -> Unit,
     onSplitOutFaces: (List<Long>) -> Unit,
     onBack: () -> Unit,
-    // Second arg: the viewer pages through this person's photos only
-    onItemClick: (MediaItem, List<MediaItem>) -> Unit
+    onItemClick: (MediaItem, List<MediaItem>) -> Unit,
+    groupActions: GroupActions? = null
 ) {
     val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
@@ -104,6 +105,7 @@ fun PersonDetailScreen(
     var showMergeDialog by remember { mutableStateOf(false) }
     var isSelecting by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<Long>()) }
+    var menuItem by remember { mutableStateOf<MediaItem?>(null) }
     var actionsMenuExpanded by remember { mutableStateOf(false) }
     var showAddToAlbumDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -123,6 +125,20 @@ fun PersonDetailScreen(
         scrollToIndex = { i -> personGridState.scrollToItemCentered(i) }
     )
 
+    BackHandler(enabled = isSelecting) { exitSelection() }
+
+    menuItem?.let { item ->
+        if (groupActions != null) {
+            GroupItemMenu(
+                item = item,
+                actions = groupActions,
+                onOpen = { onItemClick(item, photos) },
+                onSelect = { isSelecting = true; toggleSelect(item) },
+                onDone = { menuItem = null }
+            )
+        }
+    }
+
     Scaffold(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
@@ -139,7 +155,7 @@ fun PersonDetailScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { if (isSelecting) exitSelection() else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
@@ -198,7 +214,6 @@ fun PersonDetailScreen(
                         }
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                     } else {
-                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                         CircleIconButton(
                             icon = Icons.Filled.MoreVert,
                             contentDescription = appString(R.string.common_more_options),
@@ -246,7 +261,13 @@ fun PersonDetailScreen(
                 contentPadding = PaddingValues(2.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(padding)
+                modifier = Modifier.padding(padding).gridDragToSelect(
+                    enabled = isSelecting,
+                    state = personGridState,
+                    accepts = { it is Long },
+                    isSelected = { it in selectedIds },
+                    onItemDragged = { key, select -> if (key is Long) selectedIds = if (select) selectedIds + key else selectedIds - key }
+                )
             ) {
                 items(photos.size, key = { photos[it].id }) { index ->
                     val item = photos[index]
@@ -263,7 +284,11 @@ fun PersonDetailScreen(
                                 .zoomSource(item.id)
                                 .combinedClickable(
                                     onClick = { if (isSelecting) toggleSelect(item) else onItemClick(item, photos) },
-                                    onLongClick = { if (!isSelecting) { isSelecting = true; toggleSelect(item) } }
+                                    onLongClick = {
+                                        if (!isSelecting) {
+                                            if (groupActions != null) menuItem = item else { isSelecting = true; toggleSelect(item) }
+                                        }
+                                    }
                                 )
                         )
                         if (item.isFavorite) {

@@ -22,7 +22,6 @@ import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.ui.common.heroImageRequest
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -33,7 +32,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
@@ -62,6 +60,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -90,7 +89,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import org.nooklin.photos.ui.common.GlassPill
@@ -102,7 +100,6 @@ import org.nooklin.photos.ui.theme.AppText
 
 private val FolderThumbSize = 84.dp
 
-// One folder in the list at the top of an album, for both the normal and the Hidden albums
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FolderRow(
@@ -110,7 +107,6 @@ fun FolderRow(
     itemCount: Int,
     onClick: () -> Unit,
     thumbnail: @Composable (Dp) -> Unit,
-    // A long press shows the menu that the caller puts in [menu]
     onLongClick: () -> Unit = {},
     menu: @Composable () -> Unit = {}
 ) {
@@ -129,7 +125,6 @@ fun FolderRow(
                 .background(Color.Gray.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
-            // The folder icon stays visible behind an empty folder
             Icon(Icons.Filled.Folder, contentDescription = null, tint = Color.Gray)
             thumbnail(FolderThumbSize)
         }
@@ -153,7 +148,6 @@ fun FolderRow(
     }
 }
 
-// The big photo at the top of an album screen, with the title, the item count and a play button for the slideshow
 @Composable
 fun AlbumHero(
     title: String,
@@ -203,20 +197,14 @@ fun AlbumHero(
     }
 }
 
-// One photo of the slideshow. [model] is the full photo, [thumbnail] and [freshness] give the small picture in the
-// strip at the bottom, [aspect] is width / height when known.
 class SlideshowPhoto(val model: Any, val thumbnail: Any, val freshness: Any, val aspect: Float?)
 
-private const val SLIDE_MS = 3500
-private const val GROUP_MS = 3000
 private const val ZOOM = 0.05f
 
-// How the photos of one scene are placed: one photo, or two photos above each other (top share first)
 private enum class SlideLayout(val top: Float, val bottom: Float) {
     SINGLE(1f, 0f), STACK_60(60f, 40f), STACK_40(40f, 60f), STACK_50(50f, 50f)
 }
 
-// A scene shows [count] photos starting at [first]
 private class SlideScene(val first: Int, val count: Int, val layout: SlideLayout) {
     operator fun contains(photo: Int) = photo >= first && photo < first + count
 }
@@ -226,7 +214,6 @@ private val LAYOUT_CYCLE = listOf(
     SlideLayout.SINGLE, SlideLayout.STACK_50
 )
 
-// Single photos alternate with two photos at once. The last photo is single when only one is left.
 private fun buildScenes(total: Int): List<SlideScene> {
     val scenes = mutableListOf<SlideScene>()
     var next = 0
@@ -246,8 +233,6 @@ private fun buildScenes(total: Int): List<SlideScene> {
 private fun slideScale(i: Int, progress: Float): Float =
     if (i % 2 == 0) 1f + ZOOM * progress else 1f + ZOOM * (1f - progress)
 
-// One photo that fills its cell and zooms slowly inside it. Always loaded at screen size (own cache key), so a small
-// cell is as sharp as a full screen photo.
 @Composable
 private fun SlideCell(photo: SlideshowPhoto, scale: Float, fit: Boolean, modifier: Modifier) {
     val context = LocalContext.current
@@ -255,7 +240,6 @@ private fun SlideCell(photo: SlideshowPhoto, scale: Float, fit: Boolean, modifie
     Box(modifier.clip(RoundedCornerShape(0.dp))) {
         Box(Modifier.fillMaxSize().graphicsLayer { scaleX = scale; scaleY = scale }) {
             if (fit) {
-                // A landscape photo is shown whole on a blurred copy of itself
                 AsyncImage(
                     model = request,
                     contentDescription = null,
@@ -289,10 +273,6 @@ private fun SceneView(scene: SlideScene, photos: List<SlideshowPhoto>, scale: Fl
     }
 }
 
-// Full screen slideshow after the iOS one: photos fill the screen (a landscape photo is shown whole on a blurred copy),
-// a slow zoom in or out, a dissolve to the next photo, the album name fading away at the start. A tap shows the
-// controls: Back, Pause and Play, and a strip with all photos in order (tap one to jump to it). After the last photo
-// the picture dims and Replay appears. System Back also closes it.
 @Composable
 fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean, onClose: () -> Unit) {
     val context = LocalContext.current
@@ -305,7 +285,6 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
     val progress = remember { Animatable(0f) }
     val open = remember { Animatable(0f) }
     val strip = rememberLazyListState()
-    // index is the scene, a scene shows one or two photos
     val scenes = remember(photos) { buildScenes(photos.size) }
     var shown by remember { mutableIntStateOf(0) }
     var previous by remember { mutableIntStateOf(-1) }
@@ -316,10 +295,9 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
         delay(4000)
         showTitle = false
     }
-    // Runs the zoom of the current photo, then goes to the next. Pause keeps the progress and resumes from there.
     LaunchedEffect(index, paused, finished) {
         if (paused || finished) return@LaunchedEffect
-        val duration = if (scenes.getOrNull(index)?.layout == SlideLayout.SINGLE) SLIDE_MS else GROUP_MS
+        val duration = if (scenes.getOrNull(index)?.layout == SlideLayout.SINGLE) 3500 else 3000
         progress.animateTo(1f, tween(((1f - progress.value) * duration).toInt().coerceAtLeast(1), easing = LinearEasing))
         if (index < scenes.lastIndex) {
             progress.snapTo(0f)
@@ -331,7 +309,6 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
     LaunchedEffect(index) {
         strip.animateScrollToItem(((scenes.getOrNull(index)?.first ?: 0) - 4).coerceAtLeast(0))
     }
-    // A new scene covers the old one: two photos slide in from the right, a single photo dissolves
     LaunchedEffect(index) {
         if (index != shown) {
             previous = shown
@@ -344,7 +321,7 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
 
     fun jumpTo(photo: Int) {
         val target = scenes.indexOfFirst { photo in it }.coerceAtLeast(0)
-        // The current scene is already running, a restart would stop it
+        // the current scene is already running, a restart would stop it
         if (target == index && !finished) return
         scope.launch {
             progress.snapTo(0f)
@@ -357,7 +334,6 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
         onDismissRequest = onClose,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            // The photo also fills the area behind the status and navigation bar
             decorFitsSystemWindows = false,
             // Hidden photos must stay out of screenshots, also in this window
             securePolicy = if (secure) SecureFlagPolicy.SecureOn else SecureFlagPolicy.Inherit
@@ -368,7 +344,6 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = open.value))
         ) {
-            // The slideshow opens as a card that grows to full size, with rounded corners that disappear
             Box(
                 Modifier
                     .fillMaxSize()
@@ -387,7 +362,6 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
                 val old = scenes.getOrNull(previous)
                 val current = scenes.getOrNull(shown)
                 if (old != null) {
-                    // The scene that is covered keeps the zoom it ended with
                     Box(Modifier.fillMaxSize()) { SceneView(old, photos, slideScale(previous, 1f)) }
                 }
                 if (current != null) {
@@ -402,7 +376,6 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
                         SceneView(current, photos, slideScale(shown, if (shown == index) progress.value else 1f))
                     }
                 }
-                // After the last photo
                 AnimatedVisibility(visible = finished, enter = fadeIn(tween(600)), exit = fadeOut()) {
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)))
                 }
@@ -430,7 +403,6 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
                         )
                     }
                 }
-                // Back is visible after a tap and after the last photo
                 AnimatedVisibility(
                     visible = controls || finished,
                     enter = fadeIn(tween(Motion.Medium)),
@@ -465,7 +437,6 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
                         )
                     }
                 }
-                // All photos in order, the current one is larger with a white border
                 AnimatedVisibility(
                     visible = controls && !finished,
                     enter = fadeIn(tween(Motion.Medium)),
@@ -509,7 +480,6 @@ fun SlideshowDialog(photos: List<SlideshowPhoto>, title: String, secure: Boolean
     }
 }
 
-// Pick the cover photo of an album from its photos, or go back to the newest photo
 @Composable
 fun CoverPickerDialog(
     count: Int,
@@ -588,7 +558,6 @@ fun NewFolderDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
     )
 }
 
-// Menu of a long press on an album in an overview. Share and Merge are null where the screen has none.
 @Composable
 fun AlbumContextMenu(
     expanded: Boolean,
@@ -598,7 +567,8 @@ fun AlbumContextMenu(
     onNewFolder: (() -> Unit)?,
     onMerge: (() -> Unit)?,
     onDelete: () -> Unit,
-    isFolder: Boolean = false
+    isFolder: Boolean = false,
+    onSelect: (() -> Unit)? = null
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -607,6 +577,13 @@ fun AlbumContextMenu(
         containerColor = GlassPill.adaptivePopupBackground
     ) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            if (onSelect != null) {
+                DropdownMenuItem(
+                    text = { Text(appString(R.string.common_select)) },
+                    leadingIcon = { MenuIcon(Icons.Filled.CheckCircle) },
+                    onClick = { onDismiss(); onSelect() }
+                )
+            }
             if (onShare != null) {
                 DropdownMenuItem(
                     text = { Text(appString(R.string.common_share)) },

@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.Role
 
-// One row in a "pick an existing X" dialog list, with its own pill outline
 @Composable
 fun PillListRow(
     label: String,

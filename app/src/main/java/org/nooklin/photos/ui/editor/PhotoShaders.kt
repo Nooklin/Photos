@@ -10,8 +10,7 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import android.graphics.RenderEffect as AndroidRenderEffect
 import androidx.compose.ui.graphics.RenderEffect as ComposeRenderEffect
 
-// AGSL shaders for the sliders a ColorMatrix can't express: highlights, shadows, vibrance (per-pixel awareness),
-// sharpness, definition, noise reduction (neighbor sampling)
+// AGSL shaders for the sliders a ColorMatrix cannot do
 private const val TONE_SHADER_SRC = """
     uniform shader inputShader;
     uniform float highlights;
@@ -22,22 +21,15 @@ private const val TONE_SHADER_SRC = """
         half4 c = inputShader.eval(coord);
         half luminance = dot(c.rgb, half3(0.299, 0.587, 0.114));
 
-        // Highlights: only affects the bright end (smoothstep mask rising
-        // from mid-tones to white), positive brightens further, negative
-        // recovers/darkens blown highlights.
+        // highlights, only touches the bright end
         half highlightMask = smoothstep(0.3, 1.0, luminance);
         c.rgb += half(highlights) * highlightMask * 0.45;
 
-        // Shadows: mirror of the above, masked toward the dark end,
-        // positive lifts/opens shadows, negative deepens them.
+        // shadows, same idea for the dark end
         half shadowMask = smoothstep(0.7, 0.0, luminance);
         c.rgb += half(shadows) * shadowMask * 0.45;
 
-        // Vibrance: extrapolate away from (positive) or toward (negative)
-        // this pixel's own gray point, scaled by how UNsaturated it
-        // already is (1.0 - sat), an already-vivid pixel barely moves,
-        // a near-gray pixel moves the most. This is the actual
-        // distinction between Vibrance and a flat Saturation boost.
+        // vibrance moves gray-ish pixels more than already vivid ones
         half maxC = max(c.r, max(c.g, c.b));
         half minC = min(c.r, min(c.g, c.b));
         half sat = maxC - minC;
@@ -50,7 +42,6 @@ private const val TONE_SHADER_SRC = """
     }
 """
 
-// Unsharp mask: subtract a 4-tap neighbor blur to isolate fine detail, add it back by strength
 private const val SHARPEN_SHADER_SRC = """
     uniform shader inputShader;
     uniform float sharpness;
@@ -71,7 +62,6 @@ private const val SHARPEN_SHADER_SRC = """
     }
 """
 
-// Same as sharpen but 4 texels away: broader local contrast (clarity)
 private const val DEFINITION_SHADER_SRC = """
     uniform shader inputShader;
     uniform float definition;
@@ -93,7 +83,6 @@ private const val DEFINITION_SHADER_SRC = """
     }
 """
 
-// Blend toward a 9-tap box blur: a cheap noise reduction that also softens edges
 private const val NOISE_REDUCTION_SHADER_SRC = """
     uniform shader inputShader;
     uniform float noiseReduction;
@@ -117,7 +106,7 @@ private const val NOISE_REDUCTION_SHADER_SRC = """
     }
 """
 
-// The save path runs on a background thread, so it gets its own shader objects instead of sharing the preview ones.
+// own shader objects, the save runs on a background thread
 private val saveToneShader by lazy { RuntimeShader(TONE_SHADER_SRC) }
 private val saveSharpenShader by lazy { RuntimeShader(SHARPEN_SHADER_SRC) }
 private val saveDefinitionShader by lazy { RuntimeShader(DEFINITION_SHADER_SRC) }
@@ -127,12 +116,10 @@ private val sharpenShader by lazy { RuntimeShader(SHARPEN_SHADER_SRC) }
 private val definitionShader by lazy { RuntimeShader(DEFINITION_SHADER_SRC) }
 private val noiseReductionShader by lazy { RuntimeShader(NOISE_REDUCTION_SHADER_SRC) }
 
-// True when any shader adjustment is non-neutral, lets callers skip the effect chain
 fun Adjustments.needsShaderPass(): Boolean =
     highlights != 0f || shadows != 0f || vibrance != 0f ||
         sharpness != 0f || definition != 0f || noiseReduction != 0f
 
-// Chains RenderEffects, the first argument applies first (createChainEffect(outer, inner))
 private fun chainInOrder(vararg effects: AndroidRenderEffect?): AndroidRenderEffect? {
     var result: AndroidRenderEffect? = null
     for (effect in effects) {
@@ -142,7 +129,6 @@ private fun chainInOrder(vararg effects: AndroidRenderEffect?): AndroidRenderEff
     return result
 }
 
-// Live preview chain. Needs the real on-screen pixel size for the texel-size uniform.
 fun buildPreviewRenderEffect(adjustments: Adjustments, widthPx: Int, heightPx: Int): ComposeRenderEffect? {
     if (!adjustments.needsShaderPass() || widthPx <= 0 || heightPx <= 0) return null
     val texelX = 1f / widthPx
@@ -176,7 +162,6 @@ fun buildPreviewRenderEffect(adjustments: Adjustments, widthPx: Int, heightPx: I
     return chainInOrder(toneEffect, noiseReductionEffect, definitionEffect, sharpenEffect)?.asComposeRenderEffect()
 }
 
-// Save-step counterpart: same shaders and order on a real Bitmap, using its full-res size
 fun applyShaderAdjustments(source: Bitmap, adjustments: Adjustments): Bitmap {
     if (!adjustments.needsShaderPass()) return source
     var current = source
@@ -188,7 +173,7 @@ fun applyShaderAdjustments(source: Bitmap, adjustments: Adjustments): Bitmap {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.shader = shader
         Canvas(output).drawRect(0f, 0f, current.width.toFloat(), current.height.toFloat(), paint)
-        // Free the previous pass output, never the caller's source bitmap.
+        // never free the source bitmap
         if (current !== source) current.recycle()
         return output
     }

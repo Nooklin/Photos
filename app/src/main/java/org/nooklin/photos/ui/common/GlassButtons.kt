@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.common
 
+import org.nooklin.photos.ui.theme.AppText
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,8 +21,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.Role
 
-// The Library style, used by every screen: round glass button and glass pill with a text.
-// Select, the "..." menu and the close button of a selection all use these.
 @Composable
 fun CircleIconButton(
     icon: ImageVector,
@@ -59,8 +59,17 @@ fun PillButton(text: String, onClick: () -> Unit, color: androidx.compose.ui.gra
     }
 }
 
-// Icon in front of a menu item. One size for every menu.
 @Composable
 fun MenuIcon(icon: ImageVector) {
     Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+}
+
+@Composable
+fun MenuSectionHeader(text: String) {
+    Text(
+        text,
+        fontSize = AppText.Caption,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 4.dp)
+    )
 }

@@ -20,7 +20,6 @@ import org.nooklin.photos.data.scanImportFolder
 import org.nooklin.photos.data.scanImportZip
 import org.nooklin.photos.ui.hidden.HiddenExportProgress
 
-// Backup (zip) and import of the normal library
 class LibraryTransferViewModel(application: Application) : AndroidViewModel(application) {
     private val _exportProgress = MutableStateFlow<HiddenExportProgress?>(null)
     val exportProgress: StateFlow<HiddenExportProgress?> = _exportProgress

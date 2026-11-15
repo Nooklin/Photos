@@ -1,5 +1,10 @@
 package org.nooklin.photos.ui.recyclebin
 
+import org.nooklin.photos.ui.common.aspectRatioOrUnknown
+import org.nooklin.photos.ui.gallery.CardMenu
+import org.nooklin.photos.ui.gallery.CardAction
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.combinedClickable
 import org.nooklin.photos.ui.common.scrollToItemCentered
 
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
@@ -7,6 +12,7 @@ import org.nooklin.photos.ui.common.zoomSource
 import org.nooklin.photos.ui.common.zoomBackdropSource
 import org.nooklin.photos.ui.common.freshImageRequest
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import org.nooklin.photos.ui.common.gridDragToSelect
 
 import androidx.compose.ui.text.font.FontWeight
 import android.net.Uri
@@ -15,8 +21,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,12 +32,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -67,13 +69,8 @@ import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.MenuIcon
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.PillButton
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Restore
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
 import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
@@ -83,7 +80,6 @@ import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
 import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.common.EmptyState
-import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppColors
 
 private const val RETENTION_DAYS = 30
@@ -96,8 +92,7 @@ fun daysRemaining(deletedAt: Long): Int {
 
 private fun isExpired(deletedAt: Long): Boolean = daysRemaining(deletedAt) <= 0
 
-// Purging needs the system consent dialog when the files belong to MediaStore, privateFiles skips it for the app's own files
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun RecycleBinScreen(
     entries: List<RecycleBinEntry>,
@@ -137,8 +132,8 @@ fun RecycleBinScreen(
     var pendingRecoverIds by remember { mutableStateOf(listOf<Long>()) }
     var pendingDeleteIds by remember { mutableStateOf(listOf<Long>()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var menuEntry by remember { mutableStateOf<RecycleBinEntry?>(null) }
 
-    // Only a confirmed delete is dropped, a cancelled one leaves everything as it was
     val deleteLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -162,7 +157,6 @@ fun RecycleBinScreen(
         exitSelection()
     }
 
-    // Nothing selected means "All", also the items scrolled out of view
     fun targetIds(): List<Long> = if (selectedIds.isEmpty()) entries.map { it.mediaId } else entries.map { it.mediaId }.filter { it in selectedIds }
 
     val recycleGridState = rememberLazyGridState()
@@ -171,13 +165,48 @@ fun RecycleBinScreen(
         scrollToIndex = { i -> recycleGridState.scrollToItemCentered(i) }
     )
 
+    BackHandler(enabled = isSelecting) { exitSelection() }
+
+    menuEntry?.let { entry ->
+        CardMenu(
+            ratio = entry.aspectRatioOrUnknown(),
+            onOpen = { onItemClick(entries.indexOf(entry)) },
+            onDismiss = { menuEntry = null },
+            rows = listOf(
+                CardAction(appString(R.string.common_select), Icons.Filled.CheckCircle) {
+                    isSelecting = true
+                    toggleSelect(entry.mediaId)
+                },
+                CardAction(appString(R.string.recycle_bin_recover), Icons.Filled.Restore) {
+                    pendingRecoverIds = listOf(entry.mediaId)
+                    if (restoreConfirmTitle != null && restoreConfirmText != null) {
+                        showBulkRestoreConfirm = true
+                    } else {
+                        performRecover(pendingRecoverIds)
+                    }
+                },
+                CardAction(appString(R.string.recycle_bin_delete_permanently), Icons.Filled.Delete, destructive = true) {
+                    pendingDeleteIds = listOf(entry.mediaId)
+                    showDeleteConfirm = true
+                }
+            )
+        ) {
+            AsyncImage(
+                model = freshImageRequest(LocalContext.current, entry.uri, entry.deletedAt),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+
     Scaffold(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
                 title = { Text(appString(R.string.common_recently_deleted), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { if (isSelecting) exitSelection() else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
@@ -229,8 +258,6 @@ fun RecycleBinScreen(
                                 }
                             }
                             PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
-                        } else {
-                            PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                         }
                     }
                 }
@@ -253,13 +280,20 @@ fun RecycleBinScreen(
             contentPadding = PaddingValues(8.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(padding).pinchToChangeGridColumns(!isSelecting, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
+            modifier = Modifier.padding(padding)
+                .pinchToChangeGridColumns(!isSelecting, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
+                .gridDragToSelect(
+                    enabled = isSelecting,
+                    state = recycleGridState,
+                    accepts = { it is Long },
+                    isSelected = { it in selectedIds },
+                    onItemDragged = { key, select -> if (key is Long) selectedIds = if (select) selectedIds + key else selectedIds - key }
+                )
         ) {
             items(entries.size, key = { entries[it].mediaId }) { index ->
                 val entry = entries[index]
                 Box(
                     Modifier
-                        // One column keeps each photo's own shape.
                         .aspectRatio(
                             if (cols == 1 && entry.width != null && entry.height != null && entry.height > 0) {
                                 entry.width.toFloat() / entry.height.toFloat()
@@ -268,9 +302,11 @@ fun RecycleBinScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .zoomSource(entry.mediaId)
-                        .clickable(role = Role.Button) {
-                            if (isSelecting) toggleSelect(entry.mediaId) else onItemClick(index)
-                        }
+                        .combinedClickable(
+                            role = Role.Button,
+                            onClick = { if (isSelecting) toggleSelect(entry.mediaId) else onItemClick(index) },
+                            onLongClick = { if (!isSelecting) menuEntry = entry }
+                        )
                 ) {
                     AsyncImage(
                         model = freshImageRequest(LocalContext.current, entry.uri, entry.deletedAt),
@@ -347,20 +383,6 @@ fun RecycleBinScreen(
                 TextButton(onClick = { showBulkRestoreConfirm = false }) { Text(appString(R.string.common_cancel)) }
             }
         )
-    }
-}
-
-@Composable
-private fun PillAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .widthIn(min = 180.dp)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = Spacing.Lg, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
-        Text(label, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 12.dp))
     }
 }
 

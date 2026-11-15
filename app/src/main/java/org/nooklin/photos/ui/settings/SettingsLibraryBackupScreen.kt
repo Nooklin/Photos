@@ -36,7 +36,6 @@ import org.nooklin.photos.appString
 import org.nooklin.photos.ui.hidden.HiddenExportProgress
 import org.nooklin.photos.ui.theme.Spacing
 
-// Backup of the normal library as a zip: everything flat, or organized by album and folder
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsLibraryBackupScreen(

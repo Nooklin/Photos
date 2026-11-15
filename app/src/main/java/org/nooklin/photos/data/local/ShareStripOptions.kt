@@ -1,6 +1,5 @@
 package org.nooklin.photos.data.local
 
-// What is removed from a photo or video when sharing, while Remove Exif data is on (Settings, Sharing)
 enum class StripCategory { LOCATION, CAMERA, DATE_TIME, DESCRIPTION }
 
 data class ShareStripOptions(

@@ -14,14 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.theme.MinTouchTarget
 
-// Makes the tappable area at least 48 dp while the drawn part can stay smaller.
-// Put it after clickable, so the clickable area is the enlarged one:
-//   Box(Modifier.clickable { ... }.touchTarget()) { SmallVisual() }
 fun Modifier.touchTarget(): Modifier = this.defaultMinSize(minWidth = MinTouchTarget, minHeight = MinTouchTarget)
 
-// A tap area of at least 48 dp around a smaller drawn shape. The press feedback (ripple) shows only on the
-// shape: [visual] gets a modifier to put on it AFTER its clip and background, like
-//   TouchTargetBox(onClick = ...) { feedback -> Box(Modifier.size(32.dp).clip(CircleShape).then(feedback)) { ... } }
 @Composable
 fun TouchTargetBox(
     onClick: () -> Unit,

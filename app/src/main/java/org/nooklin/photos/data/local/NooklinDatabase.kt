@@ -32,7 +32,6 @@ abstract class NooklinDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: NooklinDatabase? = null
 
-        // Real migrations, not destructive: albums already hold data
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -105,7 +104,6 @@ abstract class NooklinDatabase : RoomDatabase() {
             }
         }
 
-        // Drops people and face_embeddings, no real data existed yet
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("DROP TABLE IF EXISTS `face_embeddings`")
@@ -180,14 +178,12 @@ abstract class NooklinDatabase : RoomDatabase() {
             }
         }
 
-        // Folders inside albums: a folder is an album row with a parentId
         private val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `albums` ADD COLUMN `parentId` INTEGER")
             }
         }
 
-        // Chosen cover photo of an album or folder
         private val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `albums` ADD COLUMN `coverMediaId` INTEGER")

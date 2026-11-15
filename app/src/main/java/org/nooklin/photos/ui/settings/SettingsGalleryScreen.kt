@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.settings
 
+import androidx.compose.material.icons.filled.PhotoAlbum
+import androidx.compose.material.icons.filled.Screenshot
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +45,10 @@ fun SettingsGalleryScreen(
     onGroupByChange: (GroupBy) -> Unit,
     libraryPreviewRows: Int,
     onLibraryPreviewRowsChange: (Int) -> Unit,
+    showScreenshotsInLibrary: Boolean,
+    onShowScreenshotsInLibraryChange: (Boolean) -> Unit,
+    hiddenAutoAlbums: Set<String>,
+    onAutoAlbumHiddenChange: (String, Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -117,6 +123,36 @@ fun SettingsGalleryScreen(
             )
             Text(
                 appString(R.string.settings_gallery_applies_to_the_full_library),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
+            )
+
+            SettingsToggleRow(
+                label = appString(R.string.settings_gallery_show_screenshots),
+                checked = showScreenshotsInLibrary,
+                icon = Icons.Filled.Screenshot,
+                onCheckedChange = onShowScreenshotsInLibraryChange
+            )
+            Text(
+                appString(R.string.settings_gallery_show_screenshots_hint),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
+            )
+
+            SettingsSectionTitle(appString(R.string.settings_auto_albums))
+            listOf(
+                "camera" to "Camera",
+                "screenshots" to "Screenshots",
+                "downloads" to "Downloads",
+                "whatsapp" to "WhatsApp"
+            ).forEach { (rule, name) ->
+                SettingsToggleRow(
+                    label = name,
+                    checked = rule !in hiddenAutoAlbums,
+                    icon = Icons.Filled.PhotoAlbum,
+                    onCheckedChange = { show -> onAutoAlbumHiddenChange(rule, !show) }
+                )
+            }
+            Text(
+                appString(R.string.settings_auto_albums_hint),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
             )
         }

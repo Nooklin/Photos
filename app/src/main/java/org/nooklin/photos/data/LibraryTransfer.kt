@@ -20,8 +20,6 @@ import org.nooklin.photos.data.local.AlbumEntity
 import org.nooklin.photos.data.local.LocalMetadataStore
 import org.nooklin.photos.data.local.NooklinDatabase
 
-// Backup and import for the normal library: the same ideas as the Hidden Section, on MediaStore and the album database.
-
 private fun sha256Of(file: java.io.InputStream): String {
     val digest = MessageDigest.getInstance("SHA-256")
     val buffer = ByteArray(64 * 1024)
@@ -33,7 +31,6 @@ private fun sha256Of(file: java.io.InputStream): String {
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
 
-// Into the library: the file becomes a new MediaStore item and the album gets its id
 class LibraryImportSink(private val context: Context) : ImportSink {
     private val dao = NooklinDatabase.getInstance(context).albumDao()
     private val store = MediaStoreRepository(context)
@@ -121,7 +118,6 @@ class LibraryImportSink(private val context: Context) : ImportSink {
     }
 }
 
-// Zip of the library. Flat: everything in Library/. Organized: Albums/Album/Folder/file, photos in no album in Library/.
 suspend fun exportLibraryZip(
     context: Context,
     destination: Uri,
@@ -138,7 +134,6 @@ suspend fun exportLibraryZip(
         val itemsById = items.associateBy { it.id }
         val inAnyAlbum = HashSet<Long>()
 
-        // Entries per directory so two photos with the same name do not overwrite each other
         val usedNames = HashSet<String>()
         fun uniqueEntry(dir: String, item: MediaItem): String {
             val name = (item.displayName ?: "${item.id}.${fileExtensionFor(item.mimeType, item.isVideo)}")
@@ -154,7 +149,6 @@ suspend fun exportLibraryZip(
             return candidate
         }
 
-        // Directory names of albums and folders, unique and safe in a zip
         val albumsById = albums.associateBy { it.id }
         fun cleanName(name: String) = name.replace(Regex("[/\\\\:*?\"<>|]"), "_").ifBlank { "Untitled" }
         val dirs = HashMap<Long, String>()
@@ -165,7 +159,6 @@ suspend fun exportLibraryZip(
             if (usedDirs.add(base)) base else "${base}_${album.id}".also { usedDirs.add(it) }
         }
 
-        // The writes: entry name to item, decided first so progress has a total
         val writes = mutableListOf<Pair<String, MediaItem>>()
         if (organized) {
             albums.forEach { album ->
@@ -184,9 +177,7 @@ suspend fun exportLibraryZip(
         var done = 0
         context.contentResolver.openOutputStream(destination)?.use { out ->
             ZipOutputStream(out).use { zip ->
-                // Photos and videos are compressed already
                 zip.setLevel(Deflater.NO_COMPRESSION)
-                // Entry names are made safe, the real name and dates travel in metadata.json
                 val files = JSONObject()
                 writes.forEach { (entryName, item) ->
                     files.put(entryName, JSONObject().apply {
@@ -217,7 +208,6 @@ suspend fun exportLibraryZip(
         } ?: return@withContext false
         true
     } catch (e: Exception) {
-        // No partial zip left behind
         try { android.provider.DocumentsContract.deleteDocument(context.contentResolver, destination) } catch (_: Exception) { }
         false
     }

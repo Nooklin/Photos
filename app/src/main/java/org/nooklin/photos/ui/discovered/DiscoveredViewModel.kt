@@ -24,7 +24,7 @@ class DiscoveredViewModel(application: Application) : AndroidViewModel(applicati
     }
 }
 
-// Computed smart album, one per tag in photo_tags. Not an AlbumWithPreview: no database row, tagId identifies it.
+// Computed smart album, one per tag in photo_tags.
 data class DiscoveredAlbum(
     val tagId: String,
     val label: String,

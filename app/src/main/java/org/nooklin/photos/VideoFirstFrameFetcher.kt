@@ -36,7 +36,6 @@ class VideoFirstFrameFetcher(
                 is Uri -> retriever.setDataSource(options.context, source)
                 else -> throw IOException("Unsupported video source")
             }
-            // Trim start is rarely a keyframe, so read it exact
             val option = if (startMs > 0L) MediaMetadataRetriever.OPTION_CLOSEST else MediaMetadataRetriever.OPTION_CLOSEST_SYNC
             val frame = retriever.getFrameAtTime(startMs * 1000L, option)
                 ?: throw IOException("No frame at the start of the video")

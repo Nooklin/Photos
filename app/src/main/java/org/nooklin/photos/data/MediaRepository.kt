@@ -16,8 +16,6 @@ class MediaRepository(
         val favoriteIds = localMetadataStore.favoriteIds.first()
         val recycledIds = localMetadataStore.recycleBinEntries.first().map { it.mediaId }.toSet()
         val sortDates = localMetadataStore.sortDates.first()
-        // Drop stored originals of vanished photos.
-        // Skipped on an empty query, that is more likely a denied query.
         if (raw.isNotEmpty() && originals != null) {
             val liveIds = raw.mapTo(HashSet()) { it.id }
             withContext(Dispatchers.IO) { originals.pruneMedia(liveIds) }
@@ -25,7 +23,6 @@ class MediaRepository(
         return raw
             .filterNot { it.id in recycledIds }
             .map { it.copy(isFavorite = it.id in favoriteIds, dateAdded = sortDates[it.id] ?: it.dateAdded) }
-            // Sorted again, a date override can move a photo
             .sortedByDescending { it.dateAdded }
     }
 

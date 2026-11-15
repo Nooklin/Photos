@@ -31,7 +31,6 @@ import org.nooklin.photos.ui.theme.Spacing
 
 class EditorModeItem<T>(val mode: T, val icon: ImageVector, val label: String)
 
-// The row of editor modes at the bottom. Same pill, height and icon buttons as the toolbar of the viewer.
 @Composable
 fun <T> EditorModeBar(
     items: List<EditorModeItem<T>>,
@@ -69,7 +68,6 @@ fun <T> EditorModeBar(
     }
 }
 
-// The red pill in the top bar of the editors (Revert, Delete edit). White text on a red that reaches 4.5:1.
 @Composable
 fun EditorDestructivePill(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     Box(

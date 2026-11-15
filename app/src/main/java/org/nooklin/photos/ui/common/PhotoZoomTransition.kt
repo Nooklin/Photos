@@ -19,7 +19,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
@@ -67,19 +66,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 // Grid to viewer zoom shared by every viewer so they can't drift apart
 
-const val PHOTO_ZOOM_TRANSITION_DURATION_MS = 400
-
-// Roughly iOS Photos timing, not measured
-private const val ENTER_DURATION_MS = 350
-private const val EXIT_DURATION_MS = 280
 private val HERO_EASING = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
 
 private const val CHROME_FADE_START = 0.9f
-// Frames to wait for the grid to report the target cell before fading
-private const val RETURN_OVERLAY_MAX_WAIT_FRAMES = 30
-// Corner radius every grid screen clips its thumbnails to.
 private val GRID_CELL_CORNER = 8.dp
-// Square when the real ratio is unknown (older entries, or MediaStore without a size)
 const val UNKNOWN_PHOTO_ASPECT_RATIO = 1f
 
 fun org.nooklin.photos.data.MediaItem.aspectRatioOrUnknown(): Float {
@@ -104,8 +94,6 @@ internal fun chromeFadeAlpha(zoomProgress: Float): Float =
 class ZoomLaunch(
     val initialBounds: Rect?,
     val backdrop: ImageBitmap?,
-    // Bounds of visible cells at tap time, only used to decide if a scroll is needed.
-    // The return overlay re-checks live bounds.
     val cellBounds: Map<Any, Rect>
 )
 
@@ -115,13 +103,10 @@ class ReturnOverlayRequest(
     val model: Any,
     val cacheKey: String,
     val photoAspectRatio: Float,
-    // Pager bounds when exit began, reference for the hero frame
     val viewportBounds: Rect,
-    // Viewer background, for a seamless hand-off
     val scrimColor: Color
 )
 
-// Process-wide singleton: one activity and NavHost, avoids a CompositionLocal
 @Stable
 object ZoomSources {
     // Plain HashMap: written on every layout pass while scrolling, snapshot state would write every frame
@@ -130,7 +115,6 @@ object ZoomSources {
     var pendingScrollKey by mutableStateOf<Any?>(null)
     var returnOverlay by mutableStateOf<ReturnOverlayRequest?>(null)
 
-    // Bounds are computed on demand, not per scroll frame
     fun boundsOf(key: Any): Rect? = liveCoordinates[key]?.takeIf { it.isAttached }?.boundsInWindow()
 
     fun snapshotBounds(): Map<Any, Rect> {
@@ -154,7 +138,6 @@ fun Modifier.zoomSource(key: Any): Modifier = composed {
     Modifier.onPlaced { ZoomSources.liveCoordinates[key] = it }
 }
 
-// One-shot backdrop snapshot: record() is free, the readback happens once in capture()
 fun Modifier.zoomBackdropSource(): Modifier = composed {
     val layer = rememberGraphicsLayer()
     DisposableEffect(layer) {
@@ -201,7 +184,6 @@ class PhotoZoomTransitionState internal constructor(private val launch: ZoomLaun
         currentCacheKey: String?,
         photoAspectRatio: Float,
         scrimColor: Color,
-        // Current pinch state: exiting while zoomed used to snap back to 1x first
         zoomScale: Float = 1f,
         zoomOffset: Offset = Offset.Zero,
         onBack: () -> Unit
@@ -214,7 +196,6 @@ class PhotoZoomTransitionState internal constructor(private val launch: ZoomLaun
         // snapTo, not animateTo: the fade delayed the zoom-out before it began
         chromeOverride.snapTo(0f)
         ZoomSources.pendingScrollKey = currentKey
-        // If pinch-zoomed, start the shrink from the live on-screen rect, not the fitted one
         val viewport = if (zoomScale > 1.01f) {
             val pagerLocal = Rect(0f, 0f, pager.width, pager.height)
             val fitted = fittedRect(pagerLocal, if (photoAspectRatio > 0f) photoAspectRatio else UNKNOWN_PHOTO_ASPECT_RATIO)
@@ -235,20 +216,18 @@ class PhotoZoomTransitionState internal constructor(private val launch: ZoomLaun
 fun rememberPhotoZoomTransition(launch: ZoomLaunch?): PhotoZoomTransitionState {
     val state = remember { PhotoZoomTransitionState(launch) }
     LaunchedEffect(Unit) {
-        // Keyed on Unit with snapshotFlow: pager bounds change while insets settle, restarting cancelled the entrance
         if (launch?.initialBounds != null) {
             snapshotFlow { state.pagerBounds }.filterNotNull().first()
-            state.progress.animateTo(1f, tween(ENTER_DURATION_MS, easing = HERO_EASING))
+            state.progress.animateTo(1f, tween(350, easing = HERO_EASING))
         }
     }
     return state
 }
 
-// After the pager's padding, so it reports post-padding bounds
+// after the pager's padding, so it reports post-padding bounds
 fun Modifier.zoomPagerBounds(state: PhotoZoomTransitionState): Modifier =
     onGloballyPositioned { state.pagerBounds = it.boundsInWindow() }
 
-// Aspect-fit: the whole photo visible, letterboxed
 internal fun fittedRect(viewport: Rect, photoAspectRatio: Float): Rect {
     val ar = if (photoAspectRatio > 0f) photoAspectRatio else UNKNOWN_PHOTO_ASPECT_RATIO
     val scale = min(viewport.width / ar, viewport.height / 1f)
@@ -259,12 +238,10 @@ internal fun fittedRect(viewport: Rect, photoAspectRatio: Float): Rect {
     return Rect(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
 }
 
-// Grid to viewer hero: the photo grows from the cell (aspect-fill) to the viewport (aspect-fit) as progress goes 0 to 1
 @Composable
 fun HeroPhotoFrame(
     model: Any,
     cacheKey: String,
-    // Initial guess from MediaStore, only picks the decode size. The real ratio comes from the decode.
     initialAspectRatio: Float,
     cellRect: () -> Rect,
     viewportRect: () -> Rect,
@@ -282,7 +259,8 @@ fun HeroPhotoFrame(
         ImageRequest.Builder(context)
             .data(model)
             .size(CoilSize(decodeWidth, decodeHeight))
-            .memoryCacheKey(cacheKey)
+            // Own key: cacheKey is also the grid's key, whose small cell-size bitmap Coil would accept here as the full image
+            .memoryCacheKey("zoom|$cacheKey")
             .placeholderMemoryCacheKey(cacheKey)
             .crossfade(150)
             .build()
@@ -324,13 +302,11 @@ fun HeroPhotoFrame(
                     val fitScale = min(vp.width / ar, vp.height / 1f)
                     val thumbScale = max(cell.width / ar, cell.height / 1f)
                     val curScale = thumbScale + (fitScale - thumbScale) * t
-                    // Ratio against the fixed decode size, can exceed 1 if the real ratio differs from the guess
                     val renderScale = curScale / fitScale
                     scaleX = renderScale
                     scaleY = renderScale
                     val cx = cell.center.x + (vp.center.x - cell.center.x) * t
                     val cy = cell.center.y + (vp.center.y - cell.center.y) * t
-                    // Scaling is around the layer center, so translate by (target center - own center)
                     translationX = cx - decodeWidth / 2f
                     translationY = cy - decodeHeight / 2f
                 }
@@ -338,7 +314,6 @@ fun HeroPhotoFrame(
     }
 }
 
-// Clip at an arbitrary sub-region, not tied to the layer size
 private class ClipWindowShape(private val rect: Rect, private val cornerPx: Float) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
         if (cornerPx > 0f) {
@@ -369,7 +344,6 @@ fun ZoomBackdrop(state: PhotoZoomTransitionState) {
     )
 }
 
-// Drawn above the NavHost: every exit shrinks here, the viewer pops at once
 @Composable
 fun ZoomReturnOverlay() {
     val request = ZoomSources.returnOverlay ?: return
@@ -378,11 +352,10 @@ fun ZoomReturnOverlay() {
     // Starts at (0,0) so the photo draws on the first frame
     var origin by remember { mutableStateOf(Offset.Zero) }
     LaunchedEffect(request) {
-        // Wait for the grid's live cell position, not the tap-time snapshot
         var found: Rect? = null
         var frames = 0
         var framesSinceScrollCleared = 0
-        while (found == null && frames < RETURN_OVERLAY_MAX_WAIT_FRAMES) {
+        while (found == null && frames < 30) {
             withFrameNanos { }
             frames++
             if (ZoomSources.pendingScrollKey == null) {
@@ -391,14 +364,13 @@ fun ZoomReturnOverlay() {
             }
         }
         target = found
-        progress.animateTo(0f, tween(EXIT_DURATION_MS, easing = HERO_EASING))
+        progress.animateTo(0f, tween(280, easing = HERO_EASING))
         ZoomSources.returnOverlay = null
     }
     Box(Modifier.fillMaxSize().onGloballyPositioned { origin = it.boundsInWindow().topLeft }) {
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress.value }.background(request.scrimColor))
         val cell = target
         if (cell != null) {
-            // Same hero math in reverse
             HeroPhotoFrame(
                 model = request.model,
                 cacheKey = request.cacheKey,
@@ -411,7 +383,7 @@ fun ZoomReturnOverlay() {
                 progress = { progress.value }
             )
         } else {
-            // The grid can't show the photo (e.g. Home preview): fade out in place
+            // The grid can't show the photo (e.g.
             val viewport = Rect(
                 request.viewportBounds.left - origin.x, request.viewportBounds.top - origin.y,
                 request.viewportBounds.right - origin.x, request.viewportBounds.bottom - origin.y
@@ -429,7 +401,6 @@ fun ZoomReturnOverlay() {
     }
 }
 
-// Lazy index: each date group has one header item
 fun zoomLazyIndexOf(key: Any, keys: List<Any>, groups: List<List<Any>>?): Int? {
     if (groups == null) return keys.indexOf(key).takeIf { it >= 0 }
     var lazy = 0
@@ -459,11 +430,4 @@ suspend fun LazyStaggeredGridState.scrollToItemCentered(index: Int) {
     } ?: return
     val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
     scrollBy(info.offset.y + info.size.height / 2f - viewportCenter)
-}
-
-// Preview rows can't scroll: first row such that the index lands in the middle row
-fun previewWindowStartRow(index: Int, itemCount: Int, columns: Int, rows: Int): Int {
-    if (columns <= 0 || rows <= 0) return 0
-    val totalRows = (itemCount + columns - 1) / columns
-    return (index / columns - rows / 2).coerceIn(0, maxOf(0, totalRows - rows))
 }

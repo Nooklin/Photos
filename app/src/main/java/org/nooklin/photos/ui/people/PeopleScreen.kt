@@ -1,5 +1,9 @@
 package org.nooklin.photos.ui.people
 
+import org.nooklin.photos.ui.common.MenuIcon
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,7 +46,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.nooklin.photos.ui.common.FaceThumbnail
 import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.GlassPill
@@ -58,13 +61,11 @@ import androidx.compose.runtime.LaunchedEffect
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import androidx.compose.ui.semantics.Role
-import org.nooklin.photos.ui.common.touchTarget
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 import org.nooklin.photos.ui.common.TouchTargetBox
 
-// Grid of detected people (named and "Unknown N"), each card shows a cropped face
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PeopleScreen(
     people: List<PersonWithPreview>,
@@ -77,6 +78,7 @@ fun PeopleScreen(
 ) {
     var namingPersonId by remember { mutableStateOf<Long?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var menuPersonId by remember { mutableStateOf<Long?>(null) }
     var showCombineDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -134,9 +136,30 @@ fun PeopleScreen(
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .clickable(role = Role.Button) { onPersonClick(person.id) }
+                            .combinedClickable(
+                                role = Role.Button,
+                                onClick = { onPersonClick(person.id) },
+                                onLongClick = { menuPersonId = person.id }
+                            )
                     ) {
                         Box(Modifier.fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
+                            DropdownMenu(
+                                expanded = menuPersonId == person.id,
+                                onDismissRequest = { menuPersonId = null },
+                                shape = GlassPill.shape,
+                                containerColor = GlassPill.adaptivePopupBackground
+                            ) {
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                    DropdownMenuItem(
+                                        text = { Text(appString(if (person.isNamed) R.string.common_rename else R.string.people_add_name)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.Edit) },
+                                        onClick = {
+                                            menuPersonId = null
+                                            namingPersonId = person.id
+                                        }
+                                    )
+                                }
+                            }
                             FaceThumbnail(
                                 photoUri = person.representativePhotoUri,
                                 boxXMin = person.boxXMin,
@@ -247,8 +270,7 @@ fun PeopleScreen(
     }
 
     if (showCombineDialog) {
-        // The same person can be split into several when their faces differ in angle or light. Each setting shows how
-        // many people it would combine, so the choice can be made before anything changes.
+        // the same person can be split into several when their faces differ in angle or light.
         val options = listOf(appString(R.string.people_careful) to 0.6f, appString(R.string.people_balanced) to 0.75f, appString(R.string.people_loose) to 0.9f)
         var counts by remember { mutableStateOf<Map<Float, Int>>(emptyMap()) }
         LaunchedEffect(Unit) {

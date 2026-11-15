@@ -45,7 +45,7 @@ import org.nooklin.photos.appString
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 
-// Hidden files live in app-private storage, which Android deletes on uninstall. This export is the only way to keep a copy.
+// Hidden files live in app-private storage, which Android deletes on uninstall
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsHiddenBackupScreen(
@@ -155,7 +155,6 @@ fun SettingsHiddenBackupScreen(
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     } else {
-                        // Indeterminate until the file list is known
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                 }
@@ -167,7 +166,6 @@ fun SettingsHiddenBackupScreen(
     }
 }
 
-// Same layout as the import screen: a short list of steps, then an example of what the zip looks like
 @Composable
 fun BackupExplanation(stepsText: String, exampleTitle: String, example: String) {
     Text(

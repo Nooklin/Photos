@@ -1,4 +1,4 @@
-package org.nooklin.photos.ui.external
+package org.nooklin.photos.ui.viewer
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,7 +46,7 @@ import org.nooklin.photos.ui.common.freshImageRequest
 import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.theme.Spacing
 
-// One file opened from another app. Shows only that file, never the library.
+// One file opened from another app.
 @Composable
 fun ExternalViewScreen(request: ExternalRequest.View, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
@@ -77,7 +76,6 @@ fun ExternalViewScreen(request: ExternalRequest.View, onClose: () -> Unit) {
     }
 }
 
-// Another app asked for a photo or video. Single choice returns at once, multiple ends with Done.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExternalPickScreen(

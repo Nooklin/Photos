@@ -20,7 +20,6 @@ import org.nooklin.photos.ui.theme.LocalContrastColorState
 import org.nooklin.photos.ui.theme.AppColors
 import androidx.compose.ui.graphics.luminance
 
-// Shared glass pill styling, fixed and adaptive backgrounds use different opacity
 object GlassPill {
     val shape: Shape = RoundedCornerShape(24.dp)
 
@@ -38,7 +37,6 @@ object GlassPill {
                 // Tinted glass in both themes, low alpha because it sits over photos
                 contrast.color.copy(alpha = 0.18f)
             } else {
-                // DEFAULT: no tint
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
             }
         }
@@ -47,11 +45,9 @@ object GlassPill {
         @Composable get() {
             val contrast = LocalContrastColorState.current
             if (contrast.isBlackMode) {
-                // Dark grey, near opaque for readable rows and dialogs
                 return AppColors.PopupDark.copy(alpha = 0.97f)
             }
             return if (contrast.color != null) {
-                // Popups stay near opaque: blend the color into the surface, a low-alpha tint looks washed out
                 lerp(MaterialTheme.colorScheme.surface, contrast.color, 0.12f).copy(alpha = 0.97f)
             } else {
                 MaterialTheme.colorScheme.surface.copy(alpha = 0.97f)
@@ -75,7 +71,6 @@ fun GlassPillContainer(
     modifier: Modifier = Modifier,
     backgroundColor: Color = GlassPill.fixedGlassBackground,
     border: BorderStroke? = null,
-    // Editor mode bar uses 10dp, the viewer toolbar passes 0dp so its 48dp buttons set the height
     verticalContentPadding: Dp = 10.dp,
     content: @Composable () -> Unit
 ) {

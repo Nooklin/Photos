@@ -1,11 +1,10 @@
 package org.nooklin.photos.ui.hidden
 
 
-import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
+import org.nooklin.photos.ui.common.TileSpec
+import org.nooklin.photos.ui.common.TileRow
 
-import androidx.compose.runtime.mutableIntStateOf
 
-import androidx.compose.runtime.saveable.rememberSaveable
 
 import org.nooklin.photos.ui.common.zoomSource
 import org.nooklin.photos.ui.common.zoomBackdropSource
@@ -15,13 +14,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,13 +29,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ScreenShare
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -84,13 +80,10 @@ import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import androidx.compose.ui.semantics.Role
-import org.nooklin.photos.ui.common.touchTarget
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 import org.nooklin.photos.ui.common.TouchTargetBox
 
-// Landing screen after the gate, mirrors HomeScreen's blocks. Media Types use flags captured at hide-time.
-// Duplicates isn't offered, it needs ML data hidden items don't have.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HiddenHomeScreen(
@@ -98,7 +91,6 @@ fun HiddenHomeScreen(
     albums: List<HiddenAlbumWithPreview>,
     hiddenAlbumsEnabled: Boolean,
     gridColumns: Int,
-    // The Hidden section has its own switched off sections, apart from Home. The tile order is shared with Home.
     hiddenSections: Set<HomeSection> = emptySet(),
     mediaTypesOrder: List<String> = HomeItems.MEDIA_TYPES,
     utilitiesOrder: List<String> = HomeItems.UTILITIES,
@@ -122,13 +114,6 @@ fun HiddenHomeScreen(
     val context = LocalContext.current
     val previewColumns = gridColumns.coerceAtLeast(2) // the small Home preview never goes to one huge column
     val maxPreviewRows = 3
-    // The Hidden Library card scrolls sideways through the whole Hidden library, newest first, like Library Home.
-    // Scrolls to a photo the viewer was closed on when it is out of view, so the return zoom lands on its thumbnail.
-    val libraryGridState = rememberLazyGridState()
-    ScrollToPendingZoomKey(
-        lazyIndexOf = { key -> items.indexOfFirst { it.file.absolutePath == key }.takeIf { it >= 0 } },
-        scrollToIndex = { i -> libraryGridState.scrollToItem(i) }
-    )
     val neededRows = min(
         maxPreviewRows,
         if (items.isEmpty()) 0 else ceil(items.size / previewColumns.toFloat()).toInt()
@@ -165,41 +150,56 @@ fun HiddenHomeScreen(
                             subtitle = appString(R.string.common_items, items.size),
                             titleFontSize = 20.sp
                         ) {}
-                        if (neededRows > 0) {
-                            BoxWithConstraints(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp)
-                            ) {
-                                val cellSize = maxWidth / previewColumns
-                                LazyHorizontalGrid(
-                                    rows = GridCells.Fixed(neededRows),
-                                    state = libraryGridState,
-                                    modifier = Modifier.fillMaxWidth().height(cellSize * neededRows),
-                                    contentPadding = PaddingValues(2.dp)
-                                ) {
-                                    items(items.size, key = { items[it].file.name }) { index ->
-                                        AsyncImage(
-                                            model = freshImageRequest(
-                                                context,
-                                                items[index].thumbnailFile,
-                                                items[index].thumbnailFile.lastModified()
-                                            ),
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .fillMaxHeight()
+                        Column(Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, top = 6.dp)) {
+                            for (row in 0 until neededRows) {
+                                Row(Modifier.fillMaxWidth()) {
+                                    for (col in 0 until previewColumns) {
+                                        val index = row * previewColumns + col
+                                        val item = items.getOrNull(index)
+                                        if (item == null) {
+                                            Spacer(Modifier.weight(1f))
+                                            continue
+                                        }
+                                        Box(
+                                            Modifier
+                                                .weight(1f)
                                                 .aspectRatio(1f)
                                                 .padding(1.dp)
                                                 .clip(RoundedCornerShape(8.dp))
-                                                .zoomSource(items[index].file.absolutePath)
+                                                .zoomSource(item.file.absolutePath)
                                                 .clickable(role = Role.Button) { onItemClick(index) }
-                                        )
+                                        ) {
+                                            AsyncImage(
+                                                model = freshImageRequest(
+                                                    context,
+                                                    item.thumbnailFile,
+                                                    item.thumbnailFile.lastModified()
+                                                ),
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            if (item.isFavorite) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Favorite,
+                                                    contentDescription = null,
+                                                    tint = Color.White,
+                                                    modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(16.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
-                        Box(Modifier.height(12.dp).fillMaxWidth()) {}
+                        Text(
+                            appString(R.string.home_see_all),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(role = Role.Button, onClick = onOpenLibrary)
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
@@ -278,7 +278,6 @@ fun HiddenHomeScreen(
                 }
             }
 
-            // Entry into the screen where Hidden's own sections can be switched off, apart from Home.
             item {
                 GlassBlock {
                     Row(
@@ -300,32 +299,11 @@ fun HiddenHomeScreen(
 
 private data class HiddenCategoryRowSpec(val label: String, val icon: ImageVector, val onClick: () -> Unit)
 
-// Local copy of HomeScreen's CategoryGrid, those composables are private
 @Composable
 private fun HiddenCategoryGrid(rows: List<HiddenCategoryRowSpec>) {
-    LazyHorizontalGrid(
-        rows = GridCells.Fixed(2),
-        modifier = Modifier.fillMaxWidth().height(112.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp)
-    ) {
-        items(rows.size, key = { rows[it].label }) { index ->
-            val row = rows[index]
-            Row(
-                Modifier
-                    // At least 180dp but wide enough for the whole label, same as Library Home
-                    .widthIn(min = 180.dp)
-                    .padding(vertical = 8.dp, horizontal = 4.dp)
-                    .clickable(role = Role.Button) { row.onClick() },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(row.icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
-                Text(row.label, maxLines = 1, softWrap = false)
-            }
-        }
-    }
+    TileRow(rows.map { TileSpec(it.label, it.icon, it.onClick) })
 }
 
-// Same as HomeScreen's GlassBlock, 2dp horizontal so pills reach the screen edge
 @Composable
 private fun GlassBlock(content: @Composable () -> Unit) {
     Surface(
@@ -340,7 +318,6 @@ private fun GlassBlock(content: @Composable () -> Unit) {
     }
 }
 
-// Same as HomeScreen's SectionHeader
 @Composable
 private fun SectionHeader(
     title: String,

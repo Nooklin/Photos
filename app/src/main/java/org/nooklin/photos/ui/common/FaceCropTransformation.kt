@@ -21,7 +21,6 @@ class FaceCropTransformation(
         }
         val w = input.width
         val h = input.height
-        // Same margin as FaceEmbedder's crop
         val marginX = (xMax - xMin) * w * MARGIN_FRACTION
         val marginY = (yMax - yMin) * h * MARGIN_FRACTION
         val left = ((xMin * w) - marginX).toInt().coerceIn(0, w - 1)

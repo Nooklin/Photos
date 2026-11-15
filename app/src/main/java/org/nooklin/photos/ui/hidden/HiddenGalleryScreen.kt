@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.hidden
 
+import org.nooklin.photos.ui.common.MenuSectionHeader
+import androidx.activity.compose.BackHandler
 import org.nooklin.photos.ui.common.aspectRatioOrUnknown
 import org.nooklin.photos.ui.common.scrollToItemCentered
 
@@ -9,9 +11,6 @@ import org.nooklin.photos.ui.common.zoomSource
 import org.nooklin.photos.ui.common.zoomBackdropSource
 
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +31,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items as staggeredItems
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.Icons
@@ -42,9 +40,7 @@ import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.Visibility
 import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
@@ -72,7 +68,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -108,7 +103,6 @@ import org.nooklin.photos.ui.common.heroImageRequest
 import org.nooklin.photos.appString
 import org.nooklin.photos.ui.common.EmptyState
 
-// Reached from Home, re-auth required each visit. Select mode mirrors the main Library.
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HiddenGalleryScreen(
@@ -138,12 +132,11 @@ fun HiddenGalleryScreen(
     gridStyle: GridStyle = GridStyle.SQUARE,
     groupBy: GroupBy = GroupBy.NONE
 ) {
-    // This function keeps the plain names below, so they are re-bound here: one column keeps each photo's own shape
-    // and drops the group headers.
     val gridStyle = if (gridColumns == 1) GridStyle.ORIGINAL else gridStyle
     val groupBy = if (gridColumns == 1) GroupBy.NONE else groupBy
     var isSelecting by remember { mutableStateOf(false) }
     var selectedNames by remember { mutableStateOf(setOf<String>()) }
+    var menuItem by remember { mutableStateOf<HiddenItem?>(null) }
     var actionsMenuExpanded by remember { mutableStateOf(false) }
     var filterMenuExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -154,7 +147,6 @@ fun HiddenGalleryScreen(
     var showSlideshow by remember { mutableStateOf(false) }
     var showCoverPicker by remember { mutableStateOf(false) }
     var heroMenuExpanded by remember { mutableStateOf(false) }
-    // Same dragToSelect and pinch wiring as GalleryScreen
     val gridState = rememberLazyGridState()
     val staggeredGridState = rememberLazyStaggeredGridState()
     ScrollToPendingZoomKey(
@@ -180,11 +172,25 @@ fun HiddenGalleryScreen(
         selectedNames = if (name in selectedNames) selectedNames - name else selectedNames + name
     }
 
+    BackHandler(enabled = isSelecting) { exitSelection() }
+
+    menuItem?.let { item ->
+        HiddenItemMenu(
+            item = item,
+            onOpen = { onItemClick(items.indexOf(item)) },
+            onSelect = { isSelecting = true; toggleSelect(item) },
+            onFavorite = { onToggleFavorite(item) },
+            onUnhide = { onUnhide(item) },
+            onDelete = { isSelecting = true; selectedNames = setOf(item.file.name); showDeleteConfirm = true },
+            onAddToAlbum = { isSelecting = true; selectedNames = setOf(item.file.name); showAddToAlbumDialog = true },
+            onDismiss = { menuItem = null }
+        )
+    }
+
     Scaffold(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
-                // With the big photo the bar is see-through, the title is on the photo
                 colors = if (hasHero) {
                     TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
                 } else {
@@ -196,10 +202,10 @@ fun HiddenGalleryScreen(
                         CircleIconButton(
                             icon = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = appString(R.string.common_back),
-                            onClick = onBack
+                            onClick = { if (isSelecting) exitSelection() else onBack() }
                         )
                     } else {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = { if (isSelecting) exitSelection() else onBack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                         }
                     }
@@ -245,6 +251,7 @@ fun HiddenGalleryScreen(
                                 containerColor = GlassPill.adaptivePopupBackground
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                    MenuSectionHeader(appString(R.string.filter_menu_show))
                                     DropdownMenuItem(
                                         text = { Text(appString(R.string.common_all)) },
                                         trailingIcon = {
@@ -282,6 +289,7 @@ fun HiddenGalleryScreen(
                                         onClick = { onHideScreenshotsChange(!hideScreenshots) }
                                     )
                                     HorizontalDivider()
+                                    MenuSectionHeader(appString(R.string.filter_menu_sort))
                                     DropdownMenuItem(
                                         text = { Text(appString(R.string.common_newest_first)) },
                                         trailingIcon = {
@@ -356,8 +364,6 @@ fun HiddenGalleryScreen(
                             }
                         }
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
-                    } else {
-                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
                 }
             )
@@ -419,7 +425,6 @@ fun HiddenGalleryScreen(
                                     showPlay = true,
                                     onPlay = { showSlideshow = true },
                                     image = {
-                                        // A video has no photo file, its thumbnail is used
                                         val heroFile = if (heroItem.isVideo) heroItem.thumbnailFile else heroItem.file
                                         AsyncImage(
                                             model = heroImageRequest(heroContext, heroFile, heroFile.lastModified()),
@@ -437,12 +442,11 @@ fun HiddenGalleryScreen(
                                 item, index, isSelecting, item.file.name in selectedNames,
                                 onItemClick = onItemClick,
                                 onToggleSelect = { toggleSelect(item) },
-                                onLongPressStartSelect = { isSelecting = true; toggleSelect(item) }
+                                onLongPressStartSelect = { menuItem = item }
                             )
                         }
                     }
                 } else {
-                    // remember() hoisted out of LazyGridScope, as in GalleryScreen
                     val grouped = remember(items, groupBy) { groupHiddenItemsByDate(items, groupBy) }
                     val indexByName = remember(items) { items.withIndex().associate { (i, item) -> item.file.name to i } }
                     LazyVerticalGrid(
@@ -487,7 +491,7 @@ fun HiddenGalleryScreen(
                                     item, indexByName.getValue(item.file.name), isSelecting, item.file.name in selectedNames,
                                     onItemClick = onItemClick,
                                     onToggleSelect = { toggleSelect(item) },
-                                    onLongPressStartSelect = { isSelecting = true; toggleSelect(item) }
+                                    onLongPressStartSelect = { menuItem = item }
                                 )
                             }
                         }
@@ -543,7 +547,7 @@ fun HiddenGalleryScreen(
                                     .zoomSource(item.file.absolutePath)
                                     .combinedClickable(
                                         onClick = { if (isSelecting) toggleSelect(item) else onItemClick(items.indexOf(item)) },
-                                        onLongClick = { if (!isSelecting) { isSelecting = true; toggleSelect(item) } }
+                                        onLongClick = { if (!isSelecting) menuItem = item }
                                     )
                             )
                             if (item.isFavorite) {
@@ -575,7 +579,6 @@ fun HiddenGalleryScreen(
                 )
             },
             title = title,
-            // Hidden photos stay out of screenshots in the slideshow window too
             secure = true,
             onClose = { showSlideshow = false }
         )
@@ -631,7 +634,6 @@ fun HiddenGalleryScreen(
             title = { Text(appString(R.string.common_add_to_hidden_album)) },
             text = {
                 Column {
-                    // With no hidden albums the dialog lets you create one right here, like the regular Add to Album
                     GlassPillTextField(
                         value = newAlbumName,
                         onValueChange = { newAlbumName = it },
@@ -672,7 +674,6 @@ fun HiddenGalleryScreen(
     }
 }
 
-// Shared by the grouped and ungrouped square branches, like GalleryScreen's GridCell
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HiddenGridCell(

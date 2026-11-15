@@ -15,7 +15,6 @@ import org.nooklin.photos.data.local.MlTag
 internal const val FACE_SCAN_LOG_TAG = "NooklinFaceScan"
 internal const val OBJECT_SCAN_LOG_TAG = "NooklinObjectScan"
 
-// Debug builds only: the logs hold content URIs and results
 internal fun scanLogD(tag: String, message: String) {
     if (BuildConfig.DEBUG) Log.d(tag, message)
 }
@@ -23,9 +22,6 @@ internal fun scanLogW(tag: String, message: String, throwable: Throwable? = null
     if (BuildConfig.DEBUG) Log.w(tag, message, throwable)
 }
 
-// Runs every enabled detector per photo. PEOPLE runs both BlazeFace models and clusters faces,
-// PETS/CARS/MOTORCYCLES share one object detection pass.
-// Known limit: needsAnalysis() gates the whole photo, so a newly enabled category skips scanned photos.
 class PhotoAnalysisScanner(
     private val context: Context,
     private val analysisRepository: AnalysisRepository,
@@ -70,16 +66,13 @@ class PhotoAnalysisScanner(
                 onProgress(ScanProgress(index, toScan.size))
 
                 if (statusDates[item.id] == item.dateModified) {
-                    // Every 50th skip is logged, shows needsAnalysis() as the reason when nothing new is found
                     if (index % 50 == 0) {
                         scanLogD(OBJECT_SCAN_LOG_TAG, "Skipping ${item.uri}, already analyzed (needsAnalysis=false)")
                     }
                     return@forEachIndexed
                 }
 
-                // 320px thumbnail shared by both pipelines, each downscales further
                 val bitmap = try {
-                    // Blocking decode on IO, keeps Default free for inference
                     withContext(Dispatchers.IO) {
                         context.contentResolver.loadThumbnail(item.uri, Size(320, 320), null)
                     }
@@ -96,7 +89,6 @@ class PhotoAnalysisScanner(
                         val shortFaces = try {
                             shortRangeDetector.detectFaces(bitmap)
                         } catch (e: Exception) {
-                            // Logged: a swallowed exception looks the same as "found nothing"
                             scanLogW(FACE_SCAN_LOG_TAG, "SHORT_RANGE failed for ${item.uri}", e)
                             emptyList()
                         }
@@ -153,7 +145,6 @@ class PhotoAnalysisScanner(
                                 "${item.uri}: " + objects.joinToString { "class=${it.cocoClassIndex} score=${"%.2f".format(it.score)}" }
                             )
                         }
-                        // Highest score per tag wins
                         objects.forEach { obj ->
                             val tag = CocoClass.tagFor(obj.cocoClassIndex) ?: return@forEach
                             if (tag !in enabledTags) return@forEach
@@ -167,7 +158,6 @@ class PhotoAnalysisScanner(
                     }
                 }
 
-                // Runs when only Duplicates is on, reuses the decoded bitmap
                 if (bitmap != null && duplicatesEnabled) {
                     try {
                         analysisRepository.saveHash(item.id, computeDHash(bitmap))
@@ -176,7 +166,6 @@ class PhotoAnalysisScanner(
                     }
                 }
 
-                // Both pipelines are done with the bitmap, release it now
                 bitmap?.recycle()
 
                 // Only record decoded photos: saving a failure as "found nothing" would skip it forever

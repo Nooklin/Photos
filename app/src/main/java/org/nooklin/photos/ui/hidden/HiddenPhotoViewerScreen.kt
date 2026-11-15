@@ -114,13 +114,10 @@ import org.nooklin.photos.ui.common.deleteWording
 import org.nooklin.photos.appString
 import org.nooklin.photos.ui.theme.Spacing
 
-// Share is opt-in (Hidden Image Sharing in Settings), easy sharing works against hiding
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HiddenPhotoViewerScreen(
-    // StableList so unrelated state changes can skip recomposition
     items: StableList<HiddenItem>,
-    // Captured by the grid at tap time (see ui/common/PhotoZoomTransition.kt).
     zoomLaunch: ZoomLaunch? = null,
     darkTheme: Boolean,
     startIndex: Int,
@@ -136,7 +133,6 @@ fun HiddenPhotoViewerScreen(
     onCreateAlbum: (name: String, onCreated: (Long) -> Unit) -> Unit
 ) {
     if (items.value.isEmpty()) {
-        // onBack is navigation, defer it out of composition
         LaunchedEffect(Unit) { onBack() }
         return
     }
@@ -144,14 +140,11 @@ fun HiddenPhotoViewerScreen(
     val pagerState = rememberPagerState(initialPage = safeStartIndex) { items.value.size }
     val currentItem = items.value.getOrNull(pagerState.currentPage)
     val coroutineScope = rememberCoroutineScope()
-    // Same zoom as the main viewer
     val zoom = rememberPhotoZoomTransition(zoomLaunch)
     val viewerBackground = if (darkTheme && currentItem != null) Color.Black else MaterialTheme.colorScheme.background
-    // Keyed on the page index so a swipe starts at 1x without pan.
-    // Declared before animateBackOut, locals can't be forward-referenced.
+    // Keyed on the page index so a swipe starts at 1x without pan
     val currentZoomScale = remember(pagerState.currentPage) { mutableStateOf(1f) }
     val currentZoomOffset = remember(pagerState.currentPage) { mutableStateOf(Offset.Zero) }
-    // Shared by VideoPlayerView and the control bar, declared before both
     val videoControls = remember { VideoControlState() }
     // VideoPlayerView never reports a zoom state, so a video could inherit a stuck "zoomed in" from the previous photo
     suspend fun animateBackOut() {
@@ -171,7 +164,6 @@ fun HiddenPhotoViewerScreen(
         coroutineScope.launch { animateBackOut() }
     }
     val context = LocalContext.current
-    // Chrome flips with the themed background
     val chromeColor = if (darkTheme) Color.White else Color.Black
     val popupBackground = if (darkTheme) GlassPill.fixedPopupBackground else GlassPill.adaptivePopupBackground
     val toolbarBackground = if (darkTheme) GlassPill.fixedGlassBackground else GlassPill.adaptiveGlassBackground
@@ -193,9 +185,7 @@ fun HiddenPhotoViewerScreen(
     var pillMetadata by remember { mutableStateOf<PhotoMetadata?>(null) }
     var currentPageZoomedIn by remember { mutableStateOf(false) }
     LaunchedEffect(pagerState.currentPage) { currentPageZoomedIn = false }
-    // Keyed on the page index, a new photo gets a fresh unzoomed state
 
-    // Always runs (for the pill), the info sheet load only runs when opened. EXIF is read off the main thread.
     LaunchedEffect(currentItem) {
         val item = currentItem
         pillMetadata = if (item != null) {
@@ -211,19 +201,16 @@ fun HiddenPhotoViewerScreen(
         }
     }
 
-    // Tap anywhere on the media to hide or show every control, like the iPhone viewer.
     var chromeVisible by remember { mutableStateOf(true) }
     var hasSwiped by remember { mutableStateOf(false) }
-    // Prepare the videos next to the current page once the open animation is done, so a swipe onto one starts quickly.
+    // Prepare the videos next to the current page once the open animation is done, so a swipe onto one starts quickly
     val transitionDone by remember { derivedStateOf { zoom.progressState.value >= 1f } }
-    // True only when the pager is fully at rest. settledPage can update the moment the finger lifts, while the
-    // page is still sliding, which mounted the player mid-slide and showed a black surface.
+    // true only when the pager is fully at rest. settledPage can update the moment the finger lifts, while the page is still sliding
     val pagerIdle by remember {
         derivedStateOf { !pagerState.isScrollInProgress && pagerState.currentPageOffsetFraction == 0f }
     }
     LaunchedEffect(pagerState.settledPage, items.value, transitionDone, pagerIdle) {
-        // Only when the pager is fully at rest, and after a short pause: creating a player costs main-thread time
-        // that must not land in the middle of a swipe.
+        // only when the pager is fully at rest, and after a short pause: creating a player costs main-thread time that must not land in the middle of 
         if (!transitionDone || !pagerIdle) return@LaunchedEffect
         delay(250)
         val current = pagerState.settledPage
@@ -308,7 +295,7 @@ fun HiddenPhotoViewerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     currentItem?.let { item ->
-                        // Unhide lives in the "..." menu. Without Share an invisible 56dp spacer keeps the center pill balanced.
+                        // Unhide lives in the "..." menu.
                         if (shareEnabled) {
                             ViewerCircleButton(
                                 icon = Icons.Filled.IosShare,
@@ -387,7 +374,7 @@ fun HiddenPhotoViewerScreen(
         val settledIsVideo = items.value.getOrNull(pagerState.settledPage)?.isVideo == true
         Box(Modifier.fillMaxSize()) {
             ZoomBackdrop(zoom)
-            // Measures the settled page's frame for the zoom transition. Empty, so it never touches input.
+            // Measures the settled page's frame for the zoom transition.
             Box(
                 Modifier
                     .fillMaxSize()
@@ -416,9 +403,7 @@ fun HiddenPhotoViewerScreen(
                 val pageItem = items.value.getOrNull(page)
                 if (pageItem != null) {
                     val isCurrentPage = page == pagerState.currentPage
-                    // Photos keep their old area inside the video frame; videos use the whole frame.
                     val pageFrame = Modifier.fillMaxSize().padding(if (pageItem.isVideo) PaddingValues() else photoInset)
-                    // HeroPhotoFrame owns the transition, ZoomableImage the settled state
                     val pager = zoom.pagerBounds
                     if (isCurrentPage && zoom.initialBounds != null && pager == null) {
                         // Bounds not measured yet: falling through mounted ZoomableImage full size for a frame before the entrance
@@ -448,8 +433,7 @@ fun HiddenPhotoViewerScreen(
                                 zoomOffset = if (isCurrentPage) currentZoomOffset else remember { mutableStateOf(Offset.Zero) }
                             )
                             if (pageItem.isVideo && isCurrentPage && pagerIdle) {
-                                // Mounted only once the pager is fully at rest. The still image above stays in place
-                                // the whole time and the video fades in over it, so nothing is swapped mid-swipe.
+                                // Mounted only once the pager is fully at rest.
                                 VideoPlayerView(
                                     model = pageItem.file,
                                     modifier = pageFrame,
@@ -457,7 +441,7 @@ fun HiddenPhotoViewerScreen(
                                     onTap = { chromeVisible = !chromeVisible },
                                     playEnabled = pagerIdle,
                                     poster = {
-                                        // Only straight after the open animation, which ends on this exact frame.
+                                        // Only straight after the open animation, which ends on this exact frame
                                         if (!hasSwiped && page == safeStartIndex && pager != null) {
                                             val fullFrame = Rect(0f, 0f, pager.width, pager.height)
                                             HeroPhotoFrame(
@@ -478,8 +462,6 @@ fun HiddenPhotoViewerScreen(
                 }
             }
 
-            // Video controls and filmstrip float over the media. For a photo the pager already ends above
-            // them and the background is solid, so the photo layout is unchanged.
             val overlayBase = if (darkTheme) Color.Black else MaterialTheme.colorScheme.background
             val overlayBackground by animateColorAsState(
                 targetValue = if (currentItem?.isVideo == true) overlayBase.copy(alpha = 0f) else overlayBase,
@@ -493,7 +475,7 @@ fun HiddenPhotoViewerScreen(
                     .chromeGate(chromeVisible) { chromeVisible = true }
                     .background(overlayBackground)
             ) {
-                // Video only: control bar in the pill style. AnimatedVisibility so the bottom bar grows smoothly when swiping between photo and video.
+                // Video only: control bar in the pill style.
                 AnimatedVisibility(
                     visible = currentItem?.isVideo == true,
                     enter = expandVertically() + fadeIn(),
@@ -582,7 +564,6 @@ fun HiddenPhotoViewerScreen(
             title = { Text(appString(R.string.common_add_to_hidden_album)) },
             text = {
                 Column {
-                    // With no hidden albums the dialog lets you create one right here
                     GlassPillTextField(
                         value = newAlbumName,
                         onValueChange = { newAlbumName = it },

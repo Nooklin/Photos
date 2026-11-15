@@ -15,7 +15,6 @@ object HomeItems {
         else -> MediaCategory.entries.find { it.name == key }?.label ?: key
     }
 
-    // Unknown saved keys go at the end
     fun ordered(defaults: List<String>, saved: List<String>): List<String> {
         val known = saved.filter { it in defaults }.distinct()
         return known + defaults.filter { it !in known }

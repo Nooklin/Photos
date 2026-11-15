@@ -1,6 +1,7 @@
 package org.nooklin.photos.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -8,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.nooklin.photos.data.local.AppFont
@@ -38,7 +40,6 @@ val AndroidTokens = DesignTokens(
 
 val LocalDesignTokens = staticCompositionLocalOf { IosTokens }
 
-// null color is DEFAULT: no tint, a real selectable option
 data class ContrastColorState(val color: Color?, val isDarkTheme: Boolean, val isBlackMode: Boolean = false)
 
 val LocalContrastColorState = staticCompositionLocalOf { ContrastColorState(null, false) }
@@ -54,12 +55,9 @@ fun NooklinTheme(
 ) {
     val tokens = if (style == DesignStyle.IOS) IosTokens else AndroidTokens
     val baseColorScheme = if (darkTheme) darkColorScheme() else lightColorScheme()
-    val colorScheme = (if (contrastColor.color != null) {
-        baseColorScheme.copy(primary = contrastColor.color)
-    } else {
-        // DEFAULT left primary on Material3's purple baseline instead of neutral
-        baseColorScheme.copy(primary = baseColorScheme.onSurface)
-    }).let { scheme ->
+    // DEFAULT is neutral (black or white).
+    val accent = contrastColor.color ?: baseColorScheme.onSurface
+    val colorScheme = baseColorScheme.withoutPurple(accent, darkTheme).let { scheme ->
         if (blackMode) scheme.copy(background = Color.Black, surface = Color.Black) else scheme
     }
     CompositionLocalProvider(
@@ -68,4 +66,32 @@ fun NooklinTheme(
     ) {
         MaterialTheme(colorScheme = colorScheme, typography = typographyFor(appFont), content = content)
     }
+}
+
+private fun ColorScheme.withoutPurple(accent: Color, dark: Boolean): ColorScheme {
+    val grey = if (dark) Color(0xFF3A3A3C) else Color(0xFFE5E5EA)
+    val outlineGrey = Color(0xFF8E8E93)
+    val outlineVariantGrey = if (dark) Color(0xFF48484A) else Color(0xFFC7C7CC)
+    val mutedText = if (dark) Color(0xFFAEAEB2) else Color(0xFF6C6C70)
+    return copy(
+        primary = accent,
+        onPrimary = if (accent.luminance() > 0.5f) Color.Black else Color.White,
+        primaryContainer = grey,
+        onPrimaryContainer = onSurface,
+        inversePrimary = grey,
+        secondary = accent,
+        onSecondary = if (accent.luminance() > 0.5f) Color.Black else Color.White,
+        secondaryContainer = grey,
+        onSecondaryContainer = onSurface,
+        tertiary = accent,
+        onTertiary = if (accent.luminance() > 0.5f) Color.Black else Color.White,
+        tertiaryContainer = grey,
+        onTertiaryContainer = onSurface,
+        surfaceTint = accent,
+        surfaceVariant = grey,
+        onSurfaceVariant = mutedText,
+        surfaceContainerHighest = grey,
+        outline = outlineGrey,
+        outlineVariant = outlineVariantGrey
+    )
 }

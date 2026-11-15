@@ -1,9 +1,10 @@
-package org.nooklin.photos.ui.category
+package org.nooklin.photos.ui.gallery
 
 import org.nooklin.photos.ui.common.rememberGroupSelection
 import org.nooklin.photos.ui.common.groupSelectionTitle
 import org.nooklin.photos.ui.common.GroupSelectionActions
 import org.nooklin.photos.ui.common.GroupSelectableCell
+import org.nooklin.photos.ui.common.groupDragToSelect
 import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.ui.common.scrollToItemCentered
 
@@ -45,8 +46,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.nooklin.photos.ui.common.GridThumbnail
-import androidx.compose.ui.graphics.FilterQuality
-import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.data.MediaCategory
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.data.filterByCategory
@@ -92,19 +91,14 @@ fun CategoryScreen(
     duplicateMediaIds: Set<Long> = emptySet(),
     groupActions: GroupActions? = null,
     onBack: () -> Unit,
-    // Favorites only: the chosen big photo at the top (null: the newest favorite)
     heroCoverId: Long? = null,
     onSetHeroCover: (Long?) -> Unit = {},
-    // Second arg: the viewer pages through this list only
     onItemClick: (MediaItem, List<MediaItem>) -> Unit
 ) {
     val context = LocalContext.current
-    // Own column count per category, set by pinching
     val screenColumns = rememberScreenGridColumns("category_${category.name}", gridColumns)
     val cols = screenColumns.columns
-    // One column keeps each photo's own shape
     val gridStyle = if (cols == 1) GridStyle.ORIGINAL else gridStyleSetting
-    // DUPLICATES needs an async DB read, the caller resolves it
     val filtered = if (category == MediaCategory.DUPLICATES) {
         allItems.filter { it.id in duplicateMediaIds }
     } else {
@@ -112,7 +106,6 @@ fun CategoryScreen(
     }
 
     val selection = rememberGroupSelection()
-    // Favorites has the same top as an album: a big photo with the title, the count and a play button
     val hasHero = category == MediaCategory.FAVORITES && filtered.isNotEmpty()
     val heroItem = if (hasHero) (filtered.firstOrNull { it.id == heroCoverId } ?: filtered.first()) else null
     val headerCount = if (hasHero) 1 else 0
@@ -130,7 +123,6 @@ fun CategoryScreen(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
-                // With the big photo the bar is see-through, the title is on the photo
                 colors = if (hasHero) {
                     TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
                 } else {
@@ -142,10 +134,10 @@ fun CategoryScreen(
                         CircleIconButton(
                             icon = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = appString(R.string.common_back),
-                            onClick = onBack
+                            onClick = { if (selection.isSelecting) selection.exit() else onBack() }
                         )
                     } else {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = { if (selection.isSelecting) selection.exit() else onBack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                         }
                     }
@@ -199,9 +191,10 @@ fun CategoryScreen(
                 contentPadding = if (hasHero) PaddingValues(bottom = 2.dp) else PaddingValues(2.dp),
                 horizontalArrangement = Arrangement.spacedBy(if (hasHero) 2.dp else 4.dp),
                 verticalArrangement = Arrangement.spacedBy(if (hasHero) 2.dp else 4.dp),
-                // The big photo goes under the see-through bar, so the top padding is left out
+                // the big photo goes under the see-through bar, so the top padding is left out
                 modifier = (if (hasHero) Modifier.padding(bottom = padding.calculateBottomPadding()) else Modifier.padding(padding))
                     .pinchToChangeGridColumns(true, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
+                    .groupDragToSelect(selection, squareGridState)
             ) {
                 if (heroItem != null) {
                     item(key = "hero", span = { GridItemSpan(maxLineSpan) }) { FavoritesHero(heroItem, selection, category.label, filtered.size) { showSlideshow = true } }
@@ -210,6 +203,8 @@ fun CategoryScreen(
                     val item = filtered[index]
                     GroupSelectableCell(
                         selection = if (groupActions != null) selection else null,
+                        item = item,
+                        actions = groupActions,
                         id = item.id,
                         modifier = Modifier
                             .aspectRatio(1f)
@@ -231,6 +226,7 @@ fun CategoryScreen(
                 verticalItemSpacing = if (hasHero) 2.dp else 4.dp,
                 modifier = (if (hasHero) Modifier.padding(bottom = padding.calculateBottomPadding()) else Modifier.padding(padding))
                     .pinchToChangeGridColumns(true, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
+                    .groupDragToSelect(selection, staggeredGridState)
             ) {
                 if (heroItem != null) {
                     item(key = "hero", span = StaggeredGridItemSpan.FullLine) { FavoritesHero(heroItem, selection, category.label, filtered.size) { showSlideshow = true } }
@@ -241,6 +237,8 @@ fun CategoryScreen(
                     } else 1f
                     GroupSelectableCell(
                         selection = if (groupActions != null) selection else null,
+                        item = item,
+                        actions = groupActions,
                         id = item.id,
                         modifier = Modifier
                             .aspectRatio(ratio)

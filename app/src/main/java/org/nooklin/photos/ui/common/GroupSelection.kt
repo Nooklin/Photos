@@ -9,19 +9,19 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,10 +44,10 @@ import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.ui.albums.AlbumWithPreview
+import org.nooklin.photos.ui.gallery.CardAction
+import org.nooklin.photos.ui.gallery.PhotoPreviewMenu
 import org.nooklin.photos.ui.gallery.ShareSelectionSheet
 
-// Selection for the screens that show a group of photos (Media Types, Utilities, albums, Search, pets).
-// The Library has its own, with drag select and the timeline bar.
 @Stable
 class GroupSelection {
     var isSelecting by mutableStateOf(false)
@@ -68,25 +68,169 @@ class GroupSelection {
         selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
     }
 
+    // Used by drag select, which sets a cell to a state instead of toggling it
+    fun setSelected(id: Long, selected: Boolean) {
+        selectedIds = if (selected) selectedIds + id else selectedIds - id
+    }
+
     fun exit() {
         isSelecting = false
         selectedIds = emptySet()
     }
 }
 
+private class DragCell(val index: Int, val key: Any, val x: Int, val y: Int, val w: Int, val h: Int)
+
+private fun Modifier.cellDragToSelect(
+    enabled: Boolean,
+    cells: () -> List<DragCell>,
+    accepts: (Any) -> Boolean,
+    isSelected: (Any) -> Boolean,
+    onItemDragged: (key: Any, select: Boolean) -> Unit
+): Modifier = dragToSelect(
+    enabled = enabled,
+    hitTest = { pos ->
+        cells().firstOrNull { c ->
+            accepts(c.key) && pos.x >= c.x && pos.x <= c.x + c.w && pos.y >= c.y && pos.y <= c.y + c.h
+        }?.key
+    },
+    orderedKeys = { orderedKeys(cells().map { it.index to it.key }, accepts) },
+    isSelected = isSelected,
+    onItemDragged = onItemDragged
+)
+
+private fun LazyGridState.dragCells(): List<DragCell> =
+    layoutInfo.visibleItemsInfo.map { DragCell(it.index, it.key, it.offset.x, it.offset.y, it.size.width, it.size.height) }
+
+private fun LazyStaggeredGridState.dragCells(): List<DragCell> =
+    layoutInfo.visibleItemsInfo.map { DragCell(it.index, it.key, it.offset.x, it.offset.y, it.size.width, it.size.height) }
+
+fun Modifier.groupDragToSelect(selection: GroupSelection?, state: LazyGridState): Modifier =
+    if (selection == null) this else cellDragToSelect(
+        selection.isSelecting, state::dragCells, { it is Long },
+        { key -> key is Long && key in selection.selectedIds },
+        { key, select -> if (key is Long) selection.setSelected(key, select) }
+    )
+
+fun Modifier.groupDragToSelect(selection: GroupSelection?, state: LazyStaggeredGridState): Modifier =
+    if (selection == null) this else cellDragToSelect(
+        selection.isSelecting, state::dragCells, { it is Long },
+        { key -> key is Long && key in selection.selectedIds },
+        { key, select -> if (key is Long) selection.setSelected(key, select) }
+    )
+
+// For the screens that keep their own selection. accepts picks the photo cells (not headers or folders)
+fun Modifier.gridDragToSelect(
+    enabled: Boolean,
+    state: LazyGridState,
+    accepts: (Any) -> Boolean,
+    isSelected: (Any) -> Boolean,
+    onItemDragged: (key: Any, select: Boolean) -> Unit
+): Modifier = cellDragToSelect(enabled, state::dragCells, accepts, isSelected, onItemDragged)
+
 @Composable
 fun rememberGroupSelection(): GroupSelection = remember { GroupSelection() }
 
-// What a selection can do. Handed in once from the app level, so every group screen offers the same actions.
 class GroupActions(
     val albums: List<AlbumWithPreview>,
     val removeExifOnShare: Boolean,
     val onToggleFavorite: (MediaItem) -> Unit,
     val onMoveToRecycleBin: (MediaItem) -> Unit,
-    val onAddToAlbum: (albumId: Long, item: MediaItem) -> Unit
+    val onAddToAlbum: (albumId: Long, item: MediaItem) -> Unit,
+    val shareEnabled: Boolean = true,
+    val onCopy: (MediaItem) -> Unit = {},
+    val onDuplicate: (MediaItem) -> Unit = {},
+    val onHide: ((MediaItem) -> Unit)? = null
 )
 
-// A grid cell that selects instead of opening while a selection is active. Long press starts a selection.
+// The long-press card of a single item. Stays composed until onDone so the dialogs it opens keep their state.
+@Composable
+fun GroupItemMenu(
+    item: MediaItem,
+    actions: GroupActions,
+    onOpen: () -> Unit,
+    onSelect: () -> Unit,
+    onDone: () -> Unit,
+    extra: CardAction? = null
+) {
+    var showMenu by remember { mutableStateOf(true) }
+    var showShare by remember { mutableStateOf(false) }
+    var showAlbums by remember { mutableStateOf(false) }
+    var showDelete by remember { mutableStateOf(false) }
+
+    if (showMenu) {
+        PhotoPreviewMenu(
+            item = item,
+            shareEnabled = actions.shareEnabled,
+            hideEnabled = actions.onHide != null,
+            onOpen = { onDone(); onOpen() },
+            onShare = { showMenu = false; showShare = true },
+            onFavorite = { onDone(); actions.onToggleFavorite(item) },
+            onDelete = { showMenu = false; showDelete = true },
+            onCopy = { onDone(); actions.onCopy(item) },
+            onDuplicate = { onDone(); actions.onDuplicate(item) },
+            onHide = { onDone(); actions.onHide?.invoke(item) },
+            onAddToAlbum = { showMenu = false; showAlbums = true },
+            onSelect = { onDone(); onSelect() },
+            onDismiss = onDone,
+            extra = extra?.let { CardAction(it.label, it.icon, it.enabled, it.destructive) { onDone(); it.onClick() } }
+        )
+    }
+
+    if (showShare) {
+        ShareSelectionSheet(
+            selectedItems = listOf(item),
+            removeMetadataDefault = actions.removeExifOnShare,
+            onDismiss = onDone,
+            onFinished = onDone
+        )
+    }
+
+    if (showAlbums) {
+        AlertDialog(
+            onDismissRequest = onDone,
+            shape = GlassPill.shape,
+            containerColor = GlassPill.adaptivePopupBackground,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface,
+            title = { Text(appString(R.string.common_add_to_album)) },
+            text = {
+                if (actions.albums.isEmpty()) {
+                    Text(appString(R.string.common_no_albums_yet_create_one))
+                } else {
+                    Column {
+                        actions.albums.forEach { album ->
+                            PillListRow(
+                                label = album.name,
+                                onClick = {
+                                    actions.onAddToAlbum(album.id, item)
+                                    onDone()
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = onDone) { Text(appString(R.string.common_cancel)) } }
+        )
+    }
+
+    if (showDelete) {
+        val wording = deleteWording(listOf(item.isVideo))
+        ConfirmDeleteDialog(
+            title = appString(R.string.common_move_to_recycle_bin_2),
+            text = wording.text,
+            confirmLabel = wording.confirmLabel,
+            onConfirm = {
+                actions.onMoveToRecycleBin(item)
+                onDone()
+            },
+            onDismiss = onDone
+        )
+    }
+}
+
+// A grid cell that selects instead of opening while a selection is active.
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GroupSelectableCell(
@@ -94,16 +238,34 @@ fun GroupSelectableCell(
     id: Long,
     modifier: Modifier,
     onClick: () -> Unit,
+    item: MediaItem? = null,
+    actions: GroupActions? = null,
+    extra: ((MediaItem) -> CardAction)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val selecting = selection?.isSelecting == true
     val selected = selection != null && id in selection.selectedIds
+    var menuOpen by remember { mutableStateOf(false) }
     Box(
         modifier.combinedClickable(
             onClick = { if (selecting) selection?.toggle(id) else onClick() },
-            onLongClick = { if (selection != null && !selecting) selection.start(id) }
+            onLongClick = {
+                if (selection != null && !selecting) {
+                    if (item != null && actions != null) menuOpen = true else selection.start(id)
+                }
+            }
         )
     ) {
+        if (menuOpen && item != null && actions != null && selection != null) {
+            GroupItemMenu(
+                item = item,
+                actions = actions,
+                onOpen = onClick,
+                onSelect = { selection.start(id) },
+                onDone = { menuOpen = false },
+                extra = extra?.invoke(item)
+            )
+        }
         content()
         if (selected) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
@@ -112,7 +274,6 @@ fun GroupSelectableCell(
     }
 }
 
-// For the top bar: Select, or while selecting the actions menu and a close button
 @Composable
 fun GroupSelectionActions(selection: GroupSelection, items: List<MediaItem>, actions: GroupActions) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -123,9 +284,7 @@ fun GroupSelectionActions(selection: GroupSelection, items: List<MediaItem>, act
 
     BackHandler(enabled = selection.isSelecting) { selection.exit() }
 
-    if (!selection.isSelecting) {
-        PillButton(text = appString(R.string.common_select), onClick = { selection.begin() })
-    } else {
+    if (selection.isSelecting) {
         Box {
         CircleIconButton(
             icon = Icons.Filled.MoreVert,
@@ -242,7 +401,6 @@ fun GroupSelectionActions(selection: GroupSelection, items: List<MediaItem>, act
     }
 }
 
-// Title while selecting
 @Composable
 fun groupSelectionTitle(selection: GroupSelection, normal: String): String =
     if (selection.isSelecting) appString(R.string.share_sheet_selected, selection.selectedIds.size) else normal

@@ -24,8 +24,6 @@ import org.nooklin.photos.data.MediaItem
 
 private val COLLAGE_GAP = 2.dp
 
-// Collage of up to 4 cells with 2 dp between them and around them: 1 full, 2 side by side, 3 one large and two stacked, 4 a 2x2 grid.
-// fillSlots (an album with 2 or more folders): always 4 cells, the ones without a photo are a plain area in the app's accent colour.
 @Composable
 fun CollageLayout(size: Dp, count: Int, fillSlots: Boolean, cell: @Composable (index: Int, modifier: Modifier) -> Unit) {
     val photos = count.coerceAtMost(4)

@@ -45,7 +45,6 @@ class FaceLandmarkVerifier(context: Context) : AutoCloseable {
         val output = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
         val matrix = Matrix()
-        // Center on the box, scale to the model input, no rotation
         matrix.postTranslate(-cx, -cy)
         val scale = INPUT_SIZE / roiSize
         matrix.postScale(scale, scale)
@@ -60,7 +59,6 @@ class FaceLandmarkVerifier(context: Context) : AutoCloseable {
         val pixels = IntArray(INPUT_SIZE * INPUT_SIZE)
         crop.getPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
         for (pixel in pixels) {
-            // [0,1] input, the other bundled models use [-1,1]
             buffer.putFloat(((pixel shr 16) and 0xFF) / 255f) // R
             buffer.putFloat(((pixel shr 8) and 0xFF) / 255f) // G
             buffer.putFloat((pixel and 0xFF) / 255f) // B
@@ -76,7 +74,6 @@ class FaceLandmarkVerifier(context: Context) : AutoCloseable {
             val input = preprocess(crop)
             crop.recycle()
 
-            // Tensors matched by shape: landmarks has 478*3 values, presence is the other rank-4 tensor
             var landmarksIndex = -1
             var presenceIndex = -1
             var otherIndex = -1
@@ -103,7 +100,6 @@ class FaceLandmarkVerifier(context: Context) : AutoCloseable {
 
             val rawScore = presenceOut[0][0][0][0]
             val confidence = sigmoid(rawScore)
-            // Score is logged every time, to tune the threshold
             scanLogD(FACE_SCAN_LOG_TAG, "FaceLandmarkVerifier confidence=$confidence (threshold=$PRESENCE_THRESHOLD)")
             confidence > PRESENCE_THRESHOLD
         } catch (e: Exception) {
@@ -116,7 +112,7 @@ class FaceLandmarkVerifier(context: Context) : AutoCloseable {
     private fun sigmoid(x: Float): Float = 1f / (1f + exp(-x))
 
     override fun close() {
-        // Don't load the model just to close it
+        // don't load the model just to close it
         if (interpreterLazy.isInitialized()) interpreterLazy.value.close()
     }
 

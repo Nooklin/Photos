@@ -9,13 +9,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import kotlin.math.abs
 
-// The keys of the visible cells in the order they are shown, headers and other cells left out
 fun orderedKeys(visible: List<Pair<Int, Any>>, isItemKey: (Any) -> Boolean): List<Any> =
     visible.sortedBy { it.first }.map { it.second }.filter(isItemKey)
 
-// Drag across cells in selection mode. A drag that starts sideways takes over from scrolling and then follows the finger
-// in every direction. Everything from the first cell to the cell under the finger, in reading order, is toggled:
-// moving right and down selects whole rows, moving back shrinks the run, and cells that were selected are deselected.
 fun Modifier.dragToSelect(
     enabled: Boolean,
     hitTest: (Offset) -> Any?,
@@ -24,7 +20,6 @@ fun Modifier.dragToSelect(
     onItemDragged: (key: Any, select: Boolean) -> Unit
 ): Modifier = if (!enabled) this else this.pointerInput(enabled) {
     awaitEachGesture {
-        // Initial pass: look before the grid does, or its scrolling takes the vertical part of the drag
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
         val slop = viewConfiguration.touchSlop
         var moved = Offset.Zero
@@ -34,7 +29,6 @@ fun Modifier.dragToSelect(
         var anchor = -1
         var runLo = -1
         var runHi = -1
-        // State of a cell before the drag touched it, to give it back when the run shrinks
         val before = HashMap<Any, Boolean>()
 
         fun toggleCell(i: Int) {
@@ -67,7 +61,6 @@ fun Modifier.dragToSelect(
             if (!claimed) {
                 moved += change.positionChange()
                 if (moved.getDistance() > slop) {
-                    // Mostly vertical: the user scrolls
                     if (abs(moved.y) > abs(moved.x)) break
                     claimed = true
                     keys = orderedKeys()

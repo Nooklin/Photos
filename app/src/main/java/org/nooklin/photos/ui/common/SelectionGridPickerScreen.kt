@@ -16,15 +16,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,7 +38,7 @@ import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import androidx.compose.ui.semantics.Role
 
-// Shared by both pickers, identity is MediaItem.id or HiddenItem.file.name
+@Suppress("UNCHECKED_CAST")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T, K : Any> SelectionGridPickerScreen(
@@ -81,12 +80,20 @@ fun <T, K : Any> SelectionGridPickerScreen(
                 Text(emptyMessage)
             }
         } else {
+            val pickerGridState = rememberLazyGridState()
             LazyVerticalGrid(
+                state = pickerGridState,
                 columns = GridCells.Fixed(gridColumns),
                 contentPadding = PaddingValues(2.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(padding)
+                modifier = Modifier.padding(padding).gridDragToSelect(
+                    enabled = true,
+                    state = pickerGridState,
+                    accepts = { true },
+                    isSelected = { it in selectedKeys },
+                    onItemDragged = { key, select -> selectedKeys = if (select) selectedKeys + (key as K) else selectedKeys - (key as K) }
+                )
             ) {
                 items(pickable.size, key = { key(pickable[it]) }) { index ->
                     val item = pickable[index]

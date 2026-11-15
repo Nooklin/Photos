@@ -34,7 +34,7 @@ import org.nooklin.photos.appString
 private enum class Step { IDLE, VERIFY_CURRENT, RECOVERY_ENTRY, SETUP_NEW, REVEAL_CODE }
 private enum class PendingAction { CHANGE, DISABLE }
 
-// Changing or disabling needs the current PIN or recovery code. Recovery always forces a new PIN, so "forgot" alone can't switch the protection off.
+// Changing or disabling needs the current PIN or recovery code
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsHiddenPinScreen(

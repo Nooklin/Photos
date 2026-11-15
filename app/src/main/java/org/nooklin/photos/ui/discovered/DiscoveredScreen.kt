@@ -1,9 +1,7 @@
 package org.nooklin.photos.ui.discovered
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -18,13 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,11 +40,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.nooklin.photos.ui.common.AlbumThumbnail
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
 import org.nooklin.photos.ui.common.CircleIconButton
@@ -60,7 +54,6 @@ import org.nooklin.photos.appString
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 
-// Smart albums from detection results, same collage grid as AlbumsScreen
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoveredScreen(
@@ -74,6 +67,7 @@ fun DiscoveredScreen(
     var selectedTagIds by remember { mutableStateOf(setOf<String>()) }
     var actionsMenuExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var menuTagId by remember { mutableStateOf<String?>(null) }
 
     val visibleAlbums = albums
 
@@ -86,12 +80,14 @@ fun DiscoveredScreen(
         selectedTagIds = if (tagId in selectedTagIds) selectedTagIds - tagId else selectedTagIds + tagId
     }
 
+    BackHandler(enabled = isSelecting) { exitSelection() }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(appString(R.string.common_discovered), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { if (isSelecting) exitSelection() else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
@@ -122,8 +118,6 @@ fun DiscoveredScreen(
                             }
                         }
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
-                    } else {
-                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
                 }
             )
@@ -153,9 +147,7 @@ fun DiscoveredScreen(
                                 onClick = {
                                     if (isSelecting) toggleSelect(album.tagId) else onAlbumClick(album.tagId)
                                 },
-                                onLongClick = {
-                                    if (!isSelecting) { isSelecting = true; toggleSelect(album.tagId) }
-                                }
+                                onLongClick = { if (!isSelecting) menuTagId = album.tagId }
                             )
                     ) {
                         Box {
@@ -164,6 +156,24 @@ fun DiscoveredScreen(
                             }
                             if (isSelecting && selected) {
                                 SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
+                            }
+                            DropdownMenu(
+                                expanded = menuTagId == album.tagId,
+                                onDismissRequest = { menuTagId = null },
+                                shape = GlassPill.shape,
+                                containerColor = GlassPill.adaptivePopupBackground
+                            ) {
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.common_select)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.CheckCircle) },
+                                        onClick = {
+                                            menuTagId = null
+                                            isSelecting = true
+                                            toggleSelect(album.tagId)
+                                        }
+                                    )
+                                }
                             }
                         }
                         Text(

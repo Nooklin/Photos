@@ -14,14 +14,11 @@ import android.os.SystemClock
 import androidx.activity.viewModels
 import org.nooklin.photos.ui.hidden.HiddenViewModel
 
-// FragmentActivity: BiometricPrompt needs it
 class MainActivity : FragmentActivity() {
     private val hiddenViewModel: HiddenViewModel by viewModels()
     private var stoppedAtMs = 0L
-    // Set when another app opened a file or asked for one, null for a normal launch
     private var externalRequest by mutableStateOf<ExternalRequest?>(null)
 
-    // Android also calls onUserLeaveHint when the app itself opens a picker or prompt, so those starts are marked here
     private var leftByUser = false
     private var startedByApp = false
 
@@ -46,7 +43,6 @@ class MainActivity : FragmentActivity() {
     override fun onStop() {
         super.onStop()
         stoppedAtMs = SystemClock.elapsedRealtime()
-        // Locked at once, no grace period
         if (leftByUser && !startedByApp && !isChangingConfigurations) hiddenViewModel.lock()
         leftByUser = false
         startedByApp = false
@@ -54,7 +50,6 @@ class MainActivity : FragmentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // System screens (biometric, pickers, delete prompts) also stop the activity, only a real absence locks
         if (stoppedAtMs != 0L && SystemClock.elapsedRealtime() - stoppedAtMs > HIDDEN_RELOCK_GRACE_MS) {
             hiddenViewModel.lock()
         }
@@ -77,7 +72,6 @@ class MainActivity : FragmentActivity() {
         externalRequest = intent.toExternalRequest(this)
     }
 
-    // Null or empty means cancelled (or a viewed file was closed)
     private fun finishExternal(uris: List<Uri>?) {
         if (uris.isNullOrEmpty()) {
             setResult(RESULT_CANCELED)

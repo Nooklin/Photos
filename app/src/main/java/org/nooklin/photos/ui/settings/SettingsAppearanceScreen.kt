@@ -3,7 +3,6 @@ package org.nooklin.photos.ui.settings
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.rememberScrollState
@@ -17,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,6 +57,8 @@ fun SettingsAppearanceScreen(
     onContrastColorChange: (ContrastColor) -> Unit,
     appFont: AppFont,
     onAppFontChange: (AppFont) -> Unit,
+    colorful: Boolean,
+    onColorfulChange: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -89,6 +91,17 @@ fun SettingsAppearanceScreen(
             )
             Text(
                 appString(R.string.settings_appearance_black_uses_a_true_black),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+            )
+
+            SettingsGroup(
+                appString(R.string.settings_appearance_colors),
+                listOf({
+                    SettingsToggleRow(appString(R.string.settings_appearance_colorful_display), colorful, Icons.Filled.Palette, onCheckedChange = onColorfulChange)
+                })
+            )
+            Text(
+                appString(R.string.settings_appearance_colorful_display_explanation),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
 

@@ -1,8 +1,9 @@
 package org.nooklin.photos.ui.hidden
 
+import org.nooklin.photos.ui.gallery.CardAction
+import androidx.activity.compose.BackHandler
 import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
 import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
-import org.nooklin.photos.ui.common.cellAspectRatio
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
 import org.nooklin.photos.ui.common.rememberScreenGridColumns
 import org.nooklin.photos.ui.common.scrollToItemCentered
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.combinedClickable
+import org.nooklin.photos.ui.common.gridDragToSelect
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,8 +46,6 @@ import androidx.compose.material.icons.filled.Visibility
 import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -93,7 +93,6 @@ import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
 import org.nooklin.photos.ui.common.EmptyState
 
-// Mirrors HiddenGalleryScreen on purpose, like DiscoveredDetailScreen and PersonDetailScreen
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HiddenAlbumDetailScreen(
@@ -111,25 +110,21 @@ fun HiddenAlbumDetailScreen(
     onDeleteAlbum: () -> Unit,
     onAddPhotos: () -> Unit,
     onBack: () -> Unit,
-    // A folder is a hidden album inside a hidden album, one level deep
     isFolder: Boolean = false,
     folders: List<HiddenAlbumWithPreview> = emptyList(),
     onFolderClick: (Long) -> Unit = {},
     onRenameFolder: (Long, String) -> Unit = { _, _ -> },
     onDeleteFolder: (Long) -> Unit = {},
     onCreateFolder: (String) -> Unit = {},
-    // File name of the photo chosen for the top of the screen, null: the newest photo
     totalCount: Int = items.size,
     coverFileName: String? = null,
     onSetCover: (String?) -> Unit = {}
 ) {
-    // Own column count, set by pinching
     val screenColumns = rememberScreenGridColumns("albums", gridColumns)
     val cols = screenColumns.columns
     val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
-    // A long press on a folder in the list opens its menu
     var menuFolderId by remember { mutableStateOf<Long?>(null) }
     var renameFolder by remember { mutableStateOf<HiddenAlbumWithPreview?>(null) }
     var deleteFolder by remember { mutableStateOf<HiddenAlbumWithPreview?>(null) }
@@ -143,6 +138,7 @@ fun HiddenAlbumDetailScreen(
     val headerCount = (if (hasHero) 1 else 0) + folders.size
     var isSelecting by remember { mutableStateOf(false) }
     var selectedNames by remember { mutableStateOf(setOf<String>()) }
+    var menuItem by remember { mutableStateOf<HiddenItem?>(null) }
     var actionsMenuExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showAddToAlbumDialog by remember { mutableStateOf(false) }
@@ -159,18 +155,34 @@ fun HiddenAlbumDetailScreen(
 
     val hiddenAlbumGridState = rememberLazyGridState()
     ScrollToPendingZoomKey(
-        // The big photo and the folder rows come before the photos in the grid
         lazyIndexOf = { key ->
             items.indexOfFirst { it.file.absolutePath == key }.takeIf { it >= 0 }?.plus(headerCount)
         },
         scrollToIndex = { i -> hiddenAlbumGridState.scrollToItemCentered(i) }
     )
 
+    BackHandler(enabled = isSelecting) { exitSelection() }
+
+    menuItem?.let { item ->
+        HiddenItemMenu(
+            item = item,
+            onOpen = { onItemClick(items.indexOf(item)) },
+            onSelect = { isSelecting = true; toggleSelect(item) },
+            onFavorite = { onToggleFavorite(item) },
+            onUnhide = { onUnhide(item) },
+            onDelete = { isSelecting = true; selectedNames = setOf(item.file.name); showDeleteConfirm = true },
+            onAddToAlbum = { isSelecting = true; selectedNames = setOf(item.file.name); showAddToAlbumDialog = true },
+            onDismiss = { menuItem = null },
+            extra = CardAction(appString(R.string.hidden_album_detail_remove_from_this_album), Icons.Filled.RemoveCircleOutline) {
+                onRemoveFromAlbum(item)
+            }
+        )
+    }
+
     Scaffold(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
-                // With the big photo the bar is see-through, the title is on the photo
                 colors = if (hasHero) {
                     TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
                 } else {
@@ -182,10 +194,10 @@ fun HiddenAlbumDetailScreen(
                         CircleIconButton(
                             icon = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = appString(R.string.common_back),
-                            onClick = onBack
+                            onClick = { if (isSelecting) exitSelection() else onBack() }
                         )
                     } else {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = { if (isSelecting) exitSelection() else onBack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                         }
                     }
@@ -258,7 +270,6 @@ fun HiddenAlbumDetailScreen(
                             contentDescription = appString(R.string.common_add_photos),
                             onClick = onAddPhotos
                         )
-                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                         CircleIconButton(
                             icon = Icons.Filled.MoreVert,
                             contentDescription = appString(R.string.common_more_options),
@@ -328,6 +339,13 @@ fun HiddenAlbumDetailScreen(
                 // The big photo goes under the see-through bar, so the top padding is left out
                 modifier = (if (hasHero) Modifier.padding(bottom = padding.calculateBottomPadding()) else Modifier.padding(padding))
                     .pinchToChangeGridColumns(!isSelecting, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
+                    .gridDragToSelect(
+                        enabled = isSelecting,
+                        state = hiddenAlbumGridState,
+                        accepts = { it is String && it != "hero" && !it.startsWith("folder_") },
+                        isSelected = { it is String && it in selectedNames },
+                        onItemDragged = { key, select -> if (key is String) selectedNames = if (select) selectedNames + key else selectedNames - key }
+                    )
             ) {
                 if (heroItem != null) {
                     item(key = "hero", span = { GridItemSpan(maxLineSpan) }) {
@@ -337,7 +355,6 @@ fun HiddenAlbumDetailScreen(
                             showPlay = items.any { !it.isVideo },
                             onPlay = { showSlideshow = true },
                             image = {
-                                // A video has no photo file, its thumbnail is used
                                 val heroFile = if (heroItem.isVideo) heroItem.thumbnailFile else heroItem.file
                                 AsyncImage(
                                     model = heroImageRequest(context, heroFile, heroFile.lastModified()),
@@ -389,7 +406,7 @@ fun HiddenAlbumDetailScreen(
                                 .zoomSource(item.file.absolutePath)
                                 .combinedClickable(
                                     onClick = { if (isSelecting) toggleSelect(item) else onItemClick(index) },
-                                    onLongClick = { if (!isSelecting) { isSelecting = true; toggleSelect(item) } }
+                                    onLongClick = { if (!isSelecting) menuItem = item }
                                 )
                         )
                         if (item.isFavorite) {
@@ -420,7 +437,6 @@ fun HiddenAlbumDetailScreen(
                 )
             },
             title = albumName,
-            // Hidden photos stay out of screenshots in the slideshow window too
             secure = true,
             onClose = { showSlideshow = false }
         )
@@ -512,7 +528,6 @@ fun HiddenAlbumDetailScreen(
             title = appString(if (isFolder) R.string.folder_delete_title else R.string.common_delete_this_album),
             text = when {
                 isFolder -> appString(R.string.folder_delete_hidden_text, items.size)
-                // Deleting an album deletes its folders too, so say so first
                 folders.isNotEmpty() -> appString(R.string.album_delete_with_folders_hidden, folders.size)
                 else -> appString(R.string.hidden_album_detail_this_only_removes_the_album, items.size)
             },

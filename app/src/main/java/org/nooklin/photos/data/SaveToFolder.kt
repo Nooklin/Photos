@@ -6,7 +6,6 @@ import android.provider.DocumentsContract
 
 data class SaveResult(val saved: Int, val skipped: Int, val failed: Int)
 
-// Copies files into a folder the user picked (ACTION_OPEN_DOCUMENT_TREE). A null source means skipped.
 fun saveToFolder(context: Context, treeUri: Uri, sources: List<Pair<MediaItem, Uri?>>): SaveResult {
     val resolver = context.contentResolver
     val parent = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri))
@@ -19,7 +18,6 @@ fun saveToFolder(context: Context, treeUri: Uri, sources: List<Pair<MediaItem, U
             continue
         }
         val mime = resolver.getType(source) ?: item.mimeType ?: if (item.isVideo) "video/mp4" else "image/jpeg"
-        // The original keeps its own name, a converted copy gets the new extension
         val originalName = item.displayName
         val name = if (source == item.uri && originalName != null) {
             originalName

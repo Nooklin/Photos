@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.gallery
 
+import org.nooklin.photos.ui.common.MenuSectionHeader
+import androidx.activity.compose.BackHandler
 import org.nooklin.photos.ui.common.scrollToItemCentered
 
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
@@ -9,9 +11,7 @@ import org.nooklin.photos.ui.common.zoomSource
 
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,7 +36,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items as staggeredItems
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -45,9 +45,7 @@ import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.VisibilityOff
 import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
@@ -90,13 +88,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import org.nooklin.photos.ui.common.GridThumbnail
 import org.nooklin.photos.ui.common.PrefetchAhead
-import androidx.compose.ui.graphics.FilterQuality
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -116,7 +110,6 @@ import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.PillListRow
 import org.nooklin.photos.ui.common.dragToSelect
 import org.nooklin.photos.ui.common.orderedKeys
-import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.ui.common.pinchToChangeGridColumns
 import org.nooklin.photos.ui.common.prefetchScreenTierImage
 import org.nooklin.photos.R
@@ -125,23 +118,19 @@ import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
 import org.nooklin.photos.ui.theme.AppText
 
-// Library grid with its own top bar. The title count is the visible count (after filter and hide screenshots).
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryScreen(
     items: List<MediaItem>,
     filter: MediaFilter,
-    hideScreenshots: Boolean,
     gridStyle: GridStyle,
     gridColumns: Int,
     onGridColumnsChange: (Int) -> Unit,
     groupBy: GroupBy,
     existingAlbums: List<AlbumWithPreview>,
     onFilterChange: (MediaFilter) -> Unit,
-    onHideScreenshotsChange: (Boolean) -> Unit,
     sortOrder: SortOrder,
     onSortOrderChange: (SortOrder) -> Unit,
-    // Tapped cell bounds in window coordinates at tap time, the viewer animates its entrance from them
     onItemClick: (Int, Rect, ImageBitmap?) -> Unit,
     onToggleFavorite: (MediaItem) -> Unit,
     onMoveToRecycleBin: (MediaItem) -> Unit,
@@ -152,7 +141,6 @@ fun GalleryScreen(
     onDuplicate: (MediaItem) -> Unit,
     onCopy: (MediaItem) -> Unit,
     shareEnabled: Boolean = true,
-    // Starting value of the metadata switch in the share sheet (Settings, Sharing)
     removeExifOnShare: Boolean = true,
     onBack: () -> Unit
 ) {
@@ -163,23 +151,20 @@ fun GalleryScreen(
     var showAddToAlbumDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
-    // Long press preview: the photo shown small with a menu, and the photo the menu actions work on
     var previewItem by remember { mutableStateOf<MediaItem?>(null) }
     var actionItemId by remember { mutableStateOf<Long?>(null) }
     val actionIds: Set<Long> = actionItemId?.let { setOf(it) } ?: selectedIds
-    // Years and Months are overviews, All is the grid below. The bar shows while scrolling and in the overviews.
     var timelineMode by rememberSaveable { mutableStateOf(TimelineMode.ALL) }
     var focusYear by remember { mutableStateOf<Int?>(null) }
     var pendingJumpId by remember { mutableStateOf<Long?>(null) }
     var recentlyScrolled by remember { mutableStateOf(false) }
-    // One state per grid type, LazyGridState and LazyStaggeredGridState are unrelated types
     val gridState = rememberLazyGridState()
     val staggeredGridState = rememberLazyStaggeredGridState()
     // One-shot backdrop capture: record() is free, the readback is the expensive step
     val backdropGraphicsLayer = rememberGraphicsLayer()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    // After backing out on a photo that wasn't on screen, scroll to it so the return zoom lands
+    // after backing out on a photo that wasn't on screen, scroll to it so the return zoom lands
     ScrollToPendingZoomKey(
         lazyIndexOf = { key ->
             zoomLazyIndexOf(
@@ -205,10 +190,6 @@ fun GalleryScreen(
         selectedIds = if (item.id in selectedIds) selectedIds - item.id else selectedIds + item.id
     }
 
-    // Selecting only works in the grid
-    LaunchedEffect(isSelecting) {
-        if (isSelecting) timelineMode = TimelineMode.ALL
-    }
     val scrolling = gridState.isScrollInProgress || staggeredGridState.isScrollInProgress
     LaunchedEffect(scrolling) {
         if (scrolling) {
@@ -220,7 +201,6 @@ fun GalleryScreen(
     }
     val timelineBarVisible = !isSelecting && (timelineMode != TimelineMode.ALL || recentlyScrolled)
     val timelineBarAlpha by animateFloatAsState(if (timelineBarVisible) 1f else 0f, label = "timelineBar")
-    // A tap on a month in the overview opens the grid at that month
     LaunchedEffect(timelineMode, pendingJumpId) {
         val id = pendingJumpId
         if (timelineMode == TimelineMode.ALL && id != null) {
@@ -239,6 +219,8 @@ fun GalleryScreen(
         }
     }
 
+    BackHandler(enabled = isSelecting) { exitSelection() }
+
     Scaffold(
         modifier = Modifier.drawWithContent {
             backdropGraphicsLayer.record { this@drawWithContent.drawContent() }
@@ -248,13 +230,13 @@ fun GalleryScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text(appString(R.string.common_library), fontWeight = FontWeight.Bold)
+                        Text(appString(R.string.common_library), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                         Spacer(Modifier.width(6.dp))
-                        Text(appString(R.string.common_items, items.size), color = Color.Gray, fontSize = AppText.Body)
+                        Text(appString(R.string.common_items, items.size), color = Color.Gray, fontSize = AppText.Body, maxLines = 1, softWrap = false)
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { if (isSelecting) exitSelection() else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
@@ -272,6 +254,7 @@ fun GalleryScreen(
                             containerColor = GlassPill.adaptivePopupBackground
                         ) {
                             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                MenuSectionHeader(appString(R.string.filter_menu_show))
                                 DropdownMenuItem(
                                     text = { Text(appString(R.string.common_all)) },
                                     trailingIcon = {
@@ -299,16 +282,8 @@ fun GalleryScreen(
                                     },
                                     onClick = { onFilterChange(MediaFilter.VIDEOS) }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text(appString(R.string.common_screenshots)) },
-                                    trailingIcon = {
-                                        if (!hideScreenshots) {
-                                            Icon(Icons.Filled.Check, contentDescription = null)
-                                        }
-                                    },
-                                    onClick = { onHideScreenshotsChange(!hideScreenshots) }
-                                )
                                 HorizontalDivider()
+                                MenuSectionHeader(appString(R.string.filter_menu_sort))
                                 DropdownMenuItem(
                                     text = { Text(appString(R.string.common_newest_first)) },
                                     trailingIcon = {
@@ -392,28 +367,23 @@ fun GalleryScreen(
                             }
                         }
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
-                    } else {
-                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
                 }
             )
         },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            // The row has a fixed height, so the search button does not move when the bar disappears.
-            // The bar sits in the middle of the screen, the search button at the right edge.
+            // the row has a fixed height, so the search button does not move when the bar disappears.
             Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(56.dp)) {
                 // Not composed while invisible: a hidden bar would still catch taps meant for the photos below it
                 if (isSelecting) {
-                    // Same look as the bar, so it is easy to read over photos
                     Surface(
                         color = GlassPill.adaptivePopupBackground,
                         shape = GlassPill.shape,
                         border = GlassPill.adaptiveBorder,
                         modifier = Modifier.align(Alignment.Center)
                     ) {
-                        // Same height as the timeline bar and the search button
-                        Box(Modifier.height(56.dp).padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.height(56.dp).widthIn(min = 176.dp).padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
                             Text(
                                 appString(R.string.share_sheet_selected, selectedIds.size),
                                 fontWeight = FontWeight.SemiBold
@@ -440,7 +410,6 @@ fun GalleryScreen(
             }
         }
     ) { padding ->
-        // Shared by both square grid branches, only the staggered one needs its own
         val hitTestSquareGrid: (Offset) -> Any? = { pos ->
             gridState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
                 pos.x >= info.offset.x && pos.x <= info.offset.x + info.size.width &&
@@ -506,7 +475,6 @@ fun GalleryScreen(
                         }
                     }
                 } else {
-                    // remember() has to live here, LazyGridScope is not composable
                     val grouped = remember(items, groupBy) { groupItemsByDate(items, groupBy) }
                     val indexById = remember(items) { items.withIndex().associate { (i, item) -> item.id to i } }
                     LazyVerticalGrid(
@@ -664,6 +632,7 @@ fun GalleryScreen(
             onDuplicate = { previewItem = null; onDuplicate(item) },
             onHide = { previewItem = null; onHideSelected(listOf(item)) },
             onAddToAlbum = { previewItem = null; actionItemId = item.id; showAddToAlbumDialog = true },
+            onSelect = { previewItem = null; isSelecting = true; selectedIds = selectedIds + item.id },
             onDismiss = { previewItem = null }
         )
     }

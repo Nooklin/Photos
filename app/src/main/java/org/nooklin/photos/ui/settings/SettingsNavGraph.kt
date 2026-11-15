@@ -7,7 +7,6 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import org.nooklin.photos.ui.GalleryViewModel
 
-// settings/hiddenbackup is defined in NooklinPhotosApp.kt, not here
 fun NavGraphBuilder.settingsNavGraph(
     navController: NavController,
     settingsViewModel: SettingsViewModel,
@@ -26,6 +25,7 @@ fun NavGraphBuilder.settingsNavGraph(
         val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
         val contrastColor by settingsViewModel.contrastColor.collectAsStateWithLifecycle()
         val appFont by settingsViewModel.appFont.collectAsStateWithLifecycle()
+        val colorful by settingsViewModel.colorful.collectAsStateWithLifecycle()
         SettingsAppearanceScreen(
             themeMode = themeMode,
             onThemeModeChange = settingsViewModel::setThemeMode,
@@ -33,6 +33,8 @@ fun NavGraphBuilder.settingsNavGraph(
             onContrastColorChange = settingsViewModel::setContrastColor,
             appFont = appFont,
             onAppFontChange = settingsViewModel::setAppFont,
+            colorful = colorful,
+            onColorfulChange = settingsViewModel::setColorful,
             onBack = { navController.popBackStack() }
         )
     }
@@ -42,6 +44,8 @@ fun NavGraphBuilder.settingsNavGraph(
         val gridColumns by settingsViewModel.gridColumns.collectAsStateWithLifecycle()
         val groupBy by settingsViewModel.groupBy.collectAsStateWithLifecycle()
         val libraryPreviewRows by settingsViewModel.libraryPreviewRows.collectAsStateWithLifecycle()
+        val showScreenshotsInLibrary by settingsViewModel.showScreenshotsInLibrary.collectAsStateWithLifecycle()
+        val hiddenAutoAlbums by settingsViewModel.hiddenAutoAlbums.collectAsStateWithLifecycle()
         SettingsGalleryScreen(
             gridStyle = gridStyle,
             onGridStyleChange = settingsViewModel::setGridStyle,
@@ -51,6 +55,10 @@ fun NavGraphBuilder.settingsNavGraph(
             onGroupByChange = settingsViewModel::setGroupBy,
             libraryPreviewRows = libraryPreviewRows,
             onLibraryPreviewRowsChange = settingsViewModel::setLibraryPreviewRows,
+            showScreenshotsInLibrary = showScreenshotsInLibrary,
+            onShowScreenshotsInLibraryChange = settingsViewModel::setShowScreenshotsInLibrary,
+            hiddenAutoAlbums = hiddenAutoAlbums,
+            onAutoAlbumHiddenChange = settingsViewModel::setAutoAlbumHidden,
             onBack = { navController.popBackStack() }
         )
     }

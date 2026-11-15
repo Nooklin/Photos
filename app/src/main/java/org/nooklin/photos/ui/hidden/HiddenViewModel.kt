@@ -31,21 +31,17 @@ import org.nooklin.photos.ui.SortOrder
 
 data class HiddenUiState(
     val isAuthenticated: Boolean = false,
-    // Separate from isAuthenticated, both checks must pass. True when no extra PIN is enabled.
+    // Separate from isAuthenticated, both checks must pass.
     val pinVerified: Boolean = true,
     val items: List<HiddenItem> = emptyList(),
-    // Hidden Recently Deleted, still private files
     val deleted: List<HiddenItem> = emptyList(),
     val albums: List<HiddenAlbumWithPreview> = emptyList(),
-    // (albumId, fileName) pairs to filter items per album client-side, like DiscoveredDetailScreen
     val albumMembership: List<Pair<Long, String>> = emptyList(),
     val isLoading: Boolean = false,
-    // Session-only filter and sort state for the Hidden Library, like GalleryUiState
     val filter: MediaFilter = MediaFilter.ALL,
     val hideScreenshots: Boolean = true,
     val sortOrder: SortOrder = SortOrder.NEWEST_FIRST
 ) {
-    // Computed once per state
     val visibleItems: List<HiddenItem> by lazy(LazyThreadSafetyMode.NONE) {
         items
             .filter { !hideScreenshots || !it.isScreenshot }
@@ -56,7 +52,6 @@ data class HiddenUiState(
                     MediaFilter.VIDEOS -> it.isVideo
                 }
             }
-            // Already newest first, OLDEST_FIRST is a reverse
             .let { if (sortOrder == SortOrder.OLDEST_FIRST) it.reversed() else it }
     }
 }
@@ -67,7 +62,6 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
     private val _uiState = MutableStateFlow(HiddenUiState())
     val uiState: StateFlow<HiddenUiState> = _uiState
 
-    // Hidden copies waiting on the user's answer to the delete prompt for their library originals.
     private var pendingHideCopies: List<String> = emptyList()
     // MediaStore ids of the same items, so the regular library's database rows can be removed once the delete is confirmed.
     private var pendingHideMediaIds: List<Long> = emptyList()
@@ -79,7 +73,7 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
     val importProgress: StateFlow<ImportProgress?> = _importProgress
     private var importJob: Job? = null
 
-    // Looks through the folder or zip, nothing is copied. Null when it cannot be read.
+    // Looks through the folder or zip, nothing is copied.
     fun scanImport(source: ImportSource, onResult: (List<ImportEntry>?, Set<String>) -> Unit) {
         importJob?.cancel()
         importJob = viewModelScope.launch {
@@ -131,12 +125,10 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(pinVerified = true) }
     }
 
-    // Re-locks on leaving: biometric and PIN are required again each visit
     fun lock() {
         _uiState.update { it.copy(isAuthenticated = false, pinVerified = false) }
     }
 
-    // If the delete prompt was declined the hidden copy goes again, if accepted the library database rows for the original go too
     fun finishHide(confirmed: Boolean) {
         val copies = pendingHideCopies
         val mediaIds = pendingHideMediaIds
@@ -173,7 +165,6 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
 
     private var backfillRunning = false
 
-    // Videos hidden before they got thumbnails are filled in once, in the background, then the list reloads.
     private fun backfillVideoThumbnails() {
         if (backfillRunning) return
         backfillRunning = true
@@ -213,19 +204,7 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(sortOrder = sortOrder) }
     }
 
-    // Step 1 of hiding: copy to private storage and record metadata. Null if the copy failed, don't delete the original then.
-    suspend fun beginHide(item: MediaItem): PendingIntent? {
-        val copied = repository.copyToHidden(item)
-        if (copied == null) return null
-        pendingHideCopies = listOf(copied.name)
-        pendingHideMediaIds = listOf(item.id)
-        return MediaStore.createDeleteRequest(
-            getApplication<Application>().contentResolver,
-            listOf(item.uri)
-        )
-    }
-
-    // One consent dialog for the whole batch (createDeleteRequest takes a list). Failed copies are skipped, null only if all failed.
+    // One consent dialog for the whole batch (createDeleteRequest takes a list).
     suspend fun beginHideMultiple(items: List<MediaItem>): PendingIntent? {
         val copies = items.mapNotNull { item -> repository.copyToHidden(item)?.let { Triple(item.uri, it.name, item.id) } }
         val copiedUris = copies.map { it.first }
@@ -351,5 +330,4 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
     }
 }
 
-// total is 0 until the file list is known, shown as a spinner
 data class HiddenExportProgress(val done: Int, val total: Int)

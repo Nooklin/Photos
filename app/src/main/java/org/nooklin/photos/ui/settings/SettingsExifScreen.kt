@@ -33,7 +33,6 @@ import org.nooklin.photos.ui.common.ConfirmDeleteDialog
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// Turning sharing back on is confirmed first, turning it off is the protective direction
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsExifScreen(
@@ -91,7 +90,6 @@ fun SettingsExifScreen(
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
 
-            // What is removed, only while Remove Exif data is on
             if (removeExifOnShare) {
                 SettingsGroup(
                     appString(R.string.settings_exif_what_to_remove),

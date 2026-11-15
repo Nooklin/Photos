@@ -5,8 +5,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -16,7 +14,6 @@ import org.nooklin.photos.ui.common.ConfirmDeleteDialog
 import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.groupSelectionTitle
 import org.nooklin.photos.ui.common.rememberGroupSelection
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -52,7 +49,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.nooklin.photos.data.HiddenAlbumWithPreview
 import org.nooklin.photos.ui.albums.AlbumContextMenu
 import org.nooklin.photos.ui.albums.NewFolderDialog
@@ -66,7 +62,7 @@ import org.nooklin.photos.appString
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 
-// Hidden albums, only reachable inside the gate. Stored in HiddenDatabase, not NooklinDatabase.
+// Hidden albums, only reachable inside the gate
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HiddenAlbumsScreen(
@@ -83,7 +79,6 @@ fun HiddenAlbumsScreen(
     val selection = rememberGroupSelection()
     var menuExpanded by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
-    // A long press opens a menu for one album: which album, and which dialog it opened
     var menuAlbumId by remember { mutableStateOf<Long?>(null) }
     var contextDeleteId by remember { mutableStateOf<Long?>(null) }
     var renameAlbum by remember { mutableStateOf<HiddenAlbumWithPreview?>(null) }
@@ -101,7 +96,7 @@ fun HiddenAlbumsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { if (selection.isSelecting) selection.exit() else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
@@ -134,9 +129,6 @@ fun HiddenAlbumsScreen(
                         }
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { selection.exit() })
                     } else {
-                        if (albums.isNotEmpty()) {
-                            PillButton(text = appString(R.string.common_select), onClick = { selection.begin() })
-                        }
                         CircleIconButton(
                             icon = Icons.Filled.Add,
                             contentDescription = appString(R.string.hidden_albums_new_hidden_album),
@@ -203,7 +195,8 @@ fun HiddenAlbumsScreen(
                             onRename = { renameAlbum = album },
                             onNewFolder = { folderParentId = album.id },
                             onMerge = null,
-                            onDelete = { contextDeleteId = album.id }
+                            onDelete = { contextDeleteId = album.id },
+                            onSelect = { selection.start(album.id) }
                         )
                     }
                 }

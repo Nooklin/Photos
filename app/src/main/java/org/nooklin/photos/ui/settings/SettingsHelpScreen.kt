@@ -61,7 +61,7 @@ fun SettingsHelpScreen(onOpenHowTo: () -> Unit, onBack: () -> Unit) {
                             try {
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Nooklin/Photos")))
                             } catch (e: ActivityNotFoundException) {
-                                // No browser installed, nothing to open.
+                                // no browser installed, nothing to open.
                             }
                         }
                     }

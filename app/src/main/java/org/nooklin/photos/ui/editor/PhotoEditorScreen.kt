@@ -2,16 +2,7 @@ package org.nooklin.photos.ui.editor
 
 import androidx.compose.ui.text.font.FontWeight
 import android.app.Activity
-import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Matrix
-import android.graphics.Paint
-import android.graphics.RectF
-import androidx.exifinterface.media.ExifInterface
-import android.net.Uri
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -22,12 +13,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
@@ -50,10 +40,8 @@ import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Deblur
 import androidx.compose.material.icons.filled.Exposure
-import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.Highlight
 import androidx.compose.material.icons.filled.InvertColors
-import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Texture
 import androidx.compose.material.icons.filled.Tonality
@@ -90,7 +78,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix as ComposeColorMatrix
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -99,7 +86,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntSize
 import coil3.imageLoader
 import coil3.memory.MemoryCache
@@ -107,21 +93,16 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.nooklin.photos.data.readExif
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.MaterialTheme
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.EditorDestructivePill
 import org.nooklin.photos.ui.common.EditorModeBar
 import org.nooklin.photos.ui.common.EditorModeItem
-import org.nooklin.photos.ui.common.GlassPillContainer
 import org.nooklin.photos.ui.theme.AppColors
 import org.nooklin.photos.ui.common.detectPinchPanGestures
-import java.io.File
 import org.nooklin.photos.data.OriginalsStore
 import android.widget.Toast
 import org.nooklin.photos.data.MediaStoreRepository
-import android.graphics.ImageDecoder
 import android.content.ContentUris
 import org.nooklin.photos.data.local.LocalMetadataStore
 import org.nooklin.photos.R
@@ -133,7 +114,9 @@ import org.nooklin.photos.ui.theme.AppText
 
 // Bottom bar (Styles, Adjust, Crop), same image box in every mode so the photo doesn't move
 enum class EditorMode { STYLES, ADJUST, CROP }
-enum class AdjustmentType(@StringRes val labelRes: Int, val icon: ImageVector) {
+
+private val CropHandleInset = 24.dp
+enum class AdjustmentType(@param:StringRes val labelRes: Int, val icon: ImageVector) {
     AUTO_ENHANCE(R.string.photo_editor_auto, Icons.Filled.AutoFixHigh),
     EXPOSURE(R.string.photo_editor_exposure, Icons.Filled.Exposure),
     BRIGHTNESS(R.string.photo_editor_brightness, Icons.Filled.WbSunny),
@@ -152,282 +135,6 @@ enum class AdjustmentType(@StringRes val labelRes: Int, val icon: ImageVector) {
     val label: String get() = appString(labelRes)
 }
 
-// BitmapFactory ignores EXIF orientation, same fix as HiddenMediaRepository
-private fun exifRotationDegrees(exif: ExifInterface?): Int =
-    when (exif?.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
-        ExifInterface.ORIENTATION_ROTATE_90 -> 90
-        ExifInterface.ORIENTATION_ROTATE_180 -> 180
-        ExifInterface.ORIENTATION_ROTATE_270 -> 270
-        else -> 0
-    }
-
-private fun rotateBitmapIfNeeded(bitmap: Bitmap, rotationDegrees: Int): Bitmap {
-    if (rotationDegrees == 0) return bitmap
-    val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-}
-
-private fun calculateInSampleSize(options: BitmapFactory.Options, maxDimension: Int): Int {
-    if (options.outWidth <= 0 || options.outHeight <= 0) return 1
-    // Longest edge at or below maxDimension, so a 12MP photo previews at about 2000 px, not full size.
-    val longest = maxOf(options.outWidth, options.outHeight)
-    var inSampleSize = 1
-    while (longest / inSampleSize > maxDimension) inSampleSize *= 2
-    return inSampleSize
-}
-
-private fun decodePreviewBitmapPlatform(context: Context, uri: Uri, maxDimension: Int): Bitmap? =
-    try {
-        val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, boundsOptions)
-        }
-        if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
-            null
-        } else {
-            val decodeOptions = BitmapFactory.Options().apply {
-                inSampleSize = calculateInSampleSize(boundsOptions, maxDimension)
-            }
-            val decoded = context.contentResolver.openInputStream(uri)?.use {
-                BitmapFactory.decodeStream(it, null, decodeOptions)
-            }
-            val rotation = exifRotationDegrees(readExif { context.contentResolver.openInputStream(uri) })
-            decoded?.let { rotateBitmapIfNeeded(it, rotation) }
-        }
-    } catch (e: Exception) {
-        null
-    }
-
-private fun decodePreviewBitmapFromFilePlatform(file: File, maxDimension: Int): Bitmap? =
-    try {
-        val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.absolutePath, boundsOptions)
-        if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
-            null
-        } else {
-            val decodeOptions = BitmapFactory.Options().apply {
-                inSampleSize = calculateInSampleSize(boundsOptions, maxDimension)
-            }
-            val decoded = BitmapFactory.decodeFile(file.absolutePath, decodeOptions)
-            val rotation = exifRotationDegrees(readExif(file))
-            decoded?.let { rotateBitmapIfNeeded(it, rotation) }
-        }
-    } catch (e: Exception) {
-        null
-    }
-
-// Safety cap only, not a downsampling policy: huge images crash Canvas
-private fun imageSizeOf(file: File): Pair<Int, Int>? {
-    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.absolutePath, options)
-    if (options.outWidth <= 0 || options.outHeight <= 0) return null
-    val rotation = exifRotationDegrees(readExif(file))
-    return if (rotation == 90 || rotation == 270) options.outHeight to options.outWidth else options.outWidth to options.outHeight
-}
-
-// The 56dp filter previews only need a small bitmap, not the full preview.
-private fun filterThumbnailOf(source: Bitmap): ImageBitmap {
-    val scale = 192f / maxOf(source.width, source.height)
-    val small = if (scale < 1f) {
-        Bitmap.createScaledBitmap(
-            source,
-            (source.width * scale).toInt().coerceAtLeast(1),
-            (source.height * scale).toInt().coerceAtLeast(1),
-            true
-        )
-    } else {
-        source
-    }
-    return small.asImageBitmap()
-}
-
-// BitmapFactory cannot read HEIC from a stream (it decoded to null, which showed the "can't be edited" screen), so
-// when it fails the platform ImageDecoder is used. It applies the photo's rotation itself, so none is added after.
-private fun decodeWithImageDecoder(source: ImageDecoder.Source, maxDimension: Int?): Bitmap? = try {
-    ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
-        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-        val width = info.size.width
-        val height = info.size.height
-        val longest = maxOf(width, height)
-        val scale = when {
-            maxDimension != null && longest > maxDimension -> maxDimension.toFloat() / longest
-            maxDimension == null && width.toLong() * height > MAX_SAFE_DECODE_PIXELS ->
-                kotlin.math.sqrt(MAX_SAFE_DECODE_PIXELS.toDouble() / (width.toDouble() * height)).toFloat()
-            else -> 1f
-        }
-        if (scale < 1f) {
-            decoder.setTargetSize((width * scale).toInt().coerceAtLeast(1), (height * scale).toInt().coerceAtLeast(1))
-        }
-    }
-} catch (e: Exception) {
-    null
-} catch (e: OutOfMemoryError) {
-    null
-}
-
-private fun decodePreviewBitmap(context: Context, uri: Uri, maxDimension: Int = 2048): Bitmap? =
-    decodePreviewBitmapPlatform(context, uri, maxDimension)
-        ?: decodeWithImageDecoder(ImageDecoder.createSource(context.contentResolver, uri), maxDimension)
-
-private fun decodePreviewBitmapFromFile(file: File, maxDimension: Int = 2048): Bitmap? =
-    decodePreviewBitmapFromFilePlatform(file, maxDimension)
-        ?: decodeWithImageDecoder(ImageDecoder.createSource(file), maxDimension)
-
-private fun decodeFullResolutionBitmap(context: Context, uri: Uri): Bitmap? =
-    decodeFullResolutionBitmapPlatform(context, uri)
-        ?: decodeWithImageDecoder(ImageDecoder.createSource(context.contentResolver, uri), null)
-
-private fun decodeFullResolutionBitmapFromFile(file: File): Bitmap? =
-    decodeFullResolutionBitmapFromFilePlatform(file)
-        ?: decodeWithImageDecoder(ImageDecoder.createSource(file), null)
-
-private const val MAX_SAFE_DECODE_PIXELS = 40_000_000L // ~40MP
-
-private fun calculateSafetyInSampleSize(options: BitmapFactory.Options): Int {
-    val totalPixels = options.outWidth.toLong() * options.outHeight.toLong()
-    if (totalPixels <= MAX_SAFE_DECODE_PIXELS) return 1
-    var inSampleSize = 1
-    while ((options.outWidth / (inSampleSize * 2)).toLong() * (options.outHeight / (inSampleSize * 2)).toLong() > MAX_SAFE_DECODE_PIXELS) {
-        inSampleSize *= 2
-    }
-    return inSampleSize
-}
-
-private fun decodeFullResolutionBitmapPlatform(context: Context, uri: Uri): Bitmap? =
-    try {
-        val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, boundsOptions)
-        }
-        val decodeOptions = BitmapFactory.Options().apply {
-            inSampleSize = calculateSafetyInSampleSize(boundsOptions)
-        }
-        val decoded = context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, decodeOptions)
-        }
-        val rotation = exifRotationDegrees(readExif { context.contentResolver.openInputStream(uri) })
-        decoded?.let { rotateBitmapIfNeeded(it, rotation) }
-    } catch (e: Exception) {
-        null
-    }
-
-private fun decodeFullResolutionBitmapFromFilePlatform(file: File): Bitmap? =
-    try {
-        val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.absolutePath, boundsOptions)
-        val decodeOptions = BitmapFactory.Options().apply {
-            inSampleSize = calculateSafetyInSampleSize(boundsOptions)
-        }
-        val decoded = BitmapFactory.decodeFile(file.absolutePath, decodeOptions)
-        val rotation = exifRotationDegrees(readExif(file))
-        decoded?.let { rotateBitmapIfNeeded(it, rotation) }
-    } catch (e: Exception) {
-        null
-    }
-
-// Rotate is a 90 degree multiple, straighten is the fine slider. Kept apart: other angles enlarge the bounding box.
-private fun applyGeometricTransform(
-    source: Bitmap,
-    rotationDegrees: Float,
-    straightenDegrees: Float,
-    flipH: Boolean,
-    flipV: Boolean
-): Bitmap {
-    if (straightenDegrees == 0f) {
-        val matrix = Matrix().apply {
-            postRotate(rotationDegrees)
-            postScale(if (flipH) -1f else 1f, if (flipV) -1f else 1f)
-        }
-        val bounds = RectF(0f, 0f, source.width.toFloat(), source.height.toFloat())
-        matrix.mapRect(bounds)
-        matrix.postTranslate(-bounds.left, -bounds.top)
-        val outWidth = bounds.width().toInt().coerceAtLeast(1)
-        val outHeight = bounds.height().toInt().coerceAtLeast(1)
-        val output = Bitmap.createBitmap(outWidth, outHeight, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(output)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-        canvas.drawBitmap(source, matrix, paint)
-        return output
-    }
-
-    // Straighten: keep the frame size, scale the content up to cover it (no transparent corners)
-    val swapped = ((rotationDegrees % 180f) + 180f) % 180f == 90f
-    val outWidth = if (swapped) source.height else source.width
-    val outHeight = if (swapped) source.width else source.height
-    val theta = Math.toRadians(straightenDegrees.toDouble())
-    val fillScale = (
-        kotlin.math.abs(kotlin.math.cos(theta)) +
-            kotlin.math.abs(kotlin.math.sin(theta)) * (outWidth.toDouble() / outHeight.toDouble())
-        ).toFloat()
-
-    val matrix = Matrix().apply {
-        // Transform around the source center
-        postTranslate(-source.width / 2f, -source.height / 2f)
-        postRotate(rotationDegrees + straightenDegrees)
-        postScale((if (flipH) -1f else 1f) * fillScale, (if (flipV) -1f else 1f) * fillScale)
-        postTranslate(outWidth / 2f, outHeight / 2f)
-    }
-    val output = Bitmap.createBitmap(outWidth, outHeight, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(output)
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    canvas.drawBitmap(source, matrix, paint)
-    return output
-}
-
-// Perspective via a 4-corner projective warp, an affine transform can't make a trapezoid
-private fun applyPerspective(source: Bitmap, horizontal: Float, vertical: Float): Bitmap {
-    if (horizontal == 0f && vertical == 0f) return source
-    val w = source.width.toFloat()
-    val h = source.height.toFloat()
-
-    val vInset = vertical.coerceIn(-1f, 1f) * h * 0.35f
-    val hInset = horizontal.coerceIn(-1f, 1f) * w * 0.35f
-    val topInset = if (vInset > 0f) vInset else 0f
-    val bottomInset = if (vInset < 0f) -vInset else 0f
-    val rightInset = if (hInset > 0f) hInset else 0f
-    val leftInset = if (hInset < 0f) -hInset else 0f
-
-    val src = floatArrayOf(
-        0f + leftInset, 0f + topInset,
-        w - rightInset, 0f + topInset,
-        w - rightInset, h - bottomInset,
-        0f + leftInset, h - bottomInset
-    )
-    val dst = floatArrayOf(
-        0f, 0f,
-        w, 0f,
-        w, h,
-        0f, h
-    )
-
-    val matrix = Matrix()
-    matrix.setPolyToPoly(src, 0, dst, 0, 4)
-    val output = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(output)
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    canvas.drawBitmap(source, matrix, paint)
-    return output
-}
-
-private fun applyColorMatrix(source: Bitmap, colorMatrix: FloatArray): Bitmap {
-    val output = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(output)
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        colorFilter = ColorMatrixColorFilter(colorMatrix)
-    }
-    canvas.drawBitmap(source, 0f, 0f, paint)
-    return output
-}
-
-private fun cropBitmap(source: Bitmap, cropRect: CropRect): Bitmap {
-    if (cropRect.left <= 0f && cropRect.top <= 0f && cropRect.right >= 1f && cropRect.bottom >= 1f) return source
-    val x = (cropRect.left * source.width).toInt().coerceIn(0, source.width - 1)
-    val y = (cropRect.top * source.height).toInt().coerceIn(0, source.height - 1)
-    val w = (cropRect.width * source.width).toInt().coerceIn(1, source.width - x)
-    val h = (cropRect.height * source.height).toInt().coerceIn(1, source.height - y)
-    return Bitmap.createBitmap(source, x, y, w, h)
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoEditorScreen(
@@ -435,12 +142,11 @@ fun PhotoEditorScreen(
     darkTheme: Boolean,
     onBack: () -> Unit,
     onSaved: () -> Unit,
-    // A deleted edit leaves nothing to show, so the caller can leave the viewer too instead of landing on it.
+    // a deleted edit leaves nothing to show, so the caller can leave the viewer too instead of landing on it.
     onDeleted: () -> Unit = onSaved,
     onHiddenSizeChanged: (width: Int, height: Int) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
-    // Same colors as the viewers: black only in dark mode, the app background in light mode.
     val screenBackground = if (darkTheme) Color.Black else MaterialTheme.colorScheme.background
     val chromeColor = if (darkTheme) Color.White else Color.Black
     val pillBackground = if (darkTheme) GlassPill.fixedGlassBackground else GlassPill.adaptiveGlassBackground
@@ -464,10 +170,7 @@ fun PhotoEditorScreen(
     var cropRect by remember { mutableStateOf(CropRect()) }
     var selectedAspectPreset by rememberSaveable { mutableStateOf(AspectPreset.entries.first()) }
     var isSaving by remember { mutableStateOf(false) }
-    var pendingTransformedBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    // Real on-screen pixel size, needed for the sharpen shader (RenderEffect works in layer pixels)
     var imageSizePx by remember { mutableStateOf(IntSize.Zero) }
-    // Pinch zoom to inspect detail, preview only, reuses ZoomableImage's gesture detector
     var userZoomScale by remember { mutableStateOf(1f) }
     var userZoomOffset by remember { mutableStateOf(Offset.Zero) }
     LaunchedEffect(editorMode) {
@@ -483,7 +186,6 @@ fun PhotoEditorScreen(
     }
     var showDiscardConfirm by remember { mutableStateOf(false) }
 
-    // Original is kept aside on the first saved edit, for Revert
     val originals = remember { OriginalsStore(context) }
     val originalKey = remember(target) {
         when (target) {
@@ -492,7 +194,6 @@ fun PhotoEditorScreen(
         }
     }
     var hasOriginal by remember(originalKey) { mutableStateOf(originals.has(originalKey)) }
-    // An edited copy can be deleted from here, that is Revert for library photos
     var isEditedCopy by remember { mutableStateOf(false) }
     LaunchedEffect(target) {
         (target as? EditTarget.MediaStoreTarget)?.let { isEditedCopy = LocalMetadataStore(context).isEditedCopy(it.item.id) }
@@ -513,44 +214,6 @@ fun PhotoEditorScreen(
         showDiscardConfirm = true
     }
 
-    val writeRequestLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val bitmap = pendingTransformedBitmap
-        val mediaTarget = target as? EditTarget.MediaStoreTarget
-        if (result.resultCode == Activity.RESULT_OK && bitmap != null && mediaTarget != null) {
-            coroutineScope.launch {
-                val success = withContext(Dispatchers.IO) {
-                    try {
-                        // Keep the original BEFORE the write truncates the file. If that fails, don't overwrite.
-                        val originalKept = originals.stashIfAbsent(originalKey) {
-                            context.contentResolver.openInputStream(mediaTarget.item.uri)
-                        }
-                        if (!originalKept) return@withContext false
-                        context.contentResolver.openOutputStream(mediaTarget.item.uri, "rwt")?.use { output ->
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, output)
-                        } ?: false
-                    } catch (e: Exception) {
-                        false
-                    }
-                }
-                isSaving = false
-                pendingTransformedBitmap = null
-                if (success) {
-                    hasOriginal = true
-                    val uriKey = mediaTarget.item.uri.toString()
-                    val loader = context.imageLoader
-                    loader.memoryCache?.remove(MemoryCache.Key(uriKey))
-                    loader.diskCache?.remove(uriKey)
-                    onSaved()
-                }
-            }
-        } else {
-            isSaving = false
-            pendingTransformedBitmap = null
-        }
-    }
-
     fun clearImageCaches(keys: List<String>) {
         val loader = context.imageLoader
         for (key in keys) {
@@ -559,7 +222,6 @@ fun PhotoEditorScreen(
         }
     }
 
-    // Library Revert: same consent as saving, writes the stored original back, then drops it
     val revertWriteLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -651,7 +313,6 @@ fun PhotoEditorScreen(
         sourceBitmap = bitmap
         loadFailed = bitmap == null
         if (bitmap != null) {
-            // Chained after the decode, computeAutoEnhanceTargets downsamples itself
             autoEnhanceTargets = withContext(Dispatchers.Default) { computeAutoEnhanceTargets(bitmap) }
         }
     }
@@ -665,7 +326,7 @@ fun PhotoEditorScreen(
                         is EditTarget.MediaStoreTarget -> decodeFullResolutionBitmap(context, target.item.uri)
                         is EditTarget.HiddenFileTarget -> decodeFullResolutionBitmapFromFile(target.file)
                     } ?: return@withContext null
-                    // Each stage returns a new bitmap or its input, so the replaced input is freed (low peak memory)
+                    // each stage returns a new bitmap or its input, so the replaced input is freed (low peak memory)
                     var current: Bitmap = fullRes
                     current = applyPerspective(current, perspectiveH, perspectiveV).also { if (it !== current) current.recycle() }
                     current = applyGeometricTransform(current, rotationDegrees, straightenDegrees, flipHorizontal, flipVertical)
@@ -690,8 +351,6 @@ fun PhotoEditorScreen(
 
             when (target) {
                 is EditTarget.MediaStoreTarget -> {
-                    // A new photo, never an overwrite: replacing a photo from another app asks for permission every time.
-                    // Always saved as a JPEG named IMG_number.
                     val copyUri = MediaStoreRepository(context).saveEditedCopy(transformed)
                     isSaving = false
                     if (copyUri != null) {
@@ -710,10 +369,10 @@ fun PhotoEditorScreen(
                             if (!originals.stashIfAbsent(originalKey) { target.file.inputStream() }) {
                                 return@withContext false
                             }
+                            val format = compressFormatFor(target.file.extension)
                             target.file.outputStream().use { output ->
-                                transformed.compress(Bitmap.CompressFormat.JPEG, 95, output)
+                                transformed.compress(format, 95, output)
                             } && run {
-                                // Regenerate the grid thumbnail from the processed bitmap, not by re-decoding the file
                                 val longerSide = maxOf(transformed.width, transformed.height)
                                 val scale = 512f / longerSide
                                 val thumbBitmap = if (scale < 1f) {
@@ -816,7 +475,6 @@ fun PhotoEditorScreen(
                     }
                 },
                 actions = {
-                    // Only for a photo with a stored original
                     if (hasOriginal || isEditedCopy) {
                         EditorDestructivePill(
                             text = if (isEditedCopy) appString(R.string.photo_editor_delete_edit) else appString(R.string.photo_editor_revert),
@@ -903,7 +561,7 @@ fun PhotoEditorScreen(
                                             )
                                             .clickable(role = Role.Button) {
                                                 selectedAdjustmentType = type
-                                                // A toggle: at 0 it jumps to 100% (the full computed correction), again resets all eight fields to 0
+                                                // a toggle: at 0 it jumps to 100% (the full computed correction), again resets all eight fields to 0
                                                 if (type == AdjustmentType.AUTO_ENHANCE) {
                                                     applyAutoEnhance(if (adjustments.autoEnhance == 0f) 1f else 0f)
                                                 }
@@ -932,7 +590,6 @@ fun PhotoEditorScreen(
                                 }
                             }
                         }
-                        // One slider at a time, for the selected category (like iOS)
                         Slider(
                             value = adjustmentValue(selectedAdjustmentType),
                             onValueChange = {
@@ -1025,7 +682,6 @@ fun PhotoEditorScreen(
             val bitmap = sourceBitmap
             when {
                 bitmap != null -> {
-                    // Same aspect-matched box in all three modes so the image doesn't move
                     val combinedMatrix = combinedColorMatrix(selectedFilter.matrix, adjustments)
                     val previewRenderEffect = remember(adjustments, imageSizePx) {
                         buildPreviewRenderEffect(adjustments, imageSizePx.width, imageSizePx.height)
@@ -1036,11 +692,14 @@ fun PhotoEditorScreen(
                     } else {
                         bitmap.width.toFloat() / bitmap.height.toFloat()
                     }
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(imageAspect)
-                    ) {
+                    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val cropInset = if (editorMode == EditorMode.CROP) CropHandleInset else 0.dp
+                    val availableWidth = maxWidth - cropInset * 2
+                    val availableHeight = maxHeight - cropInset * 2
+                    val photoWidth = if (availableWidth / availableHeight < imageAspect) availableWidth else availableHeight * imageAspect
+                    val photoHeight = if (availableWidth / availableHeight < imageAspect) availableWidth / imageAspect else availableHeight
+                    Box(Modifier.size(photoWidth + cropInset * 2, photoHeight + cropInset * 2), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(photoWidth, photoHeight)) {
                         Image(
                             bitmap = bitmap.asImageBitmap(),
                             contentDescription = null,
@@ -1071,7 +730,6 @@ fun PhotoEditorScreen(
                                 )
                                 .graphicsLayer {
                                     rotationZ = rotationDegrees + straightenDegrees
-                                    // Straighten auto-zoom preview, same fillScale math as applyGeometricTransform
                                     val fillScale = if (straightenDegrees != 0f) {
                                         val theta = Math.toRadians(straightenDegrees.toDouble())
                                         (
@@ -1085,14 +743,12 @@ fun PhotoEditorScreen(
                                     scaleY = (if (flipVertical) -1f else 1f) * fillScale * userZoomScale
                                     translationX = userZoomOffset.x
                                     translationY = userZoomOffset.y
-                                    // Perspective preview is a 3D tilt (rotationX/Y), graphicsLayer has no projective transform.
-                                    // Looks like the setPolyToPoly warp used on save.
+                                    // Perspective preview is a 3D tilt (rotationX/Y), graphicsLayer has no projective transform
                                     if (perspectiveV != 0f || perspectiveH != 0f) {
                                         cameraDistance = 12f * density
                                         rotationX = -perspectiveV * 15f
                                         rotationY = perspectiveH * 15f
                                     }
-                                    // Highlights, Shadows, Vibrance, Sharpness are AGSL shaders, not part of combinedMatrix. Null when none are active.
                                     renderEffect = previewRenderEffect
                                 }
                         )
@@ -1117,12 +773,15 @@ fun PhotoEditorScreen(
                                 )
                             }
                         }
-                        if (editorMode == EditorMode.CROP) {
-                            CropOverlay(
-                                cropRect = cropRect,
-                                onCropRectChange = { cropRect = it }
-                            )
-                        }
+                    }
+                    if (editorMode == EditorMode.CROP) {
+                        CropOverlay(
+                            cropRect = cropRect,
+                            onCropRectChange = { cropRect = it },
+                            inset = cropInset
+                        )
+                    }
+                    }
                     }
                 }
                 loadFailed -> {
@@ -1223,28 +882,3 @@ fun PhotoEditorScreen(
     }
 }
 
-// Rewrites the hidden grid thumbnail from the full file: after a revert the grid would show the edited one
-private fun rewriteHiddenThumbnail(file: File, thumbnailFile: File): Boolean {
-    val bitmap = decodePreviewBitmapFromFile(file) ?: return false
-    return try {
-        val longerSide = maxOf(bitmap.width, bitmap.height)
-        val scale = 512f / longerSide
-        val thumb = if (scale < 1f) {
-            Bitmap.createScaledBitmap(
-                bitmap,
-                (bitmap.width * scale).toInt().coerceAtLeast(1),
-                (bitmap.height * scale).toInt().coerceAtLeast(1),
-                true
-            )
-        } else {
-            bitmap
-        }
-        val saved = thumbnailFile.outputStream().use { output ->
-            thumb.compress(Bitmap.CompressFormat.JPEG, 85, output)
-        }
-        if (thumb !== bitmap) thumb.recycle()
-        saved
-    } finally {
-        bitmap.recycle()
-    }
-}

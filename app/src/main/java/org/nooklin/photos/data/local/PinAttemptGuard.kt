@@ -4,7 +4,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 
-// PIN and recovery attempts share one counter. Uses the wall clock, so setting the clock back shortens a wait.
 object PinAttemptGuard {
     private val waitsMs = longArrayOf(30_000L, 60_000L, 300_000L, 900_000L)
     private const val FREE_ATTEMPTS = 3

@@ -27,14 +27,11 @@ data class MediaItem(
     val mimeType: String? = null,
     val captureFrameRate: Float? = null,
     val isFavorite: Boolean = false,
-    // Capture time in milliseconds, null when MediaStore has none
     val dateTaken: Long? = null
 ) {
-    // Heuristic, bucket names vary by OEM
     val isScreenshot: Boolean
         get() = bucketName?.contains("screenshot", ignoreCase = true) == true
 
-    // Heuristic, naming varies by OEM
     val isScreenRecording: Boolean
         get() = isVideo && (
             bucketName?.contains("screen recording", ignoreCase = true) == true ||
@@ -42,17 +39,17 @@ data class MediaItem(
                 displayName?.contains("screenrecord", ignoreCase = true) == true
             )
 
-    // Heuristic: aspect ratio
     val isPanorama: Boolean
         get() {
+            if (isVideo || isScreenshot) return false
+            if (displayName?.contains("screenshot", ignoreCase = true) == true) return false
             val w = width ?: return false
             val h = height ?: return false
             if (w <= 0 || h <= 0) return false
-            val ratio = maxOf(w, h).toFloat() / minOf(w, h).toFloat()
-            return ratio > 2.5f
+            // landscape only: tall strips are scrolling screenshots and chat exports, not panoramas
+            return w.toFloat() / h.toFloat() > 2.5f
         }
 
-    // Exact for RAW mime types, extension is the fallback
     val isRaw: Boolean
         get() {
             if (mimeType?.contains("dng", ignoreCase = true) == true ||
@@ -113,7 +110,6 @@ class MediaStoreRepository(private val context: Context) {
         )
     }
 
-    // Unused, kept for a possible save-as-copy
     suspend fun saveEditedCopy(bitmap: Bitmap): Uri? = withContext(Dispatchers.IO) {
         val displayName = ImageNaming.fileName(context, "jpg")
         val values = ContentValues().apply {
@@ -142,7 +138,7 @@ class MediaStoreRepository(private val context: Context) {
         newUri
     }
 
-    suspend fun duplicate(item: MediaItem): Boolean = withContext(Dispatchers.IO) {
+    suspend fun duplicate(item: MediaItem): Long? = withContext(Dispatchers.IO) {
         val values = ContentValues().apply {
             put(
                 MediaStore.MediaColumns.DISPLAY_NAME,
@@ -156,7 +152,7 @@ class MediaStoreRepository(private val context: Context) {
         } else {
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         }
-        val newUri = context.contentResolver.insert(collection, values) ?: return@withContext false
+        val newUri = context.contentResolver.insert(collection, values) ?: return@withContext null
         val success = try {
             context.contentResolver.openOutputStream(newUri)?.use { output ->
                 context.contentResolver.openInputStream(item.uri)?.use { input -> input.copyTo(output) }
@@ -165,7 +161,7 @@ class MediaStoreRepository(private val context: Context) {
             false
         }
         if (success) markNotPending(newUri) else context.contentResolver.delete(newUri, null, null)
-        success
+        if (success) android.content.ContentUris.parseId(newUri) else null
     }
 
     private fun markNotPending(uri: Uri) {
@@ -194,7 +190,6 @@ class MediaStoreRepository(private val context: Context) {
         items
     }
 
-    // Single lookup: recycle bin items are filtered out of loadAll
     suspend fun queryMediaById(id: Long): MediaItem? = withContext(Dispatchers.IO) {
         val collection = MediaStore.Files.getContentUri("external")
         val selection = "${MediaStore.Files.FileColumns._ID} = ?"
@@ -246,7 +241,6 @@ private fun Cursor.toMediaItem(): MediaItem {
     val isVideo = getInt(typeCol) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
     var width = if (widthCol >= 0 && !isNull(widthCol)) getInt(widthCol) else null
     var height = if (heightCol >= 0 && !isNull(heightCol)) getInt(heightCol) else null
-    // WIDTH/HEIGHT can be pre-rotation, swap them for the real on-screen ratio
     val orientationDegrees = if (orientationCol >= 0 && !isNull(orientationCol)) getInt(orientationCol) else 0
     if ((orientationDegrees == 90 || orientationDegrees == 270) && width != null && height != null) {
         val swap = width; width = height; height = swap

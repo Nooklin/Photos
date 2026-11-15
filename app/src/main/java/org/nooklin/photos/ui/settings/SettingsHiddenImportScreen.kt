@@ -57,10 +57,8 @@ import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 
-// One row of the preview: an album (folder null) or a folder inside it
 private class ImportRow(val album: String?, val folder: String?, val count: Int)
 
-// Import a folder structure (or a zip made by the organized export) into the Hidden Section
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsHiddenImportScreen(
@@ -69,7 +67,6 @@ fun SettingsHiddenImportScreen(
     onImport: (ImportSource, List<ImportEntry>, Boolean, Boolean, (ImportResult?) -> Unit) -> Unit,
     onCancel: () -> Unit,
     onBack: () -> Unit,
-    // false: the same screen imports into the normal library
     hidden: Boolean = true
 ) {
     val listState = rememberLazyListState()
@@ -80,14 +77,12 @@ fun SettingsHiddenImportScreen(
     var existing by remember { mutableStateOf<Set<String>>(emptySet()) }
     var scanning by remember { mutableStateOf(false) }
     var unreadable by remember { mutableStateOf(false) }
-    // Keys of the unchecked rows: "album" or "album/folder", loose photos are "" (empty)
     var excluded by remember { mutableStateOf<Set<String>>(emptySet()) }
     var deleteAfter by remember { mutableStateOf(false) }
     var showConflict by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<ImportResult?>(null) }
     var cancelled by remember { mutableStateOf(false) }
     var askDeleteZip by remember { mutableStateOf(false) }
-    // null: not asked, true: zip deleted, false: it could not be deleted
     var zipDeleted by remember { mutableStateOf<Boolean?>(null) }
 
     fun scan(picked: Uri, isZip: Boolean) {
@@ -122,7 +117,6 @@ fun SettingsHiddenImportScreen(
     val folderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) scan(uri, false)
     }
-    // Own intent: the zip may be deleted afterwards, so write access is asked too
     val zipLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { activity ->
         activity.data?.data?.let { scan(it, true) }
     }
@@ -136,10 +130,9 @@ fun SettingsHiddenImportScreen(
     }
     val selected = entries.filter { included(it) }
 
-    // After a scan the list scrolls to the chosen source and the tree, so they are not below the screen
+    // after a scan the list scrolls to the chosen source and the tree, so they are not below the screen
     LaunchedEffect(scanning, entries) {
         if (!scanning && entries.isNotEmpty()) {
-            // Item 0 holds the intro and the buttons, the chosen source is the next item
             listState.animateScrollToItem(1)
         }
     }

@@ -8,7 +8,6 @@ import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// Same picker as AlbumPhotoPickerScreen, items identified by file name
 @Composable
 fun HiddenAlbumPhotoPickerScreen(
     albumName: String,

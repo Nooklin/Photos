@@ -75,7 +75,6 @@ import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import org.nooklin.photos.ui.theme.Spacing
 
-// No edit/favorite/hide here, these are pending deletion
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecycleBinViewerScreen(
@@ -100,10 +99,8 @@ fun RecycleBinViewerScreen(
     var currentPageZoomedIn by remember { mutableStateOf(false) }
     // VideoPlayerView never reports a zoom state, a video could inherit a stuck "zoomed in" from the previous photo
     LaunchedEffect(pagerState.currentPage) { currentPageZoomedIn = false }
-    // Keyed on the page index, a new photo gets a fresh unzoomed state
     val currentZoomScale = remember(pagerState.currentPage) { mutableStateOf(1f) }
     val currentZoomOffset = remember(pagerState.currentPage) { mutableStateOf(Offset.Zero) }
-    // Shared by VideoPlayerView and the control bar, declared before both
     val videoControls = remember { VideoControlState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -127,7 +124,6 @@ fun RecycleBinViewerScreen(
 
     var chromeVisible by remember { mutableStateOf(true) }
     var hasSwiped by remember { mutableStateOf(false) }
-    // Prepare neighbouring videos after the open animation
     val transitionDone by remember { derivedStateOf { zoom.progressState.value >= 1f } }
     // Pager must be at rest: settledPage updates when the finger lifts, mounting the player mid-slide showed black
     val pagerIdle by remember {
@@ -219,7 +215,6 @@ fun RecycleBinViewerScreen(
                 if (pageEntry != null) {
                     val isCurrentPage = page == pagerState.currentPage
                     val pageFrame = Modifier.fillMaxSize().padding(if (pageEntry.isVideo) PaddingValues() else photoInset)
-                    // No stored width/height for recycle-bin entries, the hero assumes square
                     val pager = zoom.pagerBounds
                     if (isCurrentPage && zoom.initialBounds != null && pager == null) {
                         // Bounds not measured yet: falling through mounted ZoomableImage full size for a frame
@@ -248,7 +243,6 @@ fun RecycleBinViewerScreen(
                                 zoomOffset = if (isCurrentPage) currentZoomOffset else remember { mutableStateOf(Offset.Zero) }
                             )
                             if (isCurrentPage && pageEntry.isVideo && pagerIdle) {
-                                // Video fades in over the still image, nothing is swapped mid-swipe
                                 VideoPlayerView(
                                     model = pageEntry.uri,
                                     modifier = pageFrame,

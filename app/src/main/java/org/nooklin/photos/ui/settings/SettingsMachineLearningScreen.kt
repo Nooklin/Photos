@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.nooklin.photos.data.local.MlTag
 import org.nooklin.photos.ml.PhotoAnalysisScanner
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
@@ -42,7 +41,6 @@ import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import org.nooklin.photos.ui.theme.AppText
 
-// Content scrolls: with all tag rows it overflows a typical screen
 private fun iconFor(tag: MlTag): ImageVector = when (tag) {
     MlTag.PEOPLE -> Icons.Filled.Person
     MlTag.PETS -> Icons.Filled.Pets
@@ -95,7 +93,6 @@ fun SettingsMachineLearningScreen(
                         icon = Icons.Filled.Psychology,
                         onCheckedChange = { turningOn ->
                             if (!turningOn && mlEnabled) {
-                                // Confirm first, disabling deletes the analysis data
                                 showDisableConfirm = true
                             } else {
                                 onMlEnabledChange(turningOn)

@@ -3,7 +3,6 @@ package org.nooklin.photos.ui.common
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// The text of a delete confirmation follows what is deleted: photo, video, or "items" when both are chosen
 class DeleteWording(val text: String, val confirmLabel: String)
 
 fun deleteWording(videoFlags: List<Boolean>): DeleteWording {

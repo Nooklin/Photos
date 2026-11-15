@@ -5,7 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-// Manual pets only, no clustering. Own table so pets and albums stay separate.
+// Manual pets only, no clustering.
 @Entity(tableName = "pets")
 data class PetEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

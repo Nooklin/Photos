@@ -22,7 +22,6 @@ import androidx.compose.ui.window.DialogProperties
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// Shown once and not dismissible: it has to be acknowledged
 @Composable
 fun BackupNoticeDialog(onAcknowledge: () -> Unit) {
     var checked by remember { mutableStateOf(false) }

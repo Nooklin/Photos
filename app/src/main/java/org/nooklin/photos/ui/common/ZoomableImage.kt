@@ -42,7 +42,6 @@ import java.io.File
 import org.nooklin.photos.VideoFirstFrame
 import org.nooklin.photos.data.VideoTrims
 
-// Pinch, double-tap and pan photo, one per pager page. Shared by the library and Hidden viewers.
 @Composable
 fun ZoomableImage(
     model: Any,
@@ -52,7 +51,6 @@ fun ZoomableImage(
     // Cache key of the thumbnail the grid drew, so the entrance starts from it
     placeholderCacheKey: String? = null,
     modifier: Modifier = Modifier,
-    // Video: decoding its Uri at Size.ORIGINAL forces a codec frame extraction, so videos stay on the cheap tiers
     isVideo: Boolean = false,
     // Hoisted so a caller can read the live zoom without lag, default is private
     onTap: () -> Unit = {},
@@ -63,9 +61,8 @@ fun ZoomableImage(
     var offset by zoomOffset
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     val context = LocalContext.current
-    // Device display size is the entrance tier. Not Size.ORIGINAL: a concrete size takes the fast thumbnail path.
     val screenSize = remember { screenTierSize(context) }
-    // Once pinched past 1x keep the full tier, avoids re-decoding on every pinch. Never for video.
+    // Once pinched past 1x keep the full tier, avoids re-decoding on every pinch.
     var hasZoomedIn by remember { mutableStateOf(false) }
     val currentOnTap by rememberUpdatedState(onTap)
     // Only the zoomed-in boolean is observed here, so pinch frames do not recompose this composable.
@@ -84,7 +81,6 @@ fun ZoomableImage(
         return Offset(candidate.x.coerceIn(-maxX, maxX), candidate.y.coerceIn(-maxY, maxY))
     }
 
-    // Delayed loading indicator (400ms), a fallback when no cached placeholder exists
     var isLoading by remember { mutableStateOf(false) }
     var showLoadingSpinner by remember { mutableStateOf(false) }
     LaunchedEffect(isLoading) {
@@ -98,7 +94,6 @@ fun ZoomableImage(
 
     Box(
         modifier
-            // Skipped while the zoom transition resizes every frame, the settled size is enough
             .onSizeChanged { containerSize = it }
             .pointerInput(Unit) {
                 detectTapGestures(
@@ -108,7 +103,7 @@ fun ZoomableImage(
                             scale = 1f
                             offset = Offset.Zero
                         } else {
-                            scale = DOUBLE_TAP_ZOOM
+                            scale = 3f
                         }
                     }
                 )
@@ -117,17 +112,15 @@ fun ZoomableImage(
                 detectPinchPanGestures(
                     getScale = { scale },
                     onGesture = { pan, zoom ->
-                        val newScale = (scale * zoom).coerceIn(1f, MAX_ZOOM)
+                        val newScale = (scale * zoom).coerceIn(1f, 6f)
                         scale = newScale
                         offset = if (newScale <= 1f) Offset.Zero else clampOffset(newScale, offset + pan)
                     }
                 )
             }
     ) {
-        // Three tiers: neighbors cheap, current page at screen size, pinch-zoom escalates to Size.ORIGINAL
         val fullResolution = hasZoomedIn && !isVideo
         // A video keeps one small request: a size change is a new request and frames at screen size are slow.
-        // The sharper frame is a second layer on top.
         val sizeTier = when {
             fullResolution -> Size.ORIGINAL
             isVideo -> PREVIEW_TIER_SIZE
@@ -148,17 +141,22 @@ fun ZoomableImage(
                 translationY = offset.y
             }
         }
+        // One cache key per tier, and none shared with the grid: the grid stores its small cell-size bitmap under "model|freshness"
+        val tierName = when {
+            fullResolution -> "full"
+            isVideo -> "preview"
+            isCurrentPage -> "screen"
+            else -> "preview"
+        }
         val imageRequest = remember(model, freshnessKey, sizeTier, maxBitmapTier, placeholderCacheKey) {
             ImageRequest.Builder(context)
                 .data(model)
                 .size(sizeTier)
                 .maxBitmapSize(maxBitmapTier)
-                .memoryCacheKey("$model|$freshnessKey")
-                .diskCacheKey("$model|$freshnessKey")
-                // Shows the grid's already-decoded thumbnail while this decode runs
+                .memoryCacheKey(viewerCacheKey(model, freshnessKey, tierName))
+                .diskCacheKey(viewerCacheKey(model, freshnessKey, tierName))
                 .placeholderMemoryCacheKey(placeholderCacheKey ?: "$model|$freshnessKey")
-                // No crossfade: fading from the small preview to the full size image scales the two to a common
-                // size, which showed as a small zoom right after a swipe whenever the full image was not cached yet.
+                // No crossfade: fading from the small preview to the full size image scales the two to a common size
                 .crossfade(false)
                 .build()
         }
@@ -178,8 +176,7 @@ fun ZoomableImage(
                 .fillMaxSize()
                 .pinchZoomTransform()
         )
-        // The frame the player starts on, drawn over the system thumbnail (a frame from elsewhere in the clip) so the
-        // still matches the first video frame. Loaded for neighbouring pages too, so it is ready before a swipe lands.
+        // The frame the player starts on, drawn over the system thumbnail (a frame from elsewhere in the clip) so the still matches the first video fr
         val firstFrameSource: Any? = when {
             !isVideo -> null
             model is File -> model
@@ -212,13 +209,11 @@ fun ZoomableImage(
     }
 }
 
-// 1024px, deliberately larger than the grid's thumbnails
+internal fun viewerCacheKey(model: Any, freshnessKey: Any, tier: String): String = "view|$model|$freshnessKey|$tier"
+
 private val PREVIEW_TIER_SIZE = Size(1024, 1024)
-private const val MAX_ZOOM = 6f
-private const val DOUBLE_TAP_ZOOM = 3f
 
 
-// Device display size in pixels. The tap-time prefetch uses it too, so both build identical cache keys.
 internal fun screenTierSize(context: android.content.Context): Size {
     val metrics = context.resources.displayMetrics
     return Size(metrics.widthPixels, metrics.heightPixels)
@@ -234,13 +229,12 @@ internal fun prefetchScreenTierImage(context: android.content.Context, item: Med
         .data(item.uri)
         .size(size)
         .maxBitmapSize(size)
-        .memoryCacheKey("${item.uri}|${item.dateModified}")
-        .diskCacheKey("${item.uri}|${item.dateModified}")
+        .memoryCacheKey(viewerCacheKey(item.uri, item.dateModified, "screen"))
+        .diskCacheKey(viewerCacheKey(item.uri, item.dateModified, "screen"))
         .build()
     context.imageLoader.enqueue(request)
 }
 
-// Like detectTransformGestures but leaves a single-finger drag on an unzoomed image unconsumed, the built-in one ate the pager swipe
 internal suspend fun PointerInputScope.detectPinchPanGestures(
     getScale: () -> Float,
     onGesture: (pan: Offset, zoom: Float) -> Unit
@@ -257,7 +251,6 @@ internal suspend fun PointerInputScope.detectPinchPanGestures(
             val canceled = event.changes.any { it.isConsumed }
             if (!canceled) {
                 if (event.changes.size < 2 && getScale() <= 1.01f) {
-                    // Single finger, not zoomed: leave it for the parent
                     continue
                 }
 
@@ -279,7 +272,6 @@ internal suspend fun PointerInputScope.detectPinchPanGestures(
                     if (zoomChange != 1f || panChange != Offset.Zero) {
                         onGesture(panChange, zoomChange)
                     }
-                    // Consume unconditionally, as in Android's custom gesture pattern
                     event.changes.forEach { it.consume() }
                 }
             }

@@ -36,7 +36,6 @@ import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import org.nooklin.photos.ui.theme.Spacing
 
-// State shared by the player and the control bar, they live in different places (pager page and bottom bar)
 @Stable
 class VideoControlState {
     internal var player by mutableStateOf<Player?>(null)
@@ -46,7 +45,6 @@ class VideoControlState {
     var isMuted by mutableStateOf(false)
 }
 
-// Pill with play/pause, seek bar and mute, styled like the date pill
 @Composable
 fun VideoControlBar(
     state: VideoControlState,
@@ -99,7 +97,6 @@ fun VideoControlBar(
     }
 }
 
-// Keeps the thumb from being cut off at 0% and 100%
 private val SEEK_BAR_INSET = 7.dp
 
 private fun seekFraction(x: Float, widthPx: Int, insetPx: Float): Float {
@@ -115,7 +112,6 @@ private fun VideoSeekBar(state: VideoControlState, color: Color, modifier: Modif
     val playedFraction = if (duration > 0L) (state.positionMs.toFloat() / duration).coerceIn(0f, 1f) else 0f
     val shownFraction = dragFraction ?: playedFraction
 
-    // Reads player and duration when called, the handlers aren't restarted on update
     fun seekTo(fraction: Float) {
         val p = state.player
         val d = state.durationMs
@@ -220,7 +216,7 @@ private fun DrawScope.speakerGlyph(color: Color, muted: Boolean) {
     drawPath(body, color)
     val lineWidth = w * 0.08f
     if (muted) {
-        // A cross beside the speaker instead of sound waves.
+        // a cross beside the speaker instead of sound waves.
         drawLine(color, Offset(w * 0.64f, h * 0.38f), Offset(w * 0.88f, h * 0.62f), strokeWidth = lineWidth, cap = StrokeCap.Round)
         drawLine(color, Offset(w * 0.88f, h * 0.38f), Offset(w * 0.64f, h * 0.62f), strokeWidth = lineWidth, cap = StrokeCap.Round)
     } else {

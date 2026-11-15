@@ -17,16 +17,11 @@ import org.nooklin.photos.data.local.HiddenAlbumEntity
 import org.nooklin.photos.data.local.HiddenAlbumMembershipEntity
 import org.nooklin.photos.data.local.HiddenMediaEntity
 
-// Import of a folder structure (or a zip of one) into the Hidden Section or into the library.
-// First folder level = album, second level = folder in that album, deeper levels join the folder.
-
 // Written first in every zip we export, keeps the original name and dates per entry
 const val METADATA_FILE = "metadata.json"
 
-// The place the files come from: a folder (tree Uri) or a zip file
 class ImportSource(val uri: Uri, val isZip: Boolean)
 
-// [ref] is the document Uri (folder) or the entry name (zip)
 class ImportEntry(
     val album: String?,
     val folder: String?,
@@ -35,17 +30,14 @@ class ImportEntry(
     val isVideo: Boolean,
     val mime: String,
     val ref: String,
-    // From metadata.json in a zip of ours, 0 when unknown. Capture time in ms and added time in seconds.
     val taken: Long = 0L,
     val added: Long = 0L
 )
 
 class ImportResult(val imported: Int, val skipped: List<String>, val failed: Int, val notDeleted: Int)
 
-// checking: comparing with what is already hidden, then importing
 class ImportProgress(val checking: Boolean, val done: Int, val total: Int)
 
-// "Hidden Images" holds loose photos in our own export, "Hidden Albums" is the album level of it
 private fun mapPath(dirs: List<String>, isZip: Boolean): Pair<String?, String?> {
     var d = dirs
     if (d.firstOrNull() == "Hidden Images") d = emptyList()
@@ -142,7 +134,6 @@ suspend fun scanImportZip(context: Context, zip: Uri): List<ImportEntry> =
                 }
             }
         }
-        // The original name and dates from metadata.json win over the zip entry, which keeps one date and a safe name
         val files = meta
         if (files == null) result else result.map { e ->
             val m = files.optJSONObject(e.ref) ?: return@map e
@@ -155,24 +146,20 @@ suspend fun scanImportZip(context: Context, zip: Uri): List<ImportEntry> =
         }
     }
 
-// Where the imported files go: the Hidden Section or the library. The same import runs for both.
 interface ImportSink {
-    // Names (lower case) of the albums that exist now, not folders
     suspend fun topLevelAlbumNames(): Set<String>
 
-    // SHA-256 of everything that is there already
     suspend fun knownHashes(onProgress: (done: Int, total: Int) -> Unit): MutableSet<String>
 
     suspend fun resolveAlbum(name: String, merge: Boolean): Long
     suspend fun resolveFolder(parentId: Long, name: String): Long
 
-    // Takes the copy in [temp] (the caller deletes it). Null when it failed, else the key of the new item.
+    // Takes the copy in [temp] (the caller deletes it)
     suspend fun store(temp: File, entry: ImportEntry, date: Long): Any?
     suspend fun addMember(albumId: Long, key: Any)
 }
 
-// A file that is already there (same content) is skipped and listed. [merge]: an album with the same name gets the
-// photos, otherwise a new album "Name 2" is made. [deleteAfter]: imported files of a folder are removed from it.
+// a file that is already there (same content) is skipped and listed. [merge]: an album with the same name gets the photos
 suspend fun runImport(
     context: Context,
     sink: ImportSink,
@@ -196,7 +183,7 @@ suspend fun runImport(
     val skipped = mutableListOf<String>()
     var done = 0
 
-    // One file: copy while hashing, skip when known, else store it and put it in its album or folder
+    // one file: copy while hashing, skip when known, else store it and put it in its album or folder
     suspend fun importOne(entry: ImportEntry, input: InputStream): Boolean {
         val temp = File(context.cacheDir, "import_${System.nanoTime()}")
         try {
@@ -211,7 +198,6 @@ suspend fun runImport(
                 skipped.add(listOfNotNull(entry.album, entry.folder, entry.name).joinToString(" / "))
                 return false
             }
-            // The original date stays
             val date = if (entry.modified > 0L) entry.modified else System.currentTimeMillis()
             val key = sink.store(temp, entry, date)
             if (key == null) { failed++; return false }
@@ -239,13 +225,12 @@ suspend fun runImport(
                     val zipEntry = zis.nextEntry ?: break
                     val entry = wanted[zipEntry.name] ?: continue
                     handled++
-                    // The stream must stay open for the next entry, so it is not closed here
+                    // the stream must stay open for the next entry, so it is not closed here
                     importOne(entry, object : java.io.FilterInputStream(zis) { override fun close() {} })
                     onProgress(ImportProgress(false, ++done, entries.size))
                 }
             }
         }
-        // Chosen files that were not found in the zip count as failed, not as nothing
         failed += (entries.size - handled).coerceAtLeast(0)
     } else {
         entries.forEach { entry ->
@@ -267,7 +252,6 @@ suspend fun runImport(
     ImportResult(imported, skipped, failed, notDeleted)
 }
 
-// Into the Hidden Section
 class HiddenImportSink(private val context: Context, private val repository: HiddenMediaRepository) : ImportSink {
     private val dao = repository.hiddenDao
     private var albums: MutableList<HiddenAlbumEntity>? = null
@@ -280,7 +264,7 @@ class HiddenImportSink(private val context: Context, private val repository: Hid
 
     override suspend fun knownHashes(onProgress: (Int, Int) -> Unit): MutableSet<String> {
         val known = HashSet<String>()
-        // Only files that really are in the Hidden library (also the recycle bin). Leftovers without a database row are removed.
+        // only files that really are in the Hidden library (also the recycle bin).
         val rows = dao.allMedia().map { it.fileName }.toSet()
         val recent = System.currentTimeMillis() - 60_000L
         val existing = repository.hiddenDir.listFiles().orEmpty().filter { it.isFile }

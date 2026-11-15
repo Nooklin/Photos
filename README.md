@@ -4,6 +4,27 @@ A privacy-first, open-source photo gallery for Android. No Google Play Services,
 
 Part of the Nooklin FOSS Android suite. License: GPL-3.0. Fonts: Work Sans and Inter (SIL Open Font License 1.1, see THIRD-PARTY-LICENSES).
 
+## Version 1.3.0 change log
+
+### Library and Home
+- The Library card on Home scrolls sideways with the number of rows you set in Settings, Gallery. Media Types and Utilities scroll sideways in two rows.
+- Panoramas have their own category under Media Types.
+- Albums for Camera, Screenshots, Downloads and WhatsApp that fill themselves with new photos. Hide them under Settings, Gallery, Automatic albums. An album you delete stays deleted.
+- Duplicate puts the copy next to the original and no longer shows the same photo twice.
+
+### Selecting and menus
+- A long press opens the same menu everywhere: a preview and Select, Add to Album, Duplicate and Hide. Select starts selecting, a swipe still selects several photos, and Back first cancels the selection.
+- The filter menu has headings: Show and Sort.
+- A tap on the greyed Share button explains that sharing is turned off, with a box to not show it again.
+- The long press preview is sharp and no longer zooms in when it loads.
+
+### Hidden Section
+- Hide asks for access to media once. After that, hiding photos no longer shows the system confirmation.
+- The Hidden Section PIN has at least 6 digits. A shorter PIN has to be replaced the next time you unlock.
+
+### General
+- Colorful display is now right under Theme in Settings, Appearance.
+
 ## Version 1.2.0 change log
 
 ### Editing
@@ -109,7 +130,7 @@ Some features do nothing until you set them up:
 
 ## Build
 
-Requires Android Studio with JDK 17 or newer, Android 13 (API 33) or newer to run.
+Requires Android Studio with JDK 17 or newer installed locally (the build does not download a JDK), Android 13 (API 33) or newer to run.
 
     .\gradlew assembleDebug
 
@@ -119,7 +140,7 @@ For a signed release, copy `keystore.properties.example` to `keystore.properties
 
     apksigner verify --print-certs photos-v1.0.0.apk
 
-Compare the certificate SHA-256 with the value in the release notes, and check the file hash with `Get-FileHash photos-v1.1.0.apk` (PowerShell) or `sha256sum photos-v1.1.0.apk`.
+Compare the certificate SHA-256 with the value in the release notes, and check the file hash with `Get-FileHash photos-v1.0.0.apk` (PowerShell) or `sha256sum photos-v1.0.0.apk`.
 
 ## Issues and feature requests
 

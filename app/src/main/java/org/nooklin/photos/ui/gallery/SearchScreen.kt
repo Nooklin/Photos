@@ -1,9 +1,9 @@
-package org.nooklin.photos.ui.search
+package org.nooklin.photos.ui.gallery
 
 import org.nooklin.photos.ui.common.rememberGroupSelection
-import org.nooklin.photos.ui.common.groupSelectionTitle
 import org.nooklin.photos.ui.common.GroupSelectionActions
 import org.nooklin.photos.ui.common.GroupSelectableCell
+import org.nooklin.photos.ui.common.groupDragToSelect
 import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
 import org.nooklin.photos.ui.common.zoomSource
@@ -39,12 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import org.nooklin.photos.ui.common.GridThumbnail
-import androidx.compose.ui.graphics.FilterQuality
-import org.nooklin.photos.ui.common.freshImageRequest
 import androidx.compose.ui.platform.LocalContext
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.R
@@ -93,7 +89,7 @@ fun SearchScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { if (selection.isSelecting) selection.exit() else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
@@ -127,12 +123,14 @@ fun SearchScreen(
             contentPadding = PaddingValues(2.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.padding(padding).groupDragToSelect(selection, searchGridState)
         ) {
             items(results.size, key = { results[it].id }) { index ->
                 val item = results[index]
                 GroupSelectableCell(
                     selection = if (groupActions != null) selection else null,
+                    item = item,
+                    actions = groupActions,
                     id = item.id,
                     modifier = Modifier
                         .aspectRatio(1f)

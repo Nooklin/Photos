@@ -4,6 +4,9 @@ import org.nooklin.photos.ui.common.rememberGroupSelection
 import org.nooklin.photos.ui.common.groupSelectionTitle
 import org.nooklin.photos.ui.common.GroupSelectionActions
 import org.nooklin.photos.ui.common.GroupSelectableCell
+import org.nooklin.photos.ui.gallery.CardAction
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import org.nooklin.photos.ui.common.groupDragToSelect
 import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
 import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
@@ -76,12 +79,9 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.nooklin.photos.ui.common.GridThumbnail
-import androidx.compose.ui.graphics.FilterQuality
 import kotlinx.coroutines.launch
-import org.nooklin.photos.ui.common.freshImageRequest
 import org.nooklin.photos.ui.common.heroImageRequest
 import org.nooklin.photos.ui.common.prefetchScreenTierImage
 import androidx.compose.ui.platform.LocalContext
@@ -108,25 +108,22 @@ fun AlbumDetailScreen(
     onMergeRequested: () -> Unit,
     onDeleteAlbum: () -> Unit,
     onAddPhotos: () -> Unit,
-    // A folder is an album inside an album, one level deep
     isFolder: Boolean = false,
     folders: List<AlbumWithPreview> = emptyList(),
     onFolderClick: (Long) -> Unit = {},
     onRenameFolder: (Long, String) -> Unit = { _, _ -> },
     onDeleteFolder: (Long) -> Unit = {},
     onCreateFolder: (String) -> Unit = {},
-    // The photo chosen for the top of the screen, null: the newest photo
     totalCount: Int = photos.size,
     coverMediaId: Long? = null,
-    onSetCover: (Long?) -> Unit = {}
+    onSetCover: (Long?) -> Unit = {},
+    onRemoveFromAlbum: ((MediaItem) -> Unit)? = null
 ) {
-    // Own column count, set by pinching
     val screenColumns = rememberScreenGridColumns("albums", gridColumns)
     val cols = screenColumns.columns
     val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
-    // A long press on a folder in the list opens its menu
     var menuFolderId by remember { mutableStateOf<Long?>(null) }
     var renameFolder by remember { mutableStateOf<AlbumWithPreview?>(null) }
     var deleteFolder by remember { mutableStateOf<AlbumWithPreview?>(null) }
@@ -142,9 +139,12 @@ fun AlbumDetailScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val selection = rememberGroupSelection()
+    val removeLabel = appString(R.string.album_remove_from_album)
+    val removeAction: ((MediaItem) -> CardAction)? = onRemoveFromAlbum?.let { remove ->
+        { item -> CardAction(removeLabel, Icons.Filled.RemoveCircleOutline) { remove(item) } }
+    }
     val albumGridState = rememberLazyGridState()
     ScrollToPendingZoomKey(
-        // The big photo and the folder rows come before the photos in the grid
         lazyIndexOf = { key ->
             photos.indexOfFirst { it.id == key }.takeIf { it >= 0 }?.plus(headerCount)
         },
@@ -158,7 +158,6 @@ fun AlbumDetailScreen(
         },
         topBar = {
             TopAppBar(
-                // With the big photo the bar is see-through, the title is on the photo
                 colors = if (hasHero) {
                     TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent)
                 } else {
@@ -193,10 +192,10 @@ fun AlbumDetailScreen(
                         CircleIconButton(
                             icon = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = appString(R.string.common_back),
-                            onClick = onBack
+                            onClick = { if (selection.isSelecting) selection.exit() else onBack() }
                         )
                     } else {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = { if (selection.isSelecting) selection.exit() else onBack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                         }
                     }
@@ -208,66 +207,68 @@ fun AlbumDetailScreen(
                         contentDescription = appString(R.string.common_add_photos),
                         onClick = onAddPhotos
                     )
-                    CircleIconButton(
-                        icon = Icons.Filled.MoreVert,
-                        contentDescription = appString(R.string.common_more_options),
-                        onClick = { menuExpanded = true }
-                    )
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                        shape = GlassPill.shape,
-                        containerColor = GlassPill.adaptivePopupBackground
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-                            DropdownMenuItem(
-                                text = { Text(appString(if (isFolder) R.string.folder_rename else R.string.album_rename)) },
-                                leadingIcon = { MenuIcon(Icons.Filled.Edit) },
-                                onClick = {
-                                    menuExpanded = false
-                                    showRenameDialog = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(appString(R.string.album_set_cover)) },
-                                leadingIcon = { MenuIcon(Icons.Filled.Image) },
-                                enabled = photos.isNotEmpty(),
-                                onClick = {
-                                    menuExpanded = false
-                                    showCoverPicker = true
-                                }
-                            )
-                            if (!isFolder) {
+                    Box {
+                        CircleIconButton(
+                            icon = Icons.Filled.MoreVert,
+                            contentDescription = appString(R.string.common_more_options),
+                            onClick = { menuExpanded = true }
+                        )
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                            shape = GlassPill.shape,
+                            containerColor = GlassPill.adaptivePopupBackground
+                        ) {
+                            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                 DropdownMenuItem(
-                                    text = { Text(appString(R.string.folder_new)) },
-                                    leadingIcon = { MenuIcon(Icons.Filled.CreateNewFolder) },
+                                    text = { Text(appString(if (isFolder) R.string.folder_rename else R.string.album_rename)) },
+                                    leadingIcon = { MenuIcon(Icons.Filled.Edit) },
                                     onClick = {
                                         menuExpanded = false
-                                        showNewFolderDialog = true
+                                        showRenameDialog = true
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(appString(R.string.common_merge_into)) },
-                                    leadingIcon = { MenuIcon(Icons.Filled.CallMerge) },
+                                    text = { Text(appString(R.string.album_set_cover)) },
+                                    leadingIcon = { MenuIcon(Icons.Filled.Image) },
+                                    enabled = photos.isNotEmpty(),
                                     onClick = {
                                         menuExpanded = false
-                                        onMergeRequested()
+                                        showCoverPicker = true
+                                    }
+                                )
+                                if (!isFolder) {
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.folder_new)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.CreateNewFolder) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            showNewFolderDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.common_merge_into)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.CallMerge) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onMergeRequested()
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            appString(if (isFolder) R.string.folder_delete else R.string.common_delete_album),
+                                            color = GlassPill.destructiveText
+                                        )
+                                    },
+                                    leadingIcon = { MenuIcon(Icons.Filled.Delete) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showDeleteAlbumConfirm = true
                                     }
                                 )
                             }
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        appString(if (isFolder) R.string.folder_delete else R.string.common_delete_album),
-                                        color = GlassPill.destructiveText
-                                    )
-                                },
-                                leadingIcon = { MenuIcon(Icons.Filled.Delete) },
-                                onClick = {
-                                    menuExpanded = false
-                                    showDeleteAlbumConfirm = true
-                                }
-                            )
                         }
                     }
                 }
@@ -288,9 +289,10 @@ fun AlbumDetailScreen(
                 contentPadding = if (hasHero) PaddingValues(bottom = 2.dp) else PaddingValues(2.dp),
                 horizontalArrangement = Arrangement.spacedBy(if (hasHero) 2.dp else 4.dp),
                 verticalArrangement = Arrangement.spacedBy(if (hasHero) 2.dp else 4.dp),
-                // The big photo goes under the see-through bar, so the top padding is left out
+                // the big photo goes under the see-through bar, so the top padding is left out
                 modifier = (if (hasHero) Modifier.padding(bottom = padding.calculateBottomPadding()) else Modifier.padding(padding))
                     .pinchToChangeGridColumns(true, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
+                    .groupDragToSelect(selection, albumGridState)
             ) {
                 if (heroItem != null) {
                     item(key = "hero", span = { GridItemSpan(maxLineSpan) }) {
@@ -335,6 +337,9 @@ fun AlbumDetailScreen(
                     val item = photos[index]
                     GroupSelectableCell(
                         selection = if (groupActions != null) selection else null,
+                        item = item,
+                        actions = groupActions,
+                        extra = removeAction,
                         id = item.id,
                         modifier = Modifier
                             .aspectRatio(if (cols == 1) item.cellAspectRatio() else 1f)
@@ -382,7 +387,6 @@ fun AlbumDetailScreen(
             title = appString(if (isFolder) R.string.folder_delete_title else R.string.common_delete_this_album),
             text = when {
                 isFolder -> appString(R.string.folder_delete_text)
-                // Deleting an album deletes its folders too, so say so first
                 folders.isNotEmpty() -> appString(R.string.album_delete_with_folders, folders.size)
                 else -> appString(R.string.album_detail_the_photos_stay_in_your)
             },

@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-// Shared by AlbumViewModel and PetViewModel
 abstract class TaggableCollectionViewModel<Entity, Membership>(
     application: Application
 ) : AndroidViewModel(application) {

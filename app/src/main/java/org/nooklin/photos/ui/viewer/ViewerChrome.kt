@@ -95,7 +95,6 @@ fun DateTimePill(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.height(ViewerPillHeight).padding(horizontal = 16.dp)
         ) {
-            // Explicit line heights: the inherited 24sp line height made the two lines far taller than the text.
             Text(dateLabel, color = contentColor, fontSize = AppText.Body, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
             Text(timeLabel, color = contentColor.copy(alpha = 0.8f), fontSize = AppText.Caption, lineHeight = 14.sp)
         }

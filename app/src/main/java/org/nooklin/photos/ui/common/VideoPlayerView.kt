@@ -3,6 +3,9 @@ package org.nooklin.photos.ui.common
 import android.content.Context
 import android.content.ContextWrapper
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -22,6 +25,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.MediaItem as Media3MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -35,14 +39,15 @@ import org.nooklin.photos.R
 import org.nooklin.photos.data.VideoTrims
 import org.nooklin.photos.ui.theme.Motion
 
-// ExoPlayer playback for a pager page
+private const val TAG = "VideoPlayerView"
+private const val MAX_RETRIES = 2
+
 internal fun videoUriOf(model: Any): Uri = when (model) {
     is Uri -> model
     is File -> Uri.fromFile(model)
     else -> Uri.parse(model.toString())
 }
 
-// A trim saved with "Save Video" plays as a clip of the original file.
 private fun videoMediaItem(uri: Uri): Media3MediaItem {
     val trim = VideoTrims.get(uri) ?: return Media3MediaItem.fromUri(uri)
     return Media3MediaItem.Builder()
@@ -59,16 +64,13 @@ private fun videoMediaItem(uri: Uri): Media3MediaItem {
 private fun createVideoPlayer(context: Context, uri: Uri): ExoPlayer =
     ExoPlayer.Builder(context.applicationContext).build().apply {
         setMediaItem(videoMediaItem(uri))
-        // Loops rather than stopping on the last frame, a short clip ending mid-view reads as a stalled player.
         repeatMode = Player.REPEAT_MODE_ONE
         prepare()
         playWhenReady = false
     }
 
 // Prepared paused players for neighbouring videos, so a swipe only attaches a surface.
-// Capped, released when no longer a neighbour.
 internal object VideoPrewarm {
-    private const val MAX_PLAYERS = 2
     private val players = LinkedHashMap<Uri, ExoPlayer>()
 
     fun update(context: Context, warm: Set<Uri>, keep: Set<Uri>) {
@@ -76,7 +78,7 @@ internal object VideoPrewarm {
         stale.forEach { players.remove(it)?.release() }
         for (uri in warm) {
             if (uri in players) continue
-            if (players.size >= MAX_PLAYERS) break
+            if (players.size >= 2) break
             players[uri] = createVideoPlayer(context, uri)
         }
     }
@@ -95,7 +97,6 @@ internal object VideoPrewarm {
 fun VideoPlayerView(
     model: Any,
     modifier: Modifier = Modifier,
-    // Publishes position and play state to the control bar and turns off the built-in controller. Null keeps it.
     controlState: VideoControlState? = null,
     onTap: () -> Unit = {},
     // False while the pager is still swiping, so playback does not begin until the swipe has finished.
@@ -105,7 +106,6 @@ fun VideoPlayerView(
 ) {
     val context = LocalContext.current
     val uri = remember(model) { videoUriOf(model) }
-    // A player prepared ahead of time when one exists, so playback starts without waiting for the decoder.
     val exoPlayer = remember(uri) { VideoPrewarm.take(uri) ?: VideoPrewarm.create(context, uri) }
     var hasStarted by remember(exoPlayer) { mutableStateOf(false) }
     LaunchedEffect(exoPlayer, playEnabled) {
@@ -114,10 +114,9 @@ fun VideoPlayerView(
             exoPlayer.playWhenReady = true
         }
     }
-    // Pause on background, release only on leaving composition
     val lifecycleOwner = remember(context) { context.findLifecycleOwner() }
     DisposableEffect(lifecycleOwner, exoPlayer) {
-        // Don't resume a video the user paused
+        // don't resume a video the user paused
         var resumeOnForeground = false
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -143,7 +142,32 @@ fun VideoPlayerView(
     LaunchedEffect(exoPlayer, hasStarted) {
         if (hasStarted) {
             delay(1500)
-            firstFrameRendered = true
+            // a failed player never gets a frame: keep the still image instead of a blank video layer
+            if (exoPlayer.playerError == null) firstFrameRendered = true
+        }
+    }
+    // a player that fails stays failed, so the video only played after swiping away and back.
+    DisposableEffect(exoPlayer) {
+        val handler = Handler(Looper.getMainLooper())
+        var attempts = 0
+        val retry = Runnable {
+            exoPlayer.stop()
+            exoPlayer.setMediaItem(videoMediaItem(uri))
+            exoPlayer.prepare()
+        }
+        val listener = object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                Log.w(TAG, "Playback failed (${error.errorCodeName}), attempt ${attempts + 1} of ${MAX_RETRIES + 1}")
+                if (attempts < MAX_RETRIES) {
+                    attempts++
+                    handler.postDelayed(retry, 300L * attempts)
+                }
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose {
+            handler.removeCallbacks(retry)
+            exoPlayer.removeListener(listener)
         }
     }
     DisposableEffect(exoPlayer) {
@@ -155,7 +179,6 @@ fun VideoPlayerView(
         exoPlayer.addListener(listener)
         onDispose { exoPlayer.removeListener(listener) }
     }
-    // Publishes the player to the control bar
     DisposableEffect(exoPlayer, controlState) {
         val state = controlState
         val listener = object : Player.Listener {
@@ -170,7 +193,6 @@ fun VideoPlayerView(
         exoPlayer.addListener(listener)
         onDispose {
             exoPlayer.removeListener(listener)
-            // Only clear if still this player: the next one may have registered already
             if (state != null && state.player === exoPlayer) {
                 state.player = null
                 state.isPlaying = false
@@ -179,7 +201,6 @@ fun VideoPlayerView(
             }
         }
     }
-    // ExoPlayer has no position callback, poll on the main thread
     LaunchedEffect(exoPlayer, controlState) {
         val state = controlState ?: return@LaunchedEffect
         while (true) {
@@ -211,18 +232,17 @@ fun VideoPlayerView(
         AndroidView(
             factory = { ctx ->
                 (LayoutInflater.from(ctx).inflate(R.layout.video_player_texture, null) as PlayerView).apply {
-                    // Built-in controller only without a control bar. Set before attaching, else a paused player flashes center buttons.
+                    // Built-in controller only without a control bar.
                     useController = controlState == null
                     if (controlState != null) hideController()
-                    // The default shutter is opaque black until the first frame, which would hide the still image.
+                    // The default shutter is opaque black until the first frame, which would hide the still image
                     setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                     player = exoPlayer
                 }
             },
-            // Invisible until the first video frame, then fades in over the still image, which is the same frame.
+            // Invisible until the first video frame, then fades in over the still image, which is the same frame
             modifier = Modifier.fillMaxSize().graphicsLayer { alpha = videoAlpha }
         )
-        // Removed, not just invisible: stops holding the image
         if (posterAlpha > 0f) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = posterAlpha }) {
                 poster()

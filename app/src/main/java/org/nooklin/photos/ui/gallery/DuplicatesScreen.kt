@@ -1,4 +1,4 @@
-package org.nooklin.photos.ui.duplicates
+package org.nooklin.photos.ui.gallery
 
 import android.text.format.Formatter
 import androidx.compose.foundation.background
@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import org.nooklin.photos.data.MediaCategory
@@ -53,13 +52,11 @@ import org.nooklin.photos.ui.common.EmptyState
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 
-// The photo to keep by default: most pixels, then the biggest file
 private fun bestOf(group: List<MediaItem>): MediaItem =
     group.maxWith(
         compareBy<MediaItem>({ (it.width ?: 0).toLong() * (it.height ?: 0) }, { it.sizeBytes ?: 0L })
     )
 
-// Review of photos that look the same. Per group one photo is kept, the others go to Recently Deleted.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DuplicatesScreen(
@@ -69,7 +66,6 @@ fun DuplicatesScreen(
     onMoveToRecycleBin: (MediaItem) -> Unit
 ) {
     val context = LocalContext.current
-    // The photo chosen to keep, per group (key is the smallest id of the group)
     val keepChoice = remember { mutableStateMapOf<Long, Long>() }
     var confirmAll by remember { mutableStateOf(false) }
 

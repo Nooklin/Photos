@@ -16,7 +16,6 @@ import androidx.room.Transaction
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-// Flags are captured at hide-time, a hidden file has no MediaStore row
 @Entity(tableName = "hidden_media")
 data class HiddenMediaEntity(
     @PrimaryKey val fileName: String,
@@ -31,13 +30,10 @@ data class HiddenMediaEntity(
     val width: Int? = null,
     val height: Int? = null,
     val mimeType: String? = null,
-    // Library date (seconds) at hide-time, so unhide can put the item back in its old place. Null for items hidden before v1.1.0.
     val dateAdded: Long? = null,
-    // Set when deleted from the Hidden Section. The file stays private until purged after 30 days.
+    // Set when deleted from the Hidden Section.
     val deletedAt: Long? = null,
-    // Original file name with extension, as it was before hiding or importing. Null for items from before v1.2.0.
     val originalName: String? = null,
-    // Original dates in milliseconds, null when they were not known
     val originalModified: Long? = null,
     val originalTaken: Long? = null
 )
@@ -47,9 +43,7 @@ data class HiddenAlbumEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val createdAt: Long = System.currentTimeMillis(),
-    // Set for a folder: the id of the hidden album it sits in. Null for a normal hidden album.
     val parentId: Long? = null,
-    // File name of the photo chosen for the top of the album screen. Null: the newest photo.
     val coverFileName: String? = null
 )
 
@@ -130,7 +124,6 @@ interface HiddenDao {
     @Query("UPDATE OR IGNORE hidden_album_membership SET albumId = :targetAlbumId WHERE albumId = :sourceAlbumId")
     suspend fun reassignMembership(sourceAlbumId: Long, targetAlbumId: Long)
 
-    // A deleted folder gives its photos to the album it sat in
     @Transaction
     suspend fun deleteAlbum(albumId: Long) {
         parentOf(albumId)?.let { reassignMembership(albumId, it) }
@@ -148,7 +141,7 @@ interface HiddenDao {
     suspend fun removeMembership(albumId: Long, fileName: String)
 }
 
-// Own database, nothing of a hidden item stays in NooklinDatabase. Not encrypted yet.
+// Own database, nothing of a hidden item stays in NooklinDatabase
 @Database(
     entities = [
         HiddenMediaEntity::class,

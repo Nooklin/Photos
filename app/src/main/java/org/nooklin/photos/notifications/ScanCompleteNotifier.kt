@@ -11,10 +11,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import org.nooklin.photos.R
 
-// Only notification the app posts. Needs the setting on and POST_NOTIFICATIONS granted.
 object ScanCompleteNotifier {
     private const val CHANNEL_ID = "scan_complete"
-    private const val NOTIFICATION_ID = 1
 
     fun createChannelIfNeeded(application: Application) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -29,7 +27,7 @@ object ScanCompleteNotifier {
         manager.createNotificationChannel(channel)
     }
 
-    // Only checks the permission, a background callback can't ask. Settings requests it.
+    // Only checks the permission, a background callback can't ask.
     fun notifyScanComplete(application: Application, scannedCount: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
@@ -53,6 +51,6 @@ object ScanCompleteNotifier {
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(application).notify(NOTIFICATION_ID, notification)
+        NotificationManagerCompat.from(application).notify(1, notification)
     }
 }

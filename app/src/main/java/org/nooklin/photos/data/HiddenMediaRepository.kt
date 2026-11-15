@@ -27,7 +27,6 @@ import android.media.ThumbnailUtils
 import android.util.Size
 import android.graphics.ImageDecoder
 
-// thumbnailFile falls back to file when there is no thumbnail
 data class HiddenItem(
     val file: File,
     val thumbnailFile: File,
@@ -53,11 +52,8 @@ data class HiddenAlbumWithPreview(
     val name: String,
     val itemCount: Int,
     val previewFiles: List<File>,
-    // Set for a folder, the id of its hidden album
     val parentId: Long? = null,
-    // Folders inside this hidden album, shown in the delete warning
     val folderCount: Int = 0,
-    // File name of the chosen cover photo, null: the newest photo
     val coverFileName: String? = null
 )
 
@@ -70,13 +66,11 @@ sealed class UnhideResult {
 // Files live in filesDir: private, never scanned by MediaStore
 class HiddenMediaRepository(
     private val context: Context,
-    // Only the recycle bin lives here
     private val localMetadataStore: LocalMetadataStore
 ) {
     internal val hiddenDao = HiddenDatabase.getInstance(context).hiddenDao()
     private val libraryDb = NooklinDatabase.getInstance(context)
 
-    // Editor originals (for Revert) follow the photo through hide and unhide
     private val originals = OriginalsStore(context)
 
     internal val hiddenDir: File
@@ -106,7 +100,6 @@ class HiddenMediaRepository(
         created
     }
 
-    // HEIC needs ImageDecoder
     private fun decodeThumbnailWithImageDecoder(sourceUri: Uri, targetSize: Int): Bitmap? = try {
         ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, sourceUri)) { decoder, info, _ ->
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
@@ -219,7 +212,7 @@ class HiddenMediaRepository(
         destination
     }
 
-    // After the delete is accepted nothing about the item stays in NooklinDatabase
+    // after the delete is accepted nothing about the item stays in NooklinDatabase
     suspend fun purgeLibraryData(mediaIds: List<Long>) = withContext(Dispatchers.IO) {
         if (mediaIds.isEmpty()) return@withContext
         libraryDb.albumDao().deleteMembershipsForMediaIds(mediaIds)
@@ -256,7 +249,6 @@ class HiddenMediaRepository(
             if (file.exists()) {
                 val thumb = File(thumbsDir, entry.fileName)
                 val thumbnailFile = if (thumb.exists()) thumb else file
-                // Thumbnail is upright, the stored size can be unrotated
                 val thumbnailSize = if (thumb.exists()) thumbnailDimensions(thumb) else null
                 HiddenItem(
                     file = file,
@@ -284,7 +276,6 @@ class HiddenMediaRepository(
 
     suspend fun listHidden(): List<HiddenItem> = listEntries(deleted = false)
 
-    // Items in the Hidden Recently Deleted, still private files in the app
     suspend fun listDeleted(): List<HiddenItem> = listEntries(deleted = true)
 
     // Wipes deleted items older than 30 days, no system dialog needed because the files are the app's own
@@ -305,7 +296,6 @@ class HiddenMediaRepository(
 
     suspend fun updateSize(fileName: String, width: Int, height: Int) {
         hiddenDao.setSize(fileName, width, height)
-        // An edit or revert can change the format (HEIC to JPEG), so reread the type
         val actualType = withContext(Dispatchers.IO) {
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFile(File(hiddenDir, fileName).absolutePath, options)
@@ -356,10 +346,8 @@ class HiddenMediaRepository(
         }
         albums.map { album ->
             val members = membersOf(album.id)
-            // The chosen cover comes first in the preview
             val cover = members.find { it.file.name == album.coverFileName }
             val folders = foldersByParent[album.id].orEmpty()
-            // An album with folders shows the front of its first 4 folders, and counts the photos of its folders too
             val folderFronts = folders.mapNotNull { folder ->
                 val inFolder = membersOf(folder.id)
                 (inFolder.find { it.file.name == folder.coverFileName } ?: inFolder.firstOrNull())?.thumbnailFile
@@ -396,7 +384,6 @@ class HiddenMediaRepository(
         }
     }
 
-    // metadata.json first, then the files with their original modified date as entry time
     private fun writeHiddenZip(
         zip: ZipOutputStream,
         writes: List<Pair<String, HiddenItem>>,
@@ -420,7 +407,6 @@ class HiddenMediaRepository(
         }
     }
 
-    // Backup zip, files are wiped on uninstall
     suspend fun exportFlatZip(
         context: Context,
         destination: Uri,
@@ -456,7 +442,6 @@ class HiddenMediaRepository(
         }
     }
 
-    // A photo in several albums is written once per album
     suspend fun exportOrganizedZip(
         context: Context,
         destination: Uri,
@@ -472,7 +457,6 @@ class HiddenMediaRepository(
             val loose = items.filter { it.file.name !in namesInAnyAlbum }
 
             val usedFolderNames = mutableSetOf<String>()
-            // A folder is written inside the directory of its album: Hidden Albums/Album/Folder
             val albumsById = albums.associateBy { it.id }
             val folderNames = mutableMapOf<Long, String>()
             fun uniqueFolderName(album: HiddenAlbumEntity): String {
@@ -506,12 +490,11 @@ class HiddenMediaRepository(
         }
     }
 
-    // No partial zip left behind
     private fun deleteDestination(context: Context, destination: Uri): Boolean {
         try {
             DocumentsContract.deleteDocument(context.contentResolver, destination)
         } catch (e: Exception) {
-            // Not every provider can delete
+            // not every provider can delete
         }
         return false
     }
@@ -533,10 +516,10 @@ class HiddenMediaRepository(
 
             val resolver = context.contentResolver
             val mimeType = entry.mimeType ?: if (entry.isVideo) "video/mp4" else "image/jpeg"
-            // An edit can change the format, so the extension follows the type
+            // an edit can change the format, so the extension follows the type
             val original = entry.originalName
             val displayName = if (original != null) {
-                // The original name stays. Only when the format changed (an edit) the extension follows the new type.
+                // the original name stays. Only when the format changed (an edit) the extension follows the new type
                 val kind = mediaKind(original, null)
                 if (kind == null || kind == mimeType.lowercase()) {
                     original
@@ -589,7 +572,6 @@ class HiddenMediaRepository(
                 null
             )
 
-            // New library id: carry the stored original over
             originals.copy(OriginalsStore.hiddenKey(fileName), OriginalsStore.mediaKey(ContentUris.parseId(newUri)))
             originals.delete(OriginalsStore.hiddenKey(fileName))
             // MediaStore stamps the new row with today, so the old library date goes back as a sort date

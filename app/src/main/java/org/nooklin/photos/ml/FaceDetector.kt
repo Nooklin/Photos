@@ -29,8 +29,6 @@ private data class Point(val x: Float, val y: Float)
 
 private data class FaceKeypoints(val leftEye: Point, val rightEye: Point, val noseTip: Point, val mouth: Point)
 
-// SHORT_RANGE (~2m) misses distant faces, FULL_RANGE covers ~5m.
-// Input size and anchors differ per model.
 enum class FaceModel(
     val modelFileName: String,
     val inputSize: Int,
@@ -79,23 +77,18 @@ class FaceDetector(context: Context, private val model: FaceModel) : AutoCloseab
         val pixels = IntArray(inputSize * inputSize)
         resized.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
         for (pixel in pixels) {
-            // [0,255] to [-1,1], the model's input range
             buffer.putFloat((((pixel shr 16) and 0xFF) / 127.5f) - 1.0f) // R
             buffer.putFloat((((pixel shr 8) and 0xFF) / 127.5f) - 1.0f) // G
             buffer.putFloat(((pixel and 0xFF) / 127.5f) - 1.0f) // B
         }
         buffer.rewind()
-        // Only recycle a new bitmap, createScaledBitmap returns the same instance when nothing was scaled
         if (resized !== bitmap) resized.recycle()
         return buffer
     }
 
-    fun detectFaceCount(bitmap: Bitmap): Int = detectFaces(bitmap).size
-
     fun detectFaces(bitmap: Bitmap): List<FaceBox> {
         val input = preprocess(bitmap)
 
-        // Tensors matched by shape (last dim 16 = regressors, 1 = scores), not by index
         var regressorsIndex = -1
         var scoresIndex = -1
         for (i in 0 until interpreter.outputTensorCount) {
@@ -123,18 +116,15 @@ class FaceDetector(context: Context, private val model: FaceModel) : AutoCloseab
         val nearMisses = mutableListOf<Float>()
         var geometryRejected = 0
         for (i in anchors.indices) {
-            // Scale is the model input size, sigmoid scores (MediaPipe issue 4232)
             val rawScore = scores[0][i][0]
             val score = sigmoid(rawScore)
             if (score < MIN_SCORE_THRESHOLD) {
-                // Near misses are logged: real faces scored 0.5 to 0.63
                 if (score >= NEAR_MISS_LOG_FLOOR) nearMisses.add(score)
                 continue
             }
 
             val anchor = anchors[i]
             val box = regressors[0][i]
-            // Fixed anchor size: box size comes from the regression output
             val xCenter = box[0] / scale + anchor.xCenter
             val yCenter = box[1] / scale + anchor.yCenter
             val w = box[2] / scale
@@ -153,7 +143,6 @@ class FaceDetector(context: Context, private val model: FaceModel) : AutoCloseab
                     xMax = xCenter + w / 2f,
                     yMax = yCenter + h / 2f,
                     score = score,
-                    // Eye positions are kept for FaceLandmarkVerifier's crop
                     leftEyeX = keypoints.leftEye.x,
                     leftEyeY = keypoints.leftEye.y,
                     rightEyeX = keypoints.rightEye.x,
@@ -173,7 +162,6 @@ class FaceDetector(context: Context, private val model: FaceModel) : AutoCloseab
         return nonMaxSuppress(candidates, NMS_IOU_THRESHOLD)
     }
 
-    // The 6 landmarks BlazeFace outputs next to the box (offset 4)
     private fun decodeKeypoints(box: FloatArray, anchor: Anchor): FaceKeypoints {
         fun point(index: Int): Point {
             val x = box[4 + index * 2] / scale + anchor.xCenter
@@ -221,13 +209,9 @@ class FaceDetector(context: Context, private val model: FaceModel) : AutoCloseab
 
     companion object {
         private const val NUM_COORDS = 16 // 4 box + 6 keypoints * 2
-        // 0.5: real faces scored 0.5 to 0.63. Precision comes from the geometry check.
         private const val MIN_SCORE_THRESHOLD = 0.5f
-        // Floor for the near-miss log
         private const val NEAR_MISS_LOG_FLOOR = 0.3f
-        // Per-model NMS, the cross-model merge uses MERGE_IOU_THRESHOLD
         private const val NMS_IOU_THRESHOLD = 0.3f
-        // Stricter than NMS_IOU_THRESHOLD: the lenient one merged two people standing close together
         private const val MERGE_IOU_THRESHOLD = 0.5f
         private fun nonMaxSuppress(boxes: List<FaceBox>, iouThreshold: Float): List<FaceBox> {
             val sorted = boxes.sortedByDescending { it.score }.toMutableList()
@@ -254,7 +238,6 @@ class FaceDetector(context: Context, private val model: FaceModel) : AutoCloseab
 
         fun mergeFaceBoxes(a: List<FaceBox>, b: List<FaceBox>): List<FaceBox> {
             val kept = nonMaxSuppress(a + b, MERGE_IOU_THRESHOLD)
-            // Drop the lower score when one box sits almost inside another (a 0.12 box inside a 0.19 box gave two people)
             val result = mutableListOf<FaceBox>()
             for (box in kept.sortedByDescending { it.score }) {
                 if (result.none { containedIn(box, it) || containedIn(it, box) }) result.add(box)

@@ -1,0 +1,6 @@
+Version 1.3.0
+- Home: Library card scrolls sideways, Media Types and Utilities in two rows
+- Automatic albums for Camera, Screenshots, Downloads and WhatsApp
+- Same long press menu everywhere, with Select first
+- Hide without a system confirmation after one-time media access
+- Hidden Section PIN has at least 6 digits

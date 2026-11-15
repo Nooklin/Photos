@@ -43,9 +43,7 @@ class AnalysisRepository(context: Context) {
     suspend fun findDuplicateMediaIds(validMediaIds: Set<Long>): Set<Long> =
         findDuplicateGroups(validMediaIds).flatten().toSet()
 
-    // Photos that look the same, grouped. Photos linked through a chain of matches end up in one group.
     suspend fun findDuplicateGroups(validMediaIds: Set<Long>): List<List<Long>> = withContext(Dispatchers.IO) {
-        // Flat images give all-0 or all-1 hashes that match each other
         val hashes = dao.allHashes().filter { it.mediaId in validMediaIds && it.dHash != 0L && it.dHash != -1L }
         val parent = HashMap<Long, Long>()
         fun find(x: Long): Long {
@@ -58,7 +56,6 @@ class AnalysisRepository(context: Context) {
             return root
         }
         val matched = mutableSetOf<Long>()
-        // Within 5 bits means one of 6 chunks is equal, so compare same-chunk pairs only
         var shift = 0
         for (bits in intArrayOf(11, 11, 11, 11, 10, 10)) {
             val mask = (1L shl bits) - 1
@@ -81,7 +78,6 @@ class AnalysisRepository(context: Context) {
     }
 
     private companion object {
-        // Out of 64 bits, picked by judgment
         const val HAMMING_THRESHOLD = 5
     }
 

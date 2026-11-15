@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// Display-only: turning it off deletes nothing
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsHiddenAlbumsScreen(

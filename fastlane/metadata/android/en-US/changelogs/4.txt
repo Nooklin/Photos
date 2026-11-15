@@ -1,0 +1,7 @@
+Version 1.2.1
+- Settings icons on colored tiles, with a switch in Appearance to turn it off
+- Videos that fail to start in the viewer try again by themselves
+- Cleaner Crop screen, the whole photo stays in view
+- Long press in the Library: small preview with a menu
+- Screenshots in the Library can be switched on or off in Settings
+- No more purple in switches and chips

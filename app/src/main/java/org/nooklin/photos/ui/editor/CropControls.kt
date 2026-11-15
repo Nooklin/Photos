@@ -63,16 +63,13 @@ import org.nooklin.photos.ui.theme.AppText
 import org.nooklin.photos.ui.theme.MinTouchTarget
 import org.nooklin.photos.ui.theme.Spacing
 
-// Height of CropTopRow, the editors keep this free above the picture in Crop
 val CropTopRowHeight = 56.dp
 
-// The fine adjustments of the Crop screen: round buttons in a row and one ruler for the selected one
 enum class GeometryTool(
     @StringRes val labelRes: Int,
     val icon: ImageVector,
     val min: Float,
     val max: Float,
-    // Value distance between two marks on the ruler, a long mark follows every five
     val step: Float
 ) {
     STRAIGHTEN(R.string.photo_editor_straighten, Icons.Filled.Straighten, -45f, 45f, 1f),
@@ -81,20 +78,17 @@ enum class GeometryTool(
 
     val label: String get() = appString(labelRes)
 
-    // Degrees with one decimal for Straighten, a percentage for the two perspective tools
     fun displayValue(value: Float): String = when (this) {
         STRAIGHTEN -> (if (value > 0f) "+" else "") + "%.1f".format(value) + "°"
         else -> (value * 100).toInt().let { if (it > 0) "+$it" else "$it" }
     }
 
-    // Short form inside the round button, like the Adjust buttons
     fun shortValue(value: Float): String = when (this) {
         STRAIGHTEN -> Math.round(value).let { if (it > 0) "+$it" else "$it" }
         else -> (value * 100).toInt().let { if (it > 0) "+$it" else "$it" }
     }
 }
 
-// Round buttons in a row (only when there is more than one tool), the ruler underneath for the selected one
 @Composable
 fun GeometryTools(
     chromeColor: Color,
@@ -181,8 +175,6 @@ fun GeometryTools(
     }
 }
 
-// A row of marks that moves under a fixed yellow mark in the middle, like the ruler of the iOS Photos app.
-// A drag moves the marks, a screen reader can set the value directly.
 @Composable
 private fun GeometryRuler(
     value: Float,
@@ -203,7 +195,6 @@ private fun GeometryRuler(
             .pointerInput(min, max, step) {
                 detectHorizontalDragGestures { change, dragAmount ->
                     change.consume()
-                    // The marks follow the finger, so dragging right lowers the value
                     val next = currentValue - dragAmount / tickSpacingPx * step
                     currentChange(next.coerceIn(min, max))
                 }
@@ -248,8 +239,6 @@ private fun GeometryRuler(
     }
 }
 
-// The row above the picture in Crop, like the iOS Photos app: flip and rotate on the left,
-// the aspect ratio menu on the right.
 @Composable
 fun CropTopRow(
     chromeColor: Color,

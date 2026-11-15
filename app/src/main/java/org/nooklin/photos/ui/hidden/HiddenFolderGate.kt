@@ -19,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -29,7 +28,6 @@ import org.nooklin.photos.appString
 import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.theme.AppColors
 
-// BiometricPrompt with BIOMETRIC_STRONG or DEVICE_CREDENTIAL, the fallback is the phone's own lock
 @Composable
 fun HiddenFolderGate(
     title: String = appString(R.string.hidden_folder_gate_unlock_hidden_section),
@@ -102,7 +100,6 @@ fun HiddenFolderGate(
                 )
             }
         } else {
-            // No Surface ancestor, so Text needs an explicit theme color
             Text(statusText, color = MaterialTheme.colorScheme.onBackground)
         }
     }

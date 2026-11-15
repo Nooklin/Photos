@@ -1,4 +1,4 @@
-package org.nooklin.photos.ui.calendar
+package org.nooklin.photos.ui.gallery
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -36,7 +36,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import java.text.DateFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -60,15 +59,12 @@ import org.nooklin.photos.ui.theme.AppText
 
 private fun dayKey(year: Int, month: Int, day: Int) = year * 10000 + month * 100 + day
 
-// Month per page, swipe left and right. A day with photos shows the first photo of that day, a tap opens the day.
 @Composable
 fun CalendarScreen(
     items: List<MediaItem>,
     onBack: () -> Unit,
-    // All photos of the tapped day, in the order of the Library
     onOpenDay: (List<MediaItem>) -> Unit
 ) {
-    // Same date as the Library headers and the timeline (dateAdded, seconds)
     CalendarContent(
         items = items,
         timeMillis = { it.dateAdded * 1000L },
@@ -78,7 +74,6 @@ fun CalendarScreen(
     ) { item, modifier -> GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = modifier) }
 }
 
-// Same calendar for the Hidden Section: the day is the date the photo was hidden (or its original date after an import)
 @Composable
 fun HiddenCalendarScreen(
     items: List<HiddenItem>,
@@ -119,7 +114,6 @@ private fun <T> CalendarContent(
             dayKey(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
         }
     }
-    // Every month from the oldest to the newest photo, also the empty ones in between
     val months = remember(byDay) {
         if (byDay.isEmpty()) {
             emptyList()
@@ -208,7 +202,6 @@ private fun <T> MonthPage(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 4.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             for (i in 0 until 7) {
-                // Calendar.SUNDAY is 1, shortWeekdays is indexed the same way
                 val weekday = (firstDayOfWeek - 1 + i) % 7 + 1
                 Text(
                     weekdays[weekday],

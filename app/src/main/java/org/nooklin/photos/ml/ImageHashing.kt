@@ -2,7 +2,6 @@ package org.nooklin.photos.ml
 
 import android.graphics.Bitmap
 
-// dHash: 9x8 grayscale, 64 bits from horizontal brightness comparisons
 fun computeDHash(bitmap: Bitmap): Long {
     val width = 9
     val height = 8
@@ -27,9 +26,7 @@ private fun luminance(pixel: Int): Int {
     val r = (pixel shr 16) and 0xFF
     val g = (pixel shr 8) and 0xFF
     val b = pixel and 0xFF
-    // BT.601 luma weights
     return (r * 299 + g * 587 + b * 114) / 1000
 }
 
-// 5 or fewer differing bits out of 64 counts as a duplicate
 fun hammingDistance(a: Long, b: Long): Int = java.lang.Long.bitCount(a xor b)

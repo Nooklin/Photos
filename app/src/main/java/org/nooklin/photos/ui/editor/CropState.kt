@@ -24,12 +24,10 @@ enum class AspectPreset(@StringRes val labelRes: Int, val ratio: Float?) {
 
 fun cropRectForAspect(ratio: Float, imageAspect: Float): CropRect {
     return if (ratio > imageAspect) {
-        // Wider target: full width, centered vertically
         val heightFraction = imageAspect / ratio
         val top = (1f - heightFraction) / 2f
         CropRect(0f, top, 1f, top + heightFraction)
     } else {
-        // Taller target: full height, centered horizontally
         val widthFraction = ratio / imageAspect
         val left = (1f - widthFraction) / 2f
         CropRect(left, 0f, left + widthFraction, 1f)

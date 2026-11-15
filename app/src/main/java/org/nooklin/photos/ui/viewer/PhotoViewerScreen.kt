@@ -13,7 +13,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -72,7 +71,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -141,7 +139,6 @@ fun PhotoViewerScreen(
     onLibraryChanged: () -> Unit
 ) {
     if (items.value.isEmpty()) {
-        // onBack is navigation, defer it out of composition
         LaunchedEffect(Unit) { onBack() }
         return
     }
@@ -149,12 +146,24 @@ fun PhotoViewerScreen(
     val pagerState = rememberPagerState(initialPage = safeStartIndex) { items.value.size }
     val currentItem = items.value.getOrNull(pagerState.currentPage)
     val coroutineScope = rememberCoroutineScope()
+    var jumpToId by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(jumpToId, items.value) {
+        val id = jumpToId ?: return@LaunchedEffect
+        val index = items.value.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            pagerState.scrollToPage(index)
+            jumpToId = null
+        } else {
+            // the library reload has not landed yet, or a filter hides the copy
+            delay(5000)
+            jumpToId = null
+        }
+    }
     val zoom = rememberPhotoZoomTransition(zoomLaunch)
     val viewerBackground = if (darkTheme && currentItem != null) Color.Black else MaterialTheme.colorScheme.background
-    // Keyed on the page index so a swipe starts at 1x. Declared before animateBackOut, locals can't be forward-referenced.
+    // Keyed on the page index so a swipe starts at 1x
     val currentZoomScale = remember(pagerState.currentPage) { mutableStateOf(1f) }
     val currentZoomOffset = remember(pagerState.currentPage) { mutableStateOf(Offset.Zero) }
-    // Shared by VideoPlayerView and the control bar, declared before both
     val videoControls = remember { VideoControlState() }
     suspend fun animateBackOut() {
         val item = currentItem
@@ -172,7 +181,6 @@ fun PhotoViewerScreen(
     BackHandler(enabled = true) {
         coroutineScope.launch { animateBackOut() }
     }
-    // Chrome flips with the themed background
     val chromeColor = if (darkTheme) Color.White else Color.Black
     val popupBackground = if (darkTheme) GlassPill.fixedPopupBackground else GlassPill.adaptivePopupBackground
     val toolbarBackground = if (darkTheme) GlassPill.fixedGlassBackground else GlassPill.adaptiveGlassBackground
@@ -185,7 +193,6 @@ fun PhotoViewerScreen(
     var currentPageZoomedIn by remember { mutableStateOf(false) }
     // VideoPlayerView never reports a zoom state, a video could inherit a stuck "zoomed in" from the previous photo
     LaunchedEffect(pagerState.currentPage) { currentPageZoomedIn = false }
-    // Keyed on the page index, a new photo gets a fresh unzoomed state
     var metadata by remember { mutableStateOf<PhotoMetadata?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
     var preparingJob by remember { mutableStateOf<Job?>(null) }
@@ -207,7 +214,6 @@ fun PhotoViewerScreen(
 
     var chromeVisible by remember { mutableStateOf(true) }
     var hasSwiped by remember { mutableStateOf(false) }
-    // Prepare neighbouring videos after the open animation
     val transitionDone by remember { derivedStateOf { zoom.progressState.value >= 1f } }
     // Pager must be at rest: settledPage updates when the finger lifts, mounting the player mid-slide showed black
     val pagerIdle by remember {
@@ -313,7 +319,10 @@ fun PhotoViewerScreen(
                                         menuExpanded = false
                                         currentItem?.let { item ->
                                             coroutineScope.launch {
-                                                if (repository.duplicate(item)) onLibraryChanged()
+                                                repository.duplicate(item)?.let { newId ->
+                                                    jumpToId = newId
+                                                    onLibraryChanged()
+                                                }
                                             }
                                         }
                                     }
@@ -341,7 +350,6 @@ fun PhotoViewerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     currentItem?.let { item ->
-                        // Share is hidden when sharingDisabled is on, the spacer keeps the center pill balanced
                         if (shareEnabled) {
                             ViewerCircleButton(
                                 icon = Icons.Filled.IosShare,
@@ -431,6 +439,7 @@ fun PhotoViewerScreen(
             )
             HorizontalPager(
                 state = pagerState,
+                key = { page -> items.value.getOrNull(page)?.id ?: page },
                 beyondViewportPageCount = 1,
                 userScrollEnabled = !currentPageZoomedIn,
                 modifier = Modifier
@@ -451,7 +460,6 @@ fun PhotoViewerScreen(
                 if (pageItem != null) {
                     val isCurrentPage = page == pagerState.currentPage
                     val pageFrame = Modifier.fillMaxSize().padding(if (pageItem.isVideo) PaddingValues() else photoInset)
-                    // HeroPhotoFrame owns the transition, ZoomableImage the settled state
                     val pager = zoom.pagerBounds
                     if (isCurrentPage && zoom.initialBounds != null && pager == null) {
                         // Bounds not measured yet: falling through mounted ZoomableImage full size for a frame
@@ -476,12 +484,11 @@ fun PhotoViewerScreen(
                                 onZoomStateChanged = { zoomedIn -> currentPageZoomedIn = zoomedIn },
                                 onTap = { chromeVisible = !chromeVisible },
                                 modifier = pageFrame,
-                                // Only the current page shares the hoisted zoom state, a neighbour sharing it would appear pre-zoomed
+                                // only the current page shares the hoisted zoom state, a neighbour sharing it would appear pre-zoomed
                                 zoomScale = if (isCurrentPage) currentZoomScale else remember { mutableStateOf(1f) },
                                 zoomOffset = if (isCurrentPage) currentZoomOffset else remember { mutableStateOf(Offset.Zero) }
                             )
                             if (pageItem.isVideo && isCurrentPage && pagerIdle) {
-                                // Video fades in over the still image, nothing is swapped mid-swipe
                                 VideoPlayerView(
                                     model = pageItem.uri,
                                     modifier = pageFrame,
@@ -522,7 +529,6 @@ fun PhotoViewerScreen(
                     .chromeGate(chromeVisible) { chromeVisible = true }
                     .background(overlayBackground)
             ) {
-                // AnimatedVisibility so swiping between photo and video grows the bottom bar smoothly
                 AnimatedVisibility(
                     visible = currentItem?.isVideo == true,
                     enter = expandVertically() + fadeIn(),

@@ -5,6 +5,9 @@
     <!-- Media read access only. No INTERNET permission requested. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- Special access the user grants once in system settings. Lets hiding a photo move it without Android's
+         delete-confirmation dialog for every request. Nothing is deleted without the user hiding or deleting it. -->
+    <uses-permission android:name="android.permission.MANAGE_MEDIA" tools:ignore="ProtectedPermissions" />
     <!-- Normal-protection permission, no runtime request needed. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Runtime-requested on API 33+ (this app's minSdk), only used for the
@@ -36,6 +39,7 @@
     <application
         android:name=".NooklinPhotosApplication"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"

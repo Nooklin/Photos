@@ -9,7 +9,6 @@ import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
-// One row per detected thing, a photo can hold several
 @Entity(tableName = "photo_tags", primaryKeys = ["mediaId", "tag"])
 data class PhotoTagEntity(
     val mediaId: Long,

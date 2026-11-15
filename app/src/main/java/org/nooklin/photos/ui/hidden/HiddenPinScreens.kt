@@ -24,12 +24,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import org.nooklin.photos.ui.common.GlassPill
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,11 +41,10 @@ import org.nooklin.photos.ui.theme.AppText
 import org.nooklin.photos.ui.theme.AppColors
 
 private val AccentBlue = AppColors.AccentBlue
-private const val MIN_PIN_LENGTH = 4
+private const val MIN_PIN_LENGTH = 6
 
 private fun String.isValidPinFormat() = length >= MIN_PIN_LENGTH && all { it.isDigit() }
 
-// Shared full-screen frame, the background follows the theme (no Surface ancestor)
 @Composable
 private fun PinScreenFrame(
     title: String,
@@ -154,7 +151,6 @@ fun HiddenPinEntryScreen(
     }
 }
 
-// New PIN, entered twice to catch typos. Used after setup and after recovery.
 @Composable
 fun HiddenPinSetupScreen(
     onPinChosen: (String) -> Unit,
@@ -168,7 +164,7 @@ fun HiddenPinSetupScreen(
     PinScreenFrame(
         title = if (step == 0) appString(R.string.hidden_pin_screens_set_a_pin) else appString(R.string.hidden_pin_screens_confirm_pin),
         body = if (step == 0) {
-            appString(R.string.hidden_pin_screens_at_least_digits_is_recommended, MIN_PIN_LENGTH)
+            appString(R.string.hidden_pin_screens_at_least_digits, MIN_PIN_LENGTH)
         } else {
             appString(R.string.hidden_pin_screens_enter_the_same_pin_again)
         }
@@ -219,11 +215,11 @@ fun HiddenPinSetupScreen(
     }
 }
 
-// Shown once after a PIN is set. Never stored in plaintext, losing it means no way back in.
+// Shown once after a PIN is set.
 @Composable
 fun HiddenPinRecoveryCodeScreen(code: String, onAcknowledged: () -> Unit) {
     var acknowledged by remember { mutableStateOf(false) }
-    // The code is shown once and the PIN is already changed, so back must not discard it.
+    // the code is shown once and the PIN is already changed, so back must not discard it.
     BackHandler(enabled = true) {}
     PinScreenFrame(
         title = appString(R.string.hidden_pin_screens_save_your_recovery_code),
@@ -250,7 +246,6 @@ fun HiddenPinRecoveryCodeScreen(code: String, onAcknowledged: () -> Unit) {
     }
 }
 
-// "Forgot PIN?": a correct code always forces a new PIN
 @Composable
 fun HiddenPinRecoveryEntryScreen(
     verify: suspend (String) -> Boolean,
@@ -286,8 +281,6 @@ fun HiddenPinRecoveryEntryScreen(
             onClick = {
                 checking = true
                 scope.launch {
-                    // Dash is a display/typing convenience, not part of the
-                    // actual secret, so accept it with or without one.
                     if (verify(code.replace("-", "").trim())) {
                         onVerified()
                     } else {
@@ -310,7 +303,6 @@ fun HiddenPinRecoveryEntryScreen(
 
 private enum class PinGateStep { VERIFY, RECOVERY_ENTRY, NEW_PIN_SETUP, NEW_RECOVERY_CODE_REVEAL }
 
-// Enter PIN, or recover and pick a new one. Reusable, callers supply verify and setNewPin.
 @Composable
 fun HiddenPinGate(
     verifyPin: suspend (String) -> Boolean,
@@ -321,12 +313,17 @@ fun HiddenPinGate(
 ) {
     var step by remember { mutableStateOf(PinGateStep.VERIFY) }
     var pendingNewCode by remember { mutableStateOf<String?>(null) }
+    var shortPin by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     when (step) {
         PinGateStep.VERIFY -> HiddenPinEntryScreen(
-            verify = verifyPin,
-            onVerified = onUnlocked,
+            verify = { pin ->
+                val ok = verifyPin(pin)
+                if (ok) shortPin = pin.length < MIN_PIN_LENGTH
+                ok
+            },
+            onVerified = { if (shortPin) step = PinGateStep.NEW_PIN_SETUP else onUnlocked() },
             onForgotPin = { step = PinGateStep.RECOVERY_ENTRY },
             onCancel = onCancel
         )

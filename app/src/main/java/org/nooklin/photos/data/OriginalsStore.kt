@@ -8,7 +8,6 @@ import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 
-// Untouched original, kept aside on the first edit for Revert
 class OriginalsStore(private val context: Context) {
     private val dir = File(context.filesDir, "originals")
 
@@ -58,9 +57,7 @@ class OriginalsStore(private val context: Context) {
         File(dir, key).delete()
     }
 
-    // Hidden originals are removed with the hidden file, not here
     fun pruneMedia(liveIds: Set<Long>) {
-        // Partial media access gives an incomplete query, originals are not recoverable
         val fullAccess = listOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
             .all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
         if (!fullAccess) return

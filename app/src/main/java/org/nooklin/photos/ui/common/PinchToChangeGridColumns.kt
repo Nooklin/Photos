@@ -16,7 +16,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.ln
 import kotlin.math.roundToInt
 
-// Pinch out gives fewer, bigger columns, pinch in more. Same callback as the Settings chips.
 @Composable
 fun Modifier.pinchToChangeGridColumns(
     enabled: Boolean,
@@ -40,21 +39,18 @@ fun Modifier.pinchToChangeGridColumns(
                 val zoomChange = event.calculateZoom()
                 if (zoomChange != 1f) {
                     accumulatedZoom *= zoomChange
-                    // Live feedback only, snapTo tracks the fingers. The commit happens on release.
                     val target = accumulatedZoom.coerceIn(1f / MAX_PREVIEW_SCALE, MAX_PREVIEW_SCALE)
                     scope.launch { liveScale.snapTo(target) }
                     event.changes.forEach { it.consume() }
                 }
             } while (event.changes.any { it.pressed })
 
-            // Fingers lifted: commit the column change
             if (accumulatedZoom != 1f) {
                 val steps = (ln(accumulatedZoom) / ln(1f + STEP)).roundToInt()
                 val newColumns = (columnsState.value - steps).coerceIn(minColumns, maxColumns)
                 if (newColumns != columnsState.value) onColumnsChange(newColumns)
             }
-            // Then ease the preview back to 1
-            scope.launch { liveScale.animateTo(1f, animationSpec = tween(durationMillis = ANIMATION_DURATION_MS)) }
+            scope.launch { liveScale.animateTo(1f, animationSpec = tween(durationMillis = 250)) }
         }
     }
 
@@ -66,7 +62,6 @@ fun Modifier.pinchToChangeGridColumns(
         .then(gesture)
 }
 
-// One step per ~60% pinch, raised twice (from 20, then 40) because it changed too fast
+// one step per ~60% pinch, raised twice (from 20, then 40) because it changed too fast
 private const val STEP = 0.60f
 private const val MAX_PREVIEW_SCALE = 1f + STEP * 1.5f
-private const val ANIMATION_DURATION_MS = 250

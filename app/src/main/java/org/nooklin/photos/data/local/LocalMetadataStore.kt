@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "nooklin_photos_prefs")
 
-// Delimited strings in DataStore, simple on purpose
 private object Keys {
     val FAVORITE_IDS = stringSetPreferencesKey("favorite_ids")
     val RECYCLE_BIN_ENTRIES = stringSetPreferencesKey("recycle_bin_entries") // "id|uri|deletedAt"
@@ -23,7 +22,6 @@ private object Keys {
 
 class LocalMetadataStore(private val context: Context) {
 
-    // The big photo at the top of Favorites, null means the newest favorite
     val favoritesCover: Flow<Long?> = context.dataStore.data.map { it[Keys.FAVORITES_COVER]?.toLongOrNull() }
     val hiddenFavoritesCover: Flow<String?> = context.dataStore.data.map { it[Keys.HIDDEN_FAVORITES_COVER] }
 
@@ -44,13 +42,11 @@ class LocalMetadataStore(private val context: Context) {
         val uri: String,
         val deletedAt: Long,
         val wasHidden: Boolean = false,
-        // Orientation-corrected, captured when moved to the recycle bin
         val width: Int? = null,
         val height: Int? = null,
         val isVideo: Boolean = uri.contains("/video/media")
     )
 
-    // Edited copies get their original's date
     val sortDates: Flow<Map<Long, Long>> = context.dataStore.data.map { prefs ->
         prefs[Keys.SORT_DATES]?.mapNotNull { raw ->
             val parts = raw.split("|")
@@ -94,9 +90,7 @@ class LocalMetadataStore(private val context: Context) {
             val id = parts.getOrNull(0)?.toLongOrNull()
             val uri = parts.getOrNull(1)
             val deletedAt = parts.getOrNull(2)?.toLongOrNull()
-            // Older entries lack this field, default false
             val wasHidden = parts.getOrNull(3)?.toBooleanStrictOrNull() ?: false
-            // Older entries have no size, null
             val width = parts.getOrNull(4)?.toIntOrNull()
             val height = parts.getOrNull(5)?.toIntOrNull()
             if (id != null && uri != null && deletedAt != null) {

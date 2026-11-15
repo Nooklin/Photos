@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui
 
+import org.nooklin.photos.data.local.AppPreferences
 import android.app.Application
 import android.database.ContentObserver
 import android.os.Handler
@@ -7,7 +8,10 @@ import android.os.Looper
 import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.data.MediaRepository
 import org.nooklin.photos.data.MediaStoreRepository
@@ -27,39 +32,48 @@ enum class SortOrder { NEWEST_FIRST, OLDEST_FIRST }
 data class GalleryUiState(
     val allItems: List<MediaItem> = emptyList(),
     val filter: MediaFilter = MediaFilter.ALL,
-    val hideScreenshots: Boolean = true,
+    val hideScreenshots: Boolean = false,
     val sortOrder: SortOrder = SortOrder.NEWEST_FIRST,
-    val isLoading: Boolean = true
-) {
-    // Computed once per state
-    val visibleItems: List<MediaItem> by lazy(LazyThreadSafetyMode.NONE) {
-        allItems
-            .filter { !hideScreenshots || !it.isScreenshot }
-            .filter {
-                when (filter) {
-                    MediaFilter.ALL -> true
-                    MediaFilter.FAVORITES -> it.isFavorite
-                    MediaFilter.VIDEOS -> it.isVideo
-                }
+    val isLoading: Boolean = true,
+    val visibleItems: List<MediaItem> = emptyList()
+)
+
+private fun GalleryUiState.computeVisible(): List<MediaItem> =
+    allItems
+        .filter { !hideScreenshots || !it.isScreenshot }
+        .filter {
+            when (filter) {
+                MediaFilter.ALL -> true
+                MediaFilter.FAVORITES -> it.isFavorite
+                MediaFilter.VIDEOS -> it.isVideo
             }
-            // Already newest first, OLDEST_FIRST is a reverse
-            .let { if (sortOrder == SortOrder.OLDEST_FIRST) it.reversed() else it }
-    }
-}
+        }
+        .let { if (sortOrder == SortOrder.OLDEST_FIRST) it.reversed() else it }
 
 class GalleryViewModel(application: Application) : AndroidViewModel(application) {
     private val localMetadataStore = LocalMetadataStore(application)
     private val repository = MediaRepository(MediaStoreRepository(application), localMetadataStore, OriginalsStore(application))
 
     private val _uiState = MutableStateFlow(GalleryUiState())
-    val uiState: StateFlow<GalleryUiState> = _uiState
+
+    // visible list is built off the main thread, and only when one of its inputs changed
+    val uiState: StateFlow<GalleryUiState> = run {
+        var last: GalleryUiState? = null
+        var lastVisible: List<MediaItem> = emptyList()
+        _uiState.map { s ->
+            val prev = last
+            if (prev == null || prev.allItems !== s.allItems || prev.filter != s.filter ||
+                prev.hideScreenshots != s.hideScreenshots || prev.sortOrder != s.sortOrder
+            ) lastVisible = s.computeVisible()
+            last = s
+            s.copy(visibleItems = lastVisible)
+        }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, GalleryUiState())
+    }
 
     val recycleBinEntries: StateFlow<List<LocalMetadataStore.RecycleBinEntry>> =
         repository.observeRecycleBin()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Watches for media changed by other apps (camera, screenshots).
-    // Debounced 500ms: MediaStore fires several changes per file.
     private var pendingReload: Job? = null
     private val mediaObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean, uri: android.net.Uri?) {
@@ -72,8 +86,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     init {
-        // Registered on Images and Video too, Files misses new videos on some devices.
-        // Registering needs no media permission.
+        viewModelScope.launch {
+            AppPreferences(application).showScreenshotsInLibrary.collect { show ->
+                _uiState.update { it.copy(hideScreenshots = !show) }
+            }
+        }
         val resolver = getApplication<Application>().contentResolver
         resolver.registerContentObserver(MediaStore.Files.getContentUri("external"), true, mediaObserver)
         resolver.registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, mediaObserver)
@@ -99,12 +116,20 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun load() {
-        // An older load must not overwrite a newer one
+        // an older load must not overwrite a newer one
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            if (_uiState.value.allItems.isEmpty()) _uiState.update { it.copy(isLoading = true) }
             val items = repository.loadAll()
-            _uiState.update { it.copy(allItems = items, isLoading = false) }
+            // keep the old instances for unchanged items so grid cells skip recomposition
+            val old = _uiState.value.allItems
+            val merged = withContext(Dispatchers.Default) {
+                val byId = old.associateBy { it.id }
+                items.map { new -> byId[new.id]?.takeIf { it == new } ?: new }
+            }
+            _uiState.update { state ->
+                if (merged == state.allItems) state.copy(isLoading = false) else state.copy(allItems = merged, isLoading = false)
+            }
         }
     }
 
@@ -112,12 +137,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it.copy(filter = filter) }
     }
 
-    // Bypasses allItems, which excludes recycled items
     suspend fun findMediaItemById(mediaId: Long): MediaItem? = repository.findById(mediaId)
-
-    fun setHideScreenshots(hide: Boolean) {
-        _uiState.update { it.copy(hideScreenshots = hide) }
-    }
 
     fun setSortOrder(sortOrder: SortOrder) {
         _uiState.update { it.copy(sortOrder = sortOrder) }

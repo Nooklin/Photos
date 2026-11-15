@@ -15,21 +15,19 @@ import androidx.annotation.StringRes
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// Separate from LocalMetadataStore: app settings, not media metadata
 private val Context.appSettingsDataStore by preferencesDataStore(name = "nooklin_app_settings")
 
 enum class AppThemeMode { LIGHT, DARK, BLACK, SYSTEM }
 enum class GridStyle { ORIGINAL, SQUARE }
 enum class GroupBy { NONE, DAY, WEEK, MONTH, YEAR }
 
-// One range for the setting and both pinch gestures
 const val MIN_GRID_COLUMNS = 1
 const val MAX_GRID_COLUMNS = 6
 const val MIN_LIBRARY_PREVIEW_ROWS = 1
 const val MAX_LIBRARY_PREVIEW_ROWS = 8
 
 // storageKey, so renaming the enum can't corrupt a saved order
-enum class HomeSection(val storageKey: String, @StringRes val labelRes: Int) {
+enum class HomeSection(val storageKey: String, @param:StringRes val labelRes: Int) {
     LIBRARY("library", R.string.common_library),
     ALBUMS("albums", R.string.common_albums),
     DISCOVERED("discovered", R.string.common_discovered),
@@ -44,8 +42,7 @@ enum class HomeSection(val storageKey: String, @StringRes val labelRes: Int) {
     }
 }
 
-// DEFAULT has no tint (null)
-enum class ContrastColor(val storageKey: String, @StringRes val labelRes: Int, val color: Color?) {
+enum class ContrastColor(val storageKey: String, @param:StringRes val labelRes: Int, val color: Color?) {
     DEFAULT("default", R.string.contrast_color_default, null),
     BLUE("blue", R.string.contrast_color_blue, Color(0xFF0A84FF)),
     RED("red", R.string.contrast_color_red, Color(0xFFFF3B30)),
@@ -62,7 +59,7 @@ enum class ContrastColor(val storageKey: String, @StringRes val labelRes: Int, v
 }
 
 // Two fonts only: Helvetica has no free license to bundle
-enum class AppFont(val storageKey: String, @StringRes val labelRes: Int) {
+enum class AppFont(val storageKey: String, @param:StringRes val labelRes: Int) {
     INTER("inter", R.string.app_font_inter),
     SYSTEM_DEFAULT("system_default", R.string.app_font_stock_android_font),
     WORK_SANS("work_sans", R.string.app_font_work_sans);
@@ -98,6 +95,8 @@ private val HIDDEN_PIN_RECOVERY_HASH_KEY = stringPreferencesKey("hidden_pin_reco
 
 private val REMOVE_EXIF_ON_SHARE_KEY = booleanPreferencesKey("remove_exif_on_share")
 private val SHARING_DISABLED_KEY = booleanPreferencesKey("sharing_disabled")
+private val COLORFUL_KEY = booleanPreferencesKey("colorful")
+private val SHOW_SCREENSHOTS_IN_LIBRARY_KEY = booleanPreferencesKey("show_screenshots_in_library")
 private val STRIP_LOCATION_KEY = booleanPreferencesKey("strip_location")
 private val STRIP_CAMERA_KEY = booleanPreferencesKey("strip_camera")
 private val STRIP_DATE_TIME_KEY = booleanPreferencesKey("strip_date_time")
@@ -110,9 +109,10 @@ private val HIDDEN_BACKUP_NOTICE_ACKNOWLEDGED_KEY = booleanPreferencesKey("hidde
 
 private val SCAN_COMPLETE_NOTIFICATION_KEY = booleanPreferencesKey("scan_complete_notification_enabled")
 
-// Reached from Home, not Settings
 private val HOME_SECTION_ORDER_KEY = stringPreferencesKey("home_section_order")
-private val ALBUMS_SEEDED_KEY = booleanPreferencesKey("albums_seeded")
+private val SHARING_NOTICE_HIDDEN_KEY = booleanPreferencesKey("sharing_notice_hidden")
+private val AUTO_ALBUMS_KEY = stringSetPreferencesKey("auto_albums")
+private val HIDDEN_AUTO_ALBUMS_KEY = stringSetPreferencesKey("hidden_auto_albums")
 private val VIDEO_TRIMS_KEY = stringSetPreferencesKey("video_trims")
 
 class AppPreferences(private val context: Context) {
@@ -130,6 +130,12 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs ->
             prefs[THEME_MODE_KEY] = mode.name.lowercase()
         }
+    }
+
+    val colorful: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs -> prefs[COLORFUL_KEY] ?: true }
+
+    suspend fun setColorful(colorful: Boolean) {
+        context.appSettingsDataStore.edit { prefs -> prefs[COLORFUL_KEY] = colorful }
     }
 
     val contrastColor: Flow<ContrastColor> = context.appSettingsDataStore.data.map { prefs ->
@@ -207,7 +213,6 @@ class AppPreferences(private val context: Context) {
         }
     }
 
-    // Off by default, opt-in
     val mlEnabled: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
         prefs[ML_ENABLED_KEY] ?: false
     }
@@ -216,7 +221,6 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs -> prefs[ML_ENABLED_KEY] = enabled }
     }
 
-    // Stores MlTag ids so an enum reorder is safe. Empty by default.
     val mlEnabledTags: Flow<Set<String>> = context.appSettingsDataStore.data.map { prefs ->
         prefs[ML_ENABLED_TAGS_KEY] ?: emptySet()
     }
@@ -276,7 +280,6 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs -> prefs[DISABLE_SCREENSHOTS_KEY] = enabled }
     }
 
-    // On by default, same as before this setting existed
     val removeExifOnShare: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
         prefs[REMOVE_EXIF_ON_SHARE_KEY] ?: true
     }
@@ -285,7 +288,6 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs -> prefs[REMOVE_EXIF_ON_SHARE_KEY] = enabled }
     }
 
-    // What Remove Exif data takes away, all on by default
     val shareStripOptions: Flow<ShareStripOptions> = context.appSettingsDataStore.data.map { prefs ->
         ShareStripOptions(
             location = prefs[STRIP_LOCATION_KEY] ?: true,
@@ -305,7 +307,22 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs -> prefs[key] = enabled }
     }
 
-    // Whole-app share switch, stricter than hiddenImageSharingEnabled
+    val showScreenshotsInLibrary: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
+        prefs[SHOW_SCREENSHOTS_IN_LIBRARY_KEY] ?: true
+    }
+
+    suspend fun setShowScreenshotsInLibrary(show: Boolean) {
+        context.appSettingsDataStore.edit { prefs -> prefs[SHOW_SCREENSHOTS_IN_LIBRARY_KEY] = show }
+    }
+
+    val sharingNoticeHidden: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
+        prefs[SHARING_NOTICE_HIDDEN_KEY] ?: false
+    }
+
+    suspend fun setSharingNoticeHidden(hidden: Boolean) {
+        context.appSettingsDataStore.edit { prefs -> prefs[SHARING_NOTICE_HIDDEN_KEY] = hidden }
+    }
+
     val sharingDisabled: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
         prefs[SHARING_DISABLED_KEY] ?: true
     }
@@ -332,7 +349,6 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs -> prefs[HIDDEN_ALBUMS_ENABLED_KEY] = enabled }
     }
 
-    // Off by default, sharing a hidden photo is an exposure risk
     val hiddenImageSharingEnabled: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
         prefs[HIDDEN_IMAGE_SHARING_KEY] ?: false
     }
@@ -341,7 +357,6 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs -> prefs[HIDDEN_IMAGE_SHARING_KEY] = enabled }
     }
 
-    // False until acknowledged, once per install
     val hiddenBackupNoticeAcknowledged: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
         prefs[HIDDEN_BACKUP_NOTICE_ACKNOWLEDGED_KEY] ?: false
     }
@@ -350,7 +365,6 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs -> prefs[HIDDEN_BACKUP_NOTICE_ACKNOWLEDGED_KEY] = acknowledged }
     }
 
-    // Off by default. Delivery also needs the POST_NOTIFICATIONS grant.
     val scanCompleteNotificationEnabled: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
         prefs[SCAN_COMPLETE_NOTIFICATION_KEY] ?: false
     }
@@ -359,7 +373,6 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs -> prefs[SCAN_COMPLETE_NOTIFICATION_KEY] = enabled }
     }
 
-    // Comma separated, order matters. Sections missing from a saved order are appended.
     val homeSectionOrder: Flow<List<HomeSection>> = context.appSettingsDataStore.data.map { prefs ->
         val stored = prefs[HOME_SECTION_ORDER_KEY]
         val parsed = stored?.split(",")?.mapNotNull { HomeSection.fromKey(it) }.orEmpty()
@@ -373,7 +386,6 @@ class AppPreferences(private val context: Context) {
         }
     }
 
-    // Tile order, shared by Home and Hidden
     val homeMediaTypesOrder: Flow<List<String>> = context.appSettingsDataStore.data.map { prefs ->
         HomeItems.ordered(HomeItems.MEDIA_TYPES, prefs[HOME_MEDIA_TYPES_ORDER_KEY]?.split(",").orEmpty())
     }
@@ -390,7 +402,6 @@ class AppPreferences(private val context: Context) {
         context.appSettingsDataStore.edit { prefs -> prefs[HOME_UTILITIES_ORDER_KEY] = order.joinToString(",") }
     }
 
-    // One set for Home, one for Hidden
     val homeHiddenSections: Flow<Set<HomeSection>> = context.appSettingsDataStore.data.map { prefs ->
         parseHiddenSections(prefs[HOME_HIDDEN_SECTIONS_KEY])
     }
@@ -411,12 +422,25 @@ class AppPreferences(private val context: Context) {
     private fun parseHiddenSections(stored: String?): Set<HomeSection> =
         stored?.split(",")?.mapNotNull { HomeSection.fromKey(it) }.orEmpty().filter { it in HomeSection.HIDEABLE }.toSet()
 
-    val albumsSeeded: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
-        prefs[ALBUMS_SEEDED_KEY] ?: false
+    // "rule:albumId", the album each automatic folder album (Camera, Screenshots, ...) was created or adopted as
+    val autoAlbums: Flow<Set<String>> = context.appSettingsDataStore.data.map { prefs ->
+        prefs[AUTO_ALBUMS_KEY] ?: emptySet()
     }
 
-    suspend fun setAlbumsSeeded(seeded: Boolean) {
-        context.appSettingsDataStore.edit { prefs -> prefs[ALBUMS_SEEDED_KEY] = seeded }
+    suspend fun setAutoAlbums(entries: Set<String>) {
+        context.appSettingsDataStore.edit { prefs -> prefs[AUTO_ALBUMS_KEY] = entries }
+    }
+
+    // rule keys of automatic albums the user hides from the album lists
+    val hiddenAutoAlbums: Flow<Set<String>> = context.appSettingsDataStore.data.map { prefs ->
+        prefs[HIDDEN_AUTO_ALBUMS_KEY] ?: emptySet()
+    }
+
+    suspend fun setAutoAlbumHidden(rule: String, hidden: Boolean) {
+        context.appSettingsDataStore.edit { prefs ->
+            val current = prefs[HIDDEN_AUTO_ALBUMS_KEY] ?: emptySet()
+            prefs[HIDDEN_AUTO_ALBUMS_KEY] = if (hidden) current + rule else current - rule
+        }
     }
 
     val videoTrims: Flow<Set<String>> = context.appSettingsDataStore.data.map { prefs ->

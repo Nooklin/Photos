@@ -38,8 +38,6 @@ import org.nooklin.photos.data.ImageNaming
 
 private const val TAG = "VideoEditing"
 
-// The edits of the video editor. The same values drive the live preview and the export, like the photo editor.
-// Rotation is a multiple of 90 degrees, clockwise, as in the photo editor.
 data class VideoEdits(
     val filter: PhotoFilter = PhotoFilter.NONE,
     val rotationDegrees: Float = 0f,
@@ -56,8 +54,6 @@ data class VideoEdits(
             !flipHorizontal && !flipVertical && !hasCrop
 }
 
-// A photo filter is a 4x5 ColorMatrix (offsets in 0..255). The video effect takes a 4x4 matrix in column-major order.
-// A video frame has alpha 1, so the offset column folds into the fourth column, and the result is the same colours.
 fun colorMatrixToRgbMatrix(matrix: FloatArray): FloatArray {
     val out = FloatArray(16)
     for (row in 0..2) {
@@ -68,9 +64,6 @@ fun colorMatrixToRgbMatrix(matrix: FloatArray): FloatArray {
     return out
 }
 
-// The effects for the preview (live = true) or the export. Flip, straighten and the filter read the latest values
-// from [live] on every frame, so dragging a slider needs no new effect list. Rotation is fixed in the list, a rotate
-// tap builds a new list. Crop is only in the export: the preview shows the whole frame with the crop overlay on top.
 fun buildVideoEffects(
     live: AtomicReference<VideoEdits>,
     displayWidth: Int,
@@ -80,7 +73,6 @@ fun buildVideoEffects(
     val edits = live.get()
     val effects = mutableListOf<Effect>()
     val rotation = ((edits.rotationDegrees % 360f) + 360f) % 360f
-    // The photo editor turns clockwise, this effect turns counterclockwise
     if (rotation != 0f) {
         effects += ScaleAndRotateTransformation.Builder().setRotationDegrees(-rotation).build()
     }
@@ -102,11 +94,8 @@ fun buildVideoEffects(
             val degrees = live.get().straightenDegrees
             Matrix().apply {
                 if (degrees != 0f) {
-                    // Same fill scale as the photo editor: keep the frame size, no empty corners
                     val theta = Math.toRadians(degrees.toDouble())
                     val fill = (abs(cos(theta)) + abs(sin(theta)) * aspect).toFloat()
-                    // The matrix works in -1..1 on both axes, so the rotation is done in a square space.
-                    // Screen y points down in a photo and up here, so the angle changes sign.
                     postScale(aspect, 1f)
                     postRotate(-degrees)
                     postScale(1f / aspect, 1f)
@@ -128,8 +117,6 @@ fun buildVideoEffects(
     return effects
 }
 
-// Cuts and edits a video with Media3 Transformer, which decodes and encodes again (H.264).
-// The file is written to the cache first and then added to the library as a new video.
 object VideoEditExporter {
     suspend fun export(
         context: Context,
@@ -156,7 +143,6 @@ object VideoEditExporter {
         }
     }
 
-    // Same cut and edits, but the finished file stays in the cache and the caller deletes it. Null when it failed.
     suspend fun exportToFile(
         context: Context,
         source: Uri,

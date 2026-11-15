@@ -4,6 +4,7 @@ import org.nooklin.photos.ui.common.rememberGroupSelection
 import org.nooklin.photos.ui.common.groupSelectionTitle
 import org.nooklin.photos.ui.common.GroupSelectionActions
 import org.nooklin.photos.ui.common.GroupSelectableCell
+import org.nooklin.photos.ui.common.groupDragToSelect
 import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.ui.common.ScrollToPendingZoomKey
 import org.nooklin.photos.ui.common.zoomSource
@@ -69,7 +70,6 @@ fun PetDetailScreen(
     gridColumns: Int,
     groupActions: GroupActions? = null,
     onBack: () -> Unit,
-    // Viewer pages through this pet's photos only
     onItemClick: (MediaItem, List<MediaItem>) -> Unit,
     onAddPhotos: () -> Unit,
     onRename: (String) -> Unit,
@@ -93,7 +93,7 @@ fun PetDetailScreen(
             TopAppBar(
                 title = { Text(groupSelectionTitle(selection, petName), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { if (selection.isSelecting) selection.exit() else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
@@ -150,12 +150,14 @@ fun PetDetailScreen(
                 contentPadding = PaddingValues(2.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(padding)
+                modifier = Modifier.padding(padding).groupDragToSelect(selection, petGridState)
             ) {
                 items(photos.size, key = { photos[it].id }) { index ->
                     val item = photos[index]
                     GroupSelectableCell(
                         selection = if (groupActions != null) selection else null,
+                        item = item,
+                        actions = groupActions,
                         id = item.id,
                         modifier = Modifier
                             .aspectRatio(1f)

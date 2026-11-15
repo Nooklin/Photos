@@ -3,9 +3,9 @@ package org.nooklin.photos.data
 import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import org.nooklin.photos.data.local.AppPreferences
 
-// The trim is stored, the file is untouched, reset brings back the whole video
 object VideoTrims {
     data class Trim(val startMs: Long, val endMs: Long)
 
@@ -25,9 +25,10 @@ object VideoTrims {
     }
 
     suspend fun set(preferences: AppPreferences, uri: Uri, trim: Trim?) {
-        val updated = trims.value.toMutableMap()
-        if (trim == null) updated.remove(uri.toString()) else updated[uri.toString()] = trim
-        trims.value = updated
-        preferences.setVideoTrims(updated.map { "${it.key}|${it.value.startMs}|${it.value.endMs}" }.toSet())
+        // update { } so two quick saves cannot overwrite each other
+        trims.update { current ->
+            current.toMutableMap().also { if (trim == null) it.remove(uri.toString()) else it[uri.toString()] = trim }
+        }
+        preferences.setVideoTrims(trims.value.map { "${it.key}|${it.value.startMs}|${it.value.endMs}" }.toSet())
     }
 }

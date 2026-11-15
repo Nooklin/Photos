@@ -44,7 +44,6 @@ import org.nooklin.photos.BuildConfig
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// GitHub URL confirmed by the owner, not separately verified
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsAboutScreen(onOpenChangelog: () -> Unit, onBack: () -> Unit) {
@@ -90,7 +89,7 @@ fun SettingsAboutScreen(onOpenChangelog: () -> Unit, onBack: () -> Unit) {
                             try {
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Nooklin/Photos")))
                             } catch (e: ActivityNotFoundException) {
-                                // No browser installed, nothing to open.
+                                // no browser installed, nothing to open.
                             }
                         }
                     },

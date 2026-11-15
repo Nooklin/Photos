@@ -10,13 +10,13 @@ import coil3.fetch.Fetcher
 import coil3.fetch.ImageFetchResult
 import coil3.request.Options
 import coil3.size.pxOrElse
+import android.util.LruCache
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
-// Grid cells use loadThumbnail(), decoding originals is too slow.
-// Original and near-full-screen requests fall through to Coil.
 class MediaStoreThumbnailFetcher(
     private val uri: Uri,
     private val options: Options
@@ -25,12 +25,11 @@ class MediaStoreThumbnailFetcher(
         val width = options.size.width.pxOrElse { 512 }
         val height = options.size.height.pxOrElse { 512 }
         val context = options.context
-        // Large cells decode the photo at cell size, small cells use Android's thumbnail
         val screenWidth = context.resources.displayMetrics.widthPixels
-        // Above this it is the viewer, not a grid cell
         val largeCell = !uri.path.orEmpty().contains("/video/media") &&
-            width >= screenWidth * LARGE_CELL_FRACTION && width < screenWidth * MAX_CELL_FRACTION
-        val decoded = if (largeCell) decodeLimited(width, height) else null
+            width >= screenWidth * 0.28f && width < screenWidth * 0.6f
+        val decodeKey = "${options.diskCacheKey ?: uri}|$width|$height"
+        val decoded = if (largeCell) decodedCache.get(decodeKey) ?: decodeLimited(decodeKey, width, height) else null
         val bitmap = decoded ?: context.contentResolver.loadThumbnail(uri, android.util.Size(width, height), null)
         ImageFetchResult(
             image = bitmap.asImage(),
@@ -40,9 +39,12 @@ class MediaStoreThumbnailFetcher(
         )
     }
 
-    // Few at a time: 6 to 8 in parallel took over a second each
-    private suspend fun decodeLimited(width: Int, height: Int): android.graphics.Bitmap? =
-        decodeSlots.withPermit { decodeAtCellSize(width, height) }
+    private suspend fun decodeLimited(key: String, width: Int, height: Int): android.graphics.Bitmap? =
+        decodeSlots.withPermit {
+            withContext(NonCancellable) {
+                decodeAtCellSize(width, height)?.also { decodedCache.put(key, it) }
+            }
+        }
 
     private fun decodeAtCellSize(width: Int, height: Int): android.graphics.Bitmap? = try {
         val source = ImageDecoder.createSource(options.context.contentResolver, uri)
@@ -66,7 +68,6 @@ class MediaStoreThumbnailFetcher(
             // Size.ORIGINAL has no pixel size, don't cap it at 512px
             val isVideo = path.contains("/video/media")
             if (!isVideo && options.size == coil3.size.Size.ORIGINAL) return null
-            // Near-full-screen requests (viewer, prefetch) fall through to Coil
             val width = options.size.width.pxOrElse { 0 }
             val height = options.size.height.pxOrElse { 0 }
             val metrics = options.context.resources.displayMetrics
@@ -80,10 +81,8 @@ class MediaStoreThumbnailFetcher(
 
 private const val NEAR_FULL_SCREEN_FRACTION = 0.9
 
-// 2 and 3 column grids
-private const val LARGE_CELL_FRACTION = 0.28f
+private val decodeSlots = Semaphore(4)
 
-// Above this it is the viewer, not a grid cell
-private const val MAX_CELL_FRACTION = 0.6f
-
-private val decodeSlots = Semaphore(3)
+private val decodedCache = object : LruCache<String, android.graphics.Bitmap>(32 * 1024 * 1024) {
+    override fun sizeOf(key: String, value: android.graphics.Bitmap): Int = value.allocationByteCount
+}

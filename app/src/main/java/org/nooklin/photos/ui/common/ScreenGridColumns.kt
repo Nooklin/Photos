@@ -10,7 +10,6 @@ import kotlinx.coroutines.launch
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.data.local.AppPreferences
 
-// Per-screen column count, remembered. Falls back to the Library's value.
 class ScreenGridColumns(val columns: Int, val setColumns: (Int) -> Unit)
 
 @Composable

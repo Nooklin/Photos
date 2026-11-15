@@ -47,7 +47,6 @@ import org.nooklin.photos.ui.common.freshImageRequest
 import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.theme.AppText
 
-// Years and Months give an overview with one photo per period, All is the normal Library grid
 enum class TimelineMode { YEARS, MONTHS, ALL }
 
 private class TimelinePeriod(
@@ -59,7 +58,6 @@ private class TimelinePeriod(
     val firstItemId: Long
 )
 
-// Items keep their order, so periods follow the sort order too. Same date as the grid headers (dateAdded, seconds).
 private fun buildPeriods(items: List<MediaItem>, months: Boolean): List<TimelinePeriod> {
     val calendar = Calendar.getInstance()
     val format = SimpleDateFormat(if (months) "MMM yyyy" else "yyyy", Locale.getDefault())
@@ -73,7 +71,6 @@ private fun buildPeriods(items: List<MediaItem>, months: Boolean): List<Timeline
         TimelinePeriod(
             year = key / 100,
             label = format.format(Date(group.first().dateAdded * 1000L)),
-            // A still photo as the cover when the period has one
             cover = group.firstOrNull { !it.isVideo } ?: group.first(),
             count = group.size,
             firstItemId = group.first().id
@@ -85,7 +82,6 @@ private fun buildPeriods(items: List<MediaItem>, months: Boolean): List<Timeline
 fun TimelineOverview(
     items: List<MediaItem>,
     mode: TimelineMode,
-    // Months view starts at this year when it comes from a tap in the Years view
     focusYear: Int?,
     onOpenYear: (Int) -> Unit,
     onOpenMonth: (firstItemId: Long) -> Unit,
@@ -93,7 +89,6 @@ fun TimelineOverview(
 ) {
     val months = mode == TimelineMode.MONTHS
     val periods = remember(items, months) { buildPeriods(items, months) }
-    // New state per view, so Months does not start at the scroll position of Years
     val gridState = remember(months) { LazyGridState() }
     LaunchedEffect(months, focusYear) {
         if (months && focusYear != null) {
@@ -105,7 +100,6 @@ fun TimelineOverview(
     LazyVerticalGrid(
         state = gridState,
         columns = GridCells.Fixed(if (months) 3 else 2),
-        // Room at the bottom for the bar and the search button
         contentPadding = PaddingValues(start = 2.dp, top = 2.dp, end = 2.dp, bottom = 96.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -146,11 +140,9 @@ fun TimelineOverview(
     }
 }
 
-// Floating glass pill with Years, Months and All, like the iOS Photos bar
 @Composable
 fun TimelineBar(selected: TimelineMode, onSelect: (TimelineMode) -> Unit, modifier: Modifier = Modifier) {
     Surface(
-        // Near opaque like the menus: the glass background was hard to see over photos
         color = GlassPill.adaptivePopupBackground,
         shape = GlassPill.shape,
         border = GlassPill.adaptiveBorder,

@@ -18,7 +18,6 @@ data class DetectedObject(
     val cocoClassIndex: Int
 )
 
-// EfficientDet-Lite0 (COCO), a general object detector next to the face-only BlazeFace
 class ObjectDetector(context: Context) : AutoCloseable {
     private val appContext = context.applicationContext
     private val interpreterLazy = lazy { Interpreter(loadModelFile()) }
@@ -36,7 +35,6 @@ class ObjectDetector(context: Context) : AutoCloseable {
         }
     }
 
-    // uint8 model: raw 0-255 bytes, no normalization
     private fun preprocess(bitmap: Bitmap): ByteBuffer {
         val resized = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, true)
         val buffer = ByteBuffer.allocateDirect(INPUT_SIZE * INPUT_SIZE * 3)
@@ -53,7 +51,6 @@ class ObjectDetector(context: Context) : AutoCloseable {
         return buffer
     }
 
-    // minScore 0.4 is a starting point, not device-verified
     fun detect(bitmap: Bitmap, minScore: Float = DEFAULT_MIN_SCORE): List<DetectedObject> {
         val input = preprocess(bitmap)
 
@@ -66,7 +63,6 @@ class ObjectDetector(context: Context) : AutoCloseable {
             when {
                 shape.size == 3 && shape.last() == 4 -> boxesIndex = i
                 shape.size == 1 -> countIndex = i
-                // classes and scores share a shape, told apart by value in the swap check
                 shape.size == 2 && classesIndex == -1 -> classesIndex = i
                 shape.size == 2 -> scoresIndex = i
             }
@@ -79,7 +75,7 @@ class ObjectDetector(context: Context) : AutoCloseable {
         val boxes = Array(1) { Array(maxDetections) { FloatArray(4) } }
         val classesRaw = Array(1) { FloatArray(maxDetections) }
         val scoresRaw = Array(1) { FloatArray(maxDetections) }
-        // The count tensor is rank 1 ([1]), wrapping it in arrayOf crashed copyTo
+        // the count tensor is rank 1 ([1]), wrapping it in arrayOf crashed copyTo
         val count = FloatArray(1)
         val outputs = mutableMapOf<Int, Any>(
             boxesIndex to boxes,
@@ -89,8 +85,6 @@ class ObjectDetector(context: Context) : AutoCloseable {
         )
         interpreter.runForMultipleInputsOutputs(arrayOf(input), outputs)
 
-        // Swap if the output order was guessed wrong: classes are integers, scores are 0 to 1.
-        // Several slots are checked, one could be 0.0 or 1.0 by chance.
         val looksLikeScore = classesRaw[0].take(SWAP_CHECK_SAMPLE_SIZE)
             .any { it in 0f..1f && it != 0f && it != 1f }
         val (classesArr, scoresArr) = if (looksLikeScore) scoresRaw[0] to classesRaw[0] else classesRaw[0] to scoresRaw[0]
@@ -98,7 +92,6 @@ class ObjectDetector(context: Context) : AutoCloseable {
         val results = mutableListOf<DetectedObject>()
         val validCount = count[0].toInt().coerceIn(0, maxDetections)
 
-        // Diagnostic: tells a threshold miss apart from a recall gap for cats and dogs
         for (i in 0 until maxDetections) {
             val score = scoresArr[i]
             val classIndex = classesArr[i].toInt()
@@ -111,7 +104,6 @@ class ObjectDetector(context: Context) : AutoCloseable {
         for (i in 0 until validCount) {
             val score = scoresArr[i]
             val classIndex = classesArr[i].toInt()
-            // Pets get a lower threshold: a dog scored 0.129 against 0.04 to 0.07 noise, under the 0.4 cutoff
             val effectiveMinScore = if (classIndex == CocoClass.CAT || classIndex == CocoClass.DOG) {
                 PET_MIN_SCORE
             } else {
@@ -119,7 +111,6 @@ class ObjectDetector(context: Context) : AutoCloseable {
             }
             if (score < effectiveMinScore) continue
             val box = boxes[0][i]
-            // [yMin, xMin, yMax, xMax]
             results.add(
                 DetectedObject(
                     xMin = box[1],
@@ -143,11 +134,8 @@ class ObjectDetector(context: Context) : AutoCloseable {
         private const val MODEL_FILE_NAME = "efficientdet_lite0.tflite"
         private const val INPUT_SIZE = 320
         private const val DEFAULT_MIN_SCORE = 0.4f
-        // Slots the swap check samples
         private const val SWAP_CHECK_SAMPLE_SIZE = 5
-        // Above the 0.04 to 0.07 noise, below the real 0.129 dog
         private const val PET_MIN_SCORE = 0.1f
-        // Keep in sync with CocoClass by hand
         private val TRACKED_CLASSES = setOf(CocoClass.PERSON, CocoClass.CAR, CocoClass.MOTORCYCLE, CocoClass.CAT, CocoClass.DOG)
     }
 }

@@ -6,8 +6,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -21,7 +19,6 @@ import org.nooklin.photos.ui.common.PillButton
 import org.nooklin.photos.ui.common.groupSelectionTitle
 import org.nooklin.photos.ui.common.rememberGroupSelection
 import org.nooklin.photos.ui.gallery.ShareSelectionSheet
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -56,7 +53,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.nooklin.photos.ui.common.AlbumThumbnail
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.GlassPillTextField
@@ -86,7 +82,6 @@ fun AlbumsScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     var showShare by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
-    // A long press opens a menu for one album: which album, and which dialog it opened
     var menuAlbumId by remember { mutableStateOf<Long?>(null) }
     var contextShareId by remember { mutableStateOf<Long?>(null) }
     var contextDeleteId by remember { mutableStateOf<Long?>(null) }
@@ -105,7 +100,7 @@ fun AlbumsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { if (selection.isSelecting) selection.exit() else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
@@ -147,7 +142,6 @@ fun AlbumsScreen(
                         }
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { selection.exit() })
                     } else {
-                        PillButton(text = appString(R.string.common_select), onClick = { selection.begin() })
                         CircleIconButton(
                             icon = Icons.Filled.Add,
                             contentDescription = appString(R.string.albums_new_album),
@@ -206,7 +200,8 @@ fun AlbumsScreen(
                         onRename = { renameAlbum = album },
                         onNewFolder = { folderParentId = album.id },
                         onMerge = { onMergeAlbum(album.id) },
-                        onDelete = { contextDeleteId = album.id }
+                        onDelete = { contextDeleteId = album.id },
+                        onSelect = { selection.start(album.id) }
                     )
                 }
             }

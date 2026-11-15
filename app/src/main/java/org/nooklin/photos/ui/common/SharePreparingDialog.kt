@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// Shown while a file is prepared for sharing or copying (video can take a while). Cancel stops the work.
 @Composable
 fun SharePreparingDialog(onCancel: () -> Unit) {
     AlertDialog(

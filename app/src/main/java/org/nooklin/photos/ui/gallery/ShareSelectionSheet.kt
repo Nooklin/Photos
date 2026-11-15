@@ -77,7 +77,6 @@ import org.nooklin.photos.ui.common.GlassPill
 import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.theme.Spacing
 
-// Share sheet for the Library selection: share, save to a folder, export the originals, copy
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShareSelectionSheet(
@@ -89,18 +88,15 @@ fun ShareSelectionSheet(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var included by remember { mutableStateOf(selectedItems.map { it.id }.toSet()) }
-    // Only for this share, starts at the Settings, Sharing value
     var removeMetadata by remember { mutableStateOf(removeMetadataDefault) }
     var busy by remember { mutableStateOf(false) }
     var job by remember { mutableStateOf<Job?>(null) }
-    // Set when the folder picker is open: true exports the originals, false follows the metadata switch
     var exportOriginals by remember { mutableStateOf<Boolean?>(null) }
     val chosen = selectedItems.filter { it.id in included }
     val canAct = chosen.isNotEmpty() && !busy
 
     fun toast(message: String) = Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 
-    // Stops the work in progress: nothing is shared, saved or copied afterwards
     fun cancelWork() {
         job?.cancel()
         job = null
@@ -135,7 +131,6 @@ fun ShareSelectionSheet(
         }
     }
 
-    // What happens with the prepared files: the system share menu, copy, print, wallpaper or one chosen app
     fun startShare(mode: ShareMode, app: ShareApp? = null) {
         busy = true
         job = scope.launch {
@@ -194,12 +189,10 @@ fun ShareSelectionSheet(
         }
     }
 
-    // Apps that accept a share (row on top), found with a package query declared in the manifest
     var apps by remember { mutableStateOf<List<ShareApp>>(emptyList()) }
     LaunchedEffect(Unit) {
         apps = withContext(Dispatchers.IO) { findShareApps(context, shareMimeType(selectedItems)) }
     }
-    // Print and wallpaper work on one photo, not on videos or several files
     val single = chosen.size == 1 && !chosen[0].isVideo
 
     ModalBottomSheet(onDismissRequest = {
@@ -329,7 +322,6 @@ fun ShareSelectionSheet(
     }
 }
 
-// Glass block like the Home sections
 @Composable
 private fun ShareBlock(content: @Composable () -> Unit) {
     Surface(
@@ -373,10 +365,8 @@ private fun shareMimeType(items: List<MediaItem>): String = when {
     else -> "*/*"
 }
 
-// Needs the <queries> entry for ACTION_SEND in the manifest (no permission to list all apps)
 private fun findShareApps(context: android.content.Context, mime: String): List<ShareApp> {
     val pm = context.packageManager
-    // A mixed selection is looked up as images, the declared query types are image/* and video/*
     val queryType = if (mime == "*/*") "image/*" else mime
     val intent = Intent(Intent.ACTION_SEND).setType(queryType)
     return try {

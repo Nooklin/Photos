@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// One entry in Settings for the library: make a backup zip, or import a folder structure
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsBackupImportScreen(onNavigate: (String) -> Unit, onBack: () -> Unit, hidden: Boolean = false) {

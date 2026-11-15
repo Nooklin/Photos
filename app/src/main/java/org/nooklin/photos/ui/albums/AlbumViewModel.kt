@@ -2,8 +2,11 @@ package org.nooklin.photos.ui.albums
 
 import android.app.Application
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.nooklin.photos.data.AlbumRepository
 import org.nooklin.photos.data.MediaItem
@@ -15,7 +18,7 @@ class AlbumViewModel(application: Application) :
     TaggableCollectionViewModel<AlbumEntity, AlbumMembershipEntity>(application) {
 
     private val repository = AlbumRepository(application)
-    private var hasSeeded = false
+    private var syncJob: Job? = null
 
     override val collectionFlow: Flow<List<AlbumEntity>> = repository.albums
     override val membershipFlow: Flow<List<AlbumMembershipEntity>> = repository.memberships
@@ -26,11 +29,17 @@ class AlbumViewModel(application: Application) :
 
     val albums: StateFlow<List<AlbumEntity>> get() = collection
 
-    // Session guard on top of the DB check
-    fun seedIfNeeded(items: List<MediaItem>) {
-        if (hasSeeded || items.isEmpty()) return
-        hasSeeded = true
-        viewModelScope.launch { repository.seedFromFoldersIfNeeded(items) }
+    // Camera, Screenshots, Downloads and WhatsApp: rule key to album id
+    val autoAlbums: StateFlow<Map<String, Long>> =
+        repository.autoAlbums.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val hiddenAutoAlbumIds: StateFlow<Set<Long>> =
+        repository.hiddenAutoAlbumIds.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    fun syncAutoAlbums(items: List<MediaItem>) {
+        if (items.isEmpty()) return
+        syncJob?.cancel()
+        syncJob = viewModelScope.launch { repository.syncAutoAlbums(items) }
     }
 
     fun createAlbum(name: String, onCreated: (Long) -> Unit = {}) = create(name, onCreated)
@@ -38,7 +47,6 @@ class AlbumViewModel(application: Application) :
         viewModelScope.launch { repository.createFolder(parentId, name) }
     }
 
-    // Null goes back to the newest photo
     fun setCover(albumId: Long, mediaId: Long?) {
         viewModelScope.launch { repository.setCover(albumId, mediaId) }
     }
@@ -79,8 +87,6 @@ data class AlbumWithPreview(
     val name: String,
     val itemCount: Int,
     val previewItems: List<MediaItem>,
-    // Set for a folder, the id of its album
     val parentId: Long? = null,
-    // Folders inside this album, shown in the delete warning
     val folderCount: Int = 0
 )

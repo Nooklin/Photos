@@ -19,7 +19,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -44,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
@@ -130,7 +128,6 @@ fun SettingsGroup(title: String?, items: List<@Composable () -> Unit>) {
         )
     }
     Surface(
-        // adaptiveGlassBackground like Home's GlassBlock, adaptivePopupBackground made the rows unreadable
         color = GlassPill.adaptiveGlassBackground,
         shape = RoundedCornerShape(20.dp),
         border = GlassPill.adaptiveBorder,
@@ -143,7 +140,6 @@ fun SettingsGroup(title: String?, items: List<@Composable () -> Unit>) {
             items.forEachIndexed { index, item ->
                 item()
                 if (index != items.lastIndex) {
-                    // start = 56dp aligns past the leading icon
                     HorizontalDivider(
                         modifier = Modifier.padding(start = 56.dp),
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
@@ -166,7 +162,7 @@ fun SettingsNavRow(label: String, icon: ImageVector = Icons.Filled.MoreHoriz, on
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
+            SettingsIcon(icon)
             Text(label)
         }
         Icon(Icons.Filled.ChevronRight, contentDescription = null)

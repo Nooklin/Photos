@@ -8,19 +8,11 @@ import java.util.Locale
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// dateAdded is in seconds
-fun groupLabel(item: MediaItem, groupBy: GroupBy): String = dateGroupLabel(item.dateAdded * 1000L, groupBy)
-
 fun groupItemsByDate(items: List<MediaItem>, groupBy: GroupBy): Map<String, List<MediaItem>> =
     if (groupBy == GroupBy.NONE) emptyMap() else DateLabeler(groupBy).let { labeler -> items.groupBy { labeler.label(it.dateAdded * 1000L) } }
 
-// hiddenAt is already millis
-fun hiddenGroupLabel(item: HiddenItem, groupBy: GroupBy): String = dateGroupLabel(item.hiddenAt, groupBy)
-
 fun groupHiddenItemsByDate(items: List<HiddenItem>, groupBy: GroupBy): Map<String, List<HiddenItem>> =
     if (groupBy == GroupBy.NONE) emptyMap() else DateLabeler(groupBy).let { labeler -> items.groupBy { labeler.label(it.hiddenAt) } }
-
-private fun dateGroupLabel(millis: Long, groupBy: GroupBy): String = DateLabeler(groupBy).label(millis)
 
 private class DateLabeler(private val groupBy: GroupBy) {
     private val format: SimpleDateFormat? = when (groupBy) {

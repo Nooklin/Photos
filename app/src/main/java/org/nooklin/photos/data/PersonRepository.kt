@@ -17,7 +17,6 @@ class PersonRepository(context: Context) {
 
     private class CachedFace(val mediaId: Long, val personId: Long, val embedding: FloatArray)
 
-    // Parsed once per scan, not once per face
     @Volatile
     private var scanCache: MutableList<CachedFace>? = null
 
@@ -34,7 +33,6 @@ class PersonRepository(context: Context) {
         scanCache?.removeAll { it.mediaId == mediaId }
     }
 
-    // Nearest neighbor over all faces, a centroid drifts away from real faces
     suspend fun findOrCreatePerson(embedding: FloatArray): Long = withContext(Dispatchers.IO) {
         val existing = scanCache ?: dao.allFaceEmbeddingsSnapshot()
             .map { CachedFace(it.mediaId, it.personId, FaceClusterer.deserialize(it.embedding)) }
@@ -50,7 +48,6 @@ class PersonRepository(context: Context) {
             }
         }
         val matched = bestPersonId
-        // Person may have been merged away during the scan
         if (matched != null && bestDistance < FaceClusterer.MATCH_THRESHOLD && dao.personById(matched) != null) {
             matched
         } else {
@@ -82,7 +79,6 @@ class PersonRepository(context: Context) {
         scanCache?.add(CachedFace(mediaId, personId, embedding))
     }
 
-    // Same name merges into the existing person, no duplicate cards
     suspend fun rename(personId: Long, name: String?) = withContext(Dispatchers.IO) {
         val trimmed = name?.trim()?.ifBlank { null }
         val existing = trimmed?.let { dao.findByName(it) }
@@ -146,7 +142,7 @@ class PersonRepository(context: Context) {
             val (i, j) = best ?: break
             val a = clusters[i]
             val b = clusters[j]
-            // Keep the named one, else the one with more faces
+            // keep the named one, else the one with more faces
             val keepFirst = when {
                 !a.name.isNullOrBlank() && b.name.isNullOrBlank() -> true
                 a.name.isNullOrBlank() && !b.name.isNullOrBlank() -> false
@@ -168,7 +164,6 @@ class PersonRepository(context: Context) {
 
     suspend fun clearAll() = withContext(Dispatchers.IO) { dao.clearAll() }
 
-    // Empty people stay behind, cleaning those up is separate
     suspend fun pruneOrphanedFaces(validMediaIds: Set<Long>) = withContext(Dispatchers.IO) {
         val referenced = dao.distinctFaceMediaIds()
         val orphaned = referenced.filterNot { it in validMediaIds }

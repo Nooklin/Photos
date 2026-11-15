@@ -3,7 +3,6 @@ import androidx.annotation.StringRes
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
-// ColorMatrix filters (4x5), the same array drives the preview and the save
 enum class PhotoFilter(@StringRes val labelRes: Int, val matrix: FloatArray) {
     NONE(
         R.string.settings_gallery_none,
@@ -35,7 +34,6 @@ enum class PhotoFilter(@StringRes val labelRes: Int, val matrix: FloatArray) {
     VIVID(
         R.string.photo_filters_vivid,
         run {
-            // Standard luminance-preserving saturation matrix
             val sat = 1.4f
             val lumR = 0.213f
             val lumG = 0.715f

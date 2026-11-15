@@ -9,7 +9,6 @@ import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
-// 192-dim embedding per face, compared by Euclidean distance
 class FaceEmbedder(context: Context) : AutoCloseable {
     private val appContext = context.applicationContext
     private val interpreterLazy = lazy { Interpreter(loadModelFile()) }
@@ -27,7 +26,6 @@ class FaceEmbedder(context: Context) : AutoCloseable {
         }
     }
 
-    // Crop with a margin around the box, resized to 112x112
     fun embed(bitmap: Bitmap, box: FaceBox): FloatArray {
         val w = bitmap.width
         val h = bitmap.height
@@ -47,7 +45,6 @@ class FaceEmbedder(context: Context) : AutoCloseable {
         val pixels = IntArray(INPUT_SIZE * INPUT_SIZE)
         resized.getPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
         for (pixel in pixels) {
-            // (pixel - 128) / 128: the input range of this converted model
             buffer.putFloat((((pixel shr 16) and 0xFF) - 128) / 128f) // R
             buffer.putFloat((((pixel shr 8) and 0xFF) - 128) / 128f) // G
             buffer.putFloat(((pixel and 0xFF) - 128) / 128f) // B

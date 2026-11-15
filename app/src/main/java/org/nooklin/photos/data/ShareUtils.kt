@@ -19,7 +19,7 @@ import org.nooklin.photos.data.local.AppPreferences
 import org.nooklin.photos.data.local.ShareStripOptions
 import java.nio.ByteBuffer
 
-// Exif tags per kind of data, as chosen in Settings, Sharing. Orientation is never removed so photos aren't sideways.
+// Exif tags per kind of data, as chosen in Settings, Sharing
 private val LOCATION_TAGS = listOf(
     ExifInterface.TAG_GPS_ALTITUDE, ExifInterface.TAG_GPS_ALTITUDE_REF,
     ExifInterface.TAG_GPS_AREA_INFORMATION,
@@ -67,19 +67,20 @@ private fun tagsFor(options: ShareStripOptions): List<String> =
         (if (options.camera) CAMERA_TAGS else emptyList()) +
         (if (options.description) DESCRIPTION_TAGS else emptyList())
 
-// Read when a share is made, these functions run off the main thread
 private fun stripOptions(context: Context): ShareStripOptions =
     runBlocking { AppPreferences(context).shareStripOptions.first() }
 
-fun clearShareCache(context: Context) {
-    File(context.cacheDir, "shared").listFiles()?.forEach { it.delete() }
+fun clearShareCache(context: Context, olderThanMs: Long = 0L) {
+    val limit = System.currentTimeMillis() - olderThanMs
+    File(context.cacheDir, "shared").listFiles()?.forEach { if (olderThanMs <= 0L || it.lastModified() < limit) it.delete() }
 }
+
+private const val SHARE_CACHE_KEEP_MS = 60L * 60L * 1000L
 
 // Fails closed: null if the tags can't be cleared (HEIC)
 fun createExifStrippedShareUri(context: Context, item: MediaItem, stripExif: Boolean = true, cancelled: () -> Boolean = { false }): Uri? {
     if (!stripExif) return item.uri
     val options = stripOptions(context)
-    // Remove Exif data is on but every kind is switched off: nothing to remove
     if (!options.any) return item.uri
     val extension = fileExtensionFor(item.mimeType, item.isVideo)
     return copyToShareCache(context, extension, strip = true, isVideo = item.isVideo, options = options, cancelled = cancelled) { context.contentResolver.openInputStream(item.uri) }
@@ -93,7 +94,6 @@ fun createExifStrippedShareUriFromFile(
     mimeType: String? = null,
     cancelled: () -> Boolean = { false }
 ): Uri? {
-    // Stored type wins, the file name can carry an old extension
     val extension = if (mimeType != null) fileExtensionFor(mimeType, isVideo) else file.extension.ifEmpty { "jpg" }
     val options = stripOptions(context)
     return copyToShareCache(context, extension, strip = stripExif && options.any, isVideo = isVideo, options = options, cancelled = cancelled) { file.inputStream() }
@@ -103,7 +103,6 @@ private fun copyToShareCache(
     context: Context,
     extension: String,
     strip: Boolean,
-    // Several files at once clear the cache once and give each file its own name
     clearCache: Boolean = true,
     baseName: String = "share_${System.currentTimeMillis()}",
     isVideo: Boolean = false,
@@ -111,7 +110,7 @@ private fun copyToShareCache(
     cancelled: () -> Boolean = { false },
     open: () -> InputStream?
 ): Uri? {
-    if (clearCache) clearShareCache(context)
+    if (clearCache) clearShareCache(context, SHARE_CACHE_KEEP_MS)
     val shareDir = File(context.cacheDir, "shared").apply { mkdirs() }
     var outFile = File(shareDir, "$baseName.$extension")
 
@@ -179,12 +178,7 @@ private fun clearMetadata(file: File, options: ShareStripOptions): Boolean {
     return if (isJpeg) stripJpegMetadata(file, options) else clearExifTags(file, options)
 }
 
-// JPEG, without touching the picture data (no new compression). With every kind switched on, all segments that can hold
-// personal data are cut out: Exif (location, camera, date, thumbnail), XMP, IPTC, comments, maker notes and anything
-// added after the image end (for example the video of a motion photo). Kept: what is needed to draw the picture, the
-// colour profile and the orientation. With only some kinds on, the Exif block stays and only the chosen tags are removed
-// afterwards, XMP and IPTC go when location, date or description is on (they can hold those too, and cannot be split per
-// kind). False if the file is not a clean JPEG, then the caller makes a metadata free copy another way.
+// JPEG, without touching the picture data (no new compression).
 private fun stripJpegMetadata(file: File, options: ShareStripOptions): Boolean {
     try {
     val orientation = ExifInterface(file.absolutePath).getAttributeInt(ExifInterface.TAG_ORIENTATION, 0)
@@ -198,7 +192,6 @@ private fun stripJpegMetadata(file: File, options: ShareStripOptions): Boolean {
     while (i + 1 < n) {
         if ((b[i].toInt() and 0xFF) != 0xFF) return false
         var marker = b[i + 1].toInt() and 0xFF
-        // Fill bytes before a marker
         while (marker == 0xFF && i + 2 < n) {
             i++
             marker = b[i + 1].toInt() and 0xFF
@@ -209,7 +202,6 @@ private fun stripJpegMetadata(file: File, options: ShareStripOptions): Boolean {
             finished = true
             break
         }
-        // Markers without a length
         if (marker == 0x01 || marker in 0xD0..0xD7) {
             out.write(b, i, 2)
             i += 2
@@ -222,7 +214,6 @@ private fun stripJpegMetadata(file: File, options: ShareStripOptions): Boolean {
         if (keepJpegSegment(marker, b, i + 4, end, options)) out.write(b, i, end - i)
         i = end
         if (marker == 0xDA) {
-            // Picture data runs until the next real marker (FF followed by something other than 00 or a restart)
             var j = i
             while (j + 1 < n) {
                 val next = b[j + 1].toInt() and 0xFF
@@ -257,29 +248,22 @@ private fun keepJpegSegment(marker: Int, b: ByteArray, dataStart: Int, end: Int,
         if (dataStart + text.length > end) return false
         return text.indices.all { b[dataStart + it].toInt() == text[it].code }
     }
-    // XMP and IPTC can hold location, date and description
     val dropXmpAndIptc = options.all || options.location || options.dateTime || options.description
     return when (marker) {
-        // APP0: JFIF header yes, JFXX (extension with a thumbnail) no
         0xE0 -> startsWith("JFIF")
         // APP1: the Exif block stays when only some kinds are removed (its tags are removed afterwards), XMP goes
         0xE1 -> !options.all && (if (startsWith("Exif")) true else !dropXmpAndIptc)
         // APP2: colour profile yes, other (FlashPix, multi picture) no
         0xE2 -> startsWith("ICC_PROFILE")
-        // APP13: IPTC and Photoshop data
         0xED -> !options.all && !dropXmpAndIptc
-        // APP14: Adobe colour transform, needed to draw some JPEGs correctly
         0xEE -> startsWith("Adobe")
-        // Comments
         0xFE -> !options.all && !options.description
-        // Other APP segments (vendor data)
         in 0xE3..0xEF -> false
         else -> true
     }
 }
 
-// Copies the audio and video tracks into a new MP4 without recompressing. A new MP4 only holds what is written to it,
-// so location and other tags of the original are not carried over. False if a track cannot be copied.
+// Copies the audio and video tracks into a new MP4 without recompressing
 private fun removeVideoMetadata(source: File, target: File, cancelled: () -> Boolean = { false }): Boolean {
     val extractor = MediaExtractor()
     var muxer: MediaMuxer? = null
@@ -338,10 +322,9 @@ private fun clearExifTags(file: File, options: ShareStripOptions): Boolean = try
     false
 }
 
-// Several items for one share, save or copy. An item whose metadata cannot be removed gets a null Uri (skipped, never
-// passed on with its location). Videos are copied without their metadata too.
+// Several items for one share, save or copy.
 fun createShareUris(context: Context, items: List<MediaItem>, stripExif: Boolean, cancelled: () -> Boolean = { false }): List<Pair<MediaItem, Uri?>> {
-    clearShareCache(context)
+    clearShareCache(context, SHARE_CACHE_KEEP_MS)
     val options = stripOptions(context)
     return items.mapIndexed { index, item ->
         if (cancelled()) return@mapIndexed item to null

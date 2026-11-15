@@ -34,7 +34,6 @@ class NooklinPhotosApplication : Application(), SingletonImageLoader.Factory {
                 add(MediaStoreThumbnailFetcher.Factory())
                 add(VideoFirstFrameFetcher.Factory())
             }
-            // More than Coil's default so thumbnails get evicted less
             .memoryCache { MemoryCache.Builder().maxSizePercent(context, 0.35).build() }
             .crossfade(true)
             .build()

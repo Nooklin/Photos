@@ -1,5 +1,9 @@
 package org.nooklin.photos.ui.discovered
 
+import org.nooklin.photos.ui.common.MenuSectionHeader
+import org.nooklin.photos.ui.common.GroupActions
+import org.nooklin.photos.ui.common.GroupItemMenu
+import androidx.activity.compose.BackHandler
 import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
 import org.nooklin.photos.data.local.MIN_GRID_COLUMNS
 import org.nooklin.photos.ui.common.cellAspectRatio
@@ -13,9 +17,9 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import org.nooklin.photos.ui.common.gridDragToSelect
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,8 +43,6 @@ import org.nooklin.photos.ui.common.MenuIcon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
@@ -70,7 +72,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.nooklin.photos.ui.common.freshImageRequest
 import androidx.compose.ui.platform.LocalContext
@@ -89,12 +90,10 @@ import org.nooklin.photos.ui.common.deleteWording
 import org.nooklin.photos.ui.common.SelectionBadge
 import org.nooklin.photos.appString
 import androidx.compose.ui.semantics.Role
-import org.nooklin.photos.ui.common.touchTarget
 import org.nooklin.photos.ui.common.EmptyState
 import org.nooklin.photos.ui.theme.AppText
 import org.nooklin.photos.ui.common.TouchTargetBox
 
-// Matches GalleryScreen's top bar, select mode and filter
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoveredDetailScreen(
@@ -111,10 +110,9 @@ fun DiscoveredDetailScreen(
     onMoveToRecycleBin: (MediaItem) -> Unit,
     onAddToAlbum: (albumId: Long, item: MediaItem) -> Unit,
     onBack: () -> Unit,
-    // Second arg: the viewer pages through this filtered list
-    onItemClick: (MediaItem, List<MediaItem>) -> Unit
+    onItemClick: (MediaItem, List<MediaItem>) -> Unit,
+    groupActions: GroupActions? = null
 ) {
-    // Own column count, set by pinching
     val screenColumns = rememberScreenGridColumns("discovered_$label", gridColumns)
     val cols = screenColumns.columns
     val context = LocalContext.current
@@ -122,10 +120,10 @@ fun DiscoveredDetailScreen(
     var filterMenuExpanded by remember { mutableStateOf(false) }
     var isSelecting by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<Long>()) }
+    var menuItem by remember { mutableStateOf<MediaItem?>(null) }
     var actionsMenuExpanded by remember { mutableStateOf(false) }
     var showAddToAlbumDialog by remember { mutableStateOf(false) }
     var showAddToPetDialog by remember { mutableStateOf(false) }
-    // Set by the "+" badge on a Pets photo (quick add). Null means the dialog acts on the selection.
     var quickAddPetItem by remember { mutableStateOf<MediaItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -150,13 +148,27 @@ fun DiscoveredDetailScreen(
         scrollToIndex = { i -> discoveredGridState.scrollToItemCentered(i) }
     )
 
+    BackHandler(enabled = isSelecting) { exitSelection() }
+
+    menuItem?.let { item ->
+        if (groupActions != null) {
+            GroupItemMenu(
+                item = item,
+                actions = groupActions,
+                onOpen = { onItemClick(item, filtered) },
+                onSelect = { isSelecting = true; toggleSelect(item) },
+                onDone = { menuItem = null }
+            )
+        }
+    }
+
     Scaffold(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
             TopAppBar(
                 title = { Text(label, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { if (isSelecting) exitSelection() else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = appString(R.string.common_back))
                     }
                 },
@@ -181,6 +193,7 @@ fun DiscoveredDetailScreen(
                             containerColor = GlassPill.adaptivePopupBackground
                         ) {
                             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                MenuSectionHeader(appString(R.string.filter_menu_show))
                                 DropdownMenuItem(
                                     text = { Text(appString(R.string.common_all)) },
                                     trailingIcon = {
@@ -265,8 +278,6 @@ fun DiscoveredDetailScreen(
                             }
                         }
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
-                    } else {
-                        PillButton(text = appString(R.string.common_select), onClick = { isSelecting = true })
                     }
                 }
             )
@@ -286,7 +297,15 @@ fun DiscoveredDetailScreen(
                 contentPadding = PaddingValues(2.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(padding).pinchToChangeGridColumns(!isSelecting, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
+                modifier = Modifier.padding(padding)
+                    .pinchToChangeGridColumns(!isSelecting, cols, MIN_GRID_COLUMNS, MAX_GRID_COLUMNS, screenColumns.setColumns)
+                    .gridDragToSelect(
+                        enabled = isSelecting,
+                        state = discoveredGridState,
+                        accepts = { it is Long },
+                        isSelected = { it in selectedIds },
+                        onItemDragged = { key, select -> if (key is Long) selectedIds = if (select) selectedIds + key else selectedIds - key }
+                    )
             ) {
                 items(filtered.size, key = { filtered[it].id }) { index ->
                     val item = filtered[index]
@@ -303,7 +322,11 @@ fun DiscoveredDetailScreen(
                                 .zoomSource(item.id)
                                 .combinedClickable(
                                     onClick = { if (isSelecting) toggleSelect(item) else onItemClick(item, filtered) },
-                                    onLongClick = { if (!isSelecting) { isSelecting = true; toggleSelect(item) } }
+                                    onLongClick = {
+                                        if (!isSelecting) {
+                                            if (groupActions != null) menuItem = item else { isSelecting = true; toggleSelect(item) }
+                                        }
+                                    }
                                 )
                         )
                         if (item.isFavorite) {
@@ -317,7 +340,6 @@ fun DiscoveredDetailScreen(
                         if (isSelecting && selected) {
                             SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
                         }
-                        // Quick add: opens the Add to Pet dialog for this photo without select mode
                         if (isPetsCategory && !isSelecting) {
                             TouchTargetBox(
                                 onClick = {

@@ -8,7 +8,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// EXIF only, null when absent. No guessed lens names.
+// EXIF only, null when absent
 data class PhotoMetadata(
     val name: String,
     val sizeBytes: Long,
@@ -83,7 +83,6 @@ private fun ExifInterface.readAperture(): String? {
 }
 
 private fun ExifInterface.readShutterSpeed(): String? {
-    // getAttributeDouble handles the EXIF rational, getAttribute returns "num/den"
     val raw = getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0)
     if (raw <= 0) return null
     return if (raw < 1) "1/${Math.round(1 / raw)} s" else "${raw} s"
@@ -125,7 +124,6 @@ fun buildMetadata(
     )
 }
 
-// Hidden files keep their EXIF through the byte copy
 fun buildFileMetadata(file: File, isVideo: Boolean): PhotoMetadata {
     val exif = if (!isVideo) readExif(file) else null
     val dimensions = if (!isVideo) {

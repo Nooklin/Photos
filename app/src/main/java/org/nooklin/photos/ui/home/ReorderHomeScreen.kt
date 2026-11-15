@@ -173,7 +173,6 @@ private fun ReorderRow(
     }
 }
 
-// Hidden has its own show/hide switches, separate from Home's
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HiddenHomeCustomizeScreen(

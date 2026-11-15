@@ -17,7 +17,6 @@ data class PersonEntity(
     val createdAt: Long
 )
 
-// One row per face, embedding is a String, see FaceClusterer
 @Entity(tableName = "face_embeddings", indices = [Index("personId"), Index("mediaId")])
 data class FaceEmbeddingEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -57,7 +56,6 @@ interface PersonDao {
     @Query("SELECT * FROM people")
     suspend fun peopleSnapshot(): List<PersonEntity>
 
-    // "mom" and "Mom" are the same person
     @Query("SELECT * FROM people WHERE name = :name COLLATE NOCASE LIMIT 1")
     suspend fun findByName(name: String): PersonEntity?
 
@@ -69,9 +67,6 @@ interface PersonDao {
 
     @Insert
     suspend fun insertFaceEmbedding(embedding: FaceEmbeddingEntity): Long
-
-    @Query("SELECT * FROM face_embeddings")
-    fun observeAllFaceEmbeddings(): Flow<List<FaceEmbeddingEntity>>
 
     @Query("SELECT id, mediaId, personId, confidence, boxXMin, boxYMin, boxXMax, boxYMax FROM face_embeddings")
     fun observeAllFaceSummaries(): Flow<List<FaceSummary>>

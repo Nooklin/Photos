@@ -6,7 +6,6 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 
-// What another app asked this app to do: show one file, or let the user choose files to hand back
 sealed interface ExternalRequest {
     data class View(val uri: Uri, val mimeType: String?) : ExternalRequest
 
@@ -28,7 +27,6 @@ fun Intent.toExternalRequest(context: Context): ExternalRequest? = when (action)
     else -> null
 }
 
-// Result for a Pick: the chosen files with read access for the caller
 fun List<Uri>.toPickResult(): Intent {
     val clip = ClipData.newRawUri(null, first())
     drop(1).forEach { clip.addItem(ClipData.Item(it)) }
@@ -39,8 +37,6 @@ fun List<Uri>.toPickResult(): Intent {
     }
 }
 
-// The library id of a content://media/external/images|video/media/<id> Uri, null for any other Uri
-// (a file provider Uri of another app, or a photo picker Uri whose id means something else)
 fun Uri.toMediaStoreId(): Long? {
     if (scheme != "content" || authority != MediaStore.AUTHORITY) return null
     val segments = pathSegments

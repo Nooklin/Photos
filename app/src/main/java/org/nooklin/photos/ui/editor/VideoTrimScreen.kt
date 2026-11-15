@@ -1,5 +1,3 @@
-@file:OptIn(UnstableApi::class)
-
 package org.nooklin.photos.ui.editor
 
 import android.media.MediaMetadataRetriever
@@ -17,8 +15,6 @@ import org.nooklin.photos.data.OriginalsStore
 import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.requiredSize
@@ -26,14 +22,12 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -59,7 +53,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -74,33 +67,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.VideoSize
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.ui.PlayerView
@@ -123,7 +108,6 @@ import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.EditorDestructivePill
 import org.nooklin.photos.ui.common.EditorModeBar
 import org.nooklin.photos.ui.common.EditorModeItem
-import org.nooklin.photos.ui.common.GlassPillContainer
 import org.nooklin.photos.ui.theme.AppColors
 import org.nooklin.photos.ui.common.VideoPrewarm
 import androidx.compose.ui.graphics.ColorMatrix as ComposeColorMatrix
@@ -132,18 +116,13 @@ import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 
-private const val MIN_CLIP_MS = 500f
 private const val FILM_FRAMES = 10
 
 private enum class VideoEditorMode { TRIM, STYLES, CROP }
 
-// Trim, Styles (the photo filters) and Crop (like the photo editor).
-// "Save Video" keeps the file and remembers the trim, "Save as New Clip" cuts a new file.
-// With a filter or a crop only a new clip is possible: the video is encoded again.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onSaved: () -> Unit) {
-    // Same colors as the video viewer: black only in dark mode, the app background in light mode.
     val screenBackground = if (darkTheme) Color.Black else MaterialTheme.colorScheme.background
     val chromeColor = if (darkTheme) Color.White else Color.Black
     val pillBackground = if (darkTheme) GlassPill.fixedGlassBackground else GlassPill.adaptiveGlassBackground
@@ -159,8 +138,7 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
         ExoPlayer.Builder(context.applicationContext).build().apply {
             setMediaItem(Media3MediaItem.fromUri(item.uri))
             repeatMode = Player.REPEAT_MODE_OFF
-            // Not prepared yet: the video effects are set first, once the picture size is known, so the player builds
-            // its video pipeline with them (an effect list set on a running player did not change the picture)
+            // not prepared yet: the video effects are set first, once the picture size is known
         }
     }
     DisposableEffect(player) { onDispose { player.release() } }
@@ -181,7 +159,6 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
     var cropRect by remember { mutableStateOf(CropRect()) }
     var selectedAspectPreset by rememberSaveable { mutableStateOf(AspectPreset.entries.first()) }
 
-    // Picture size as shown (rotation applied) and a row of frames for the trim bar and the filter thumbnails
     var displayWidth by remember { mutableStateOf(0) }
     var displayHeight by remember { mutableStateOf(0) }
     var metadataDone by remember { mutableStateOf(false) }
@@ -195,12 +172,10 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
     var showSaveMenu by remember { mutableStateOf(false) }
 
     val edits = VideoEdits(filter, rotationDegrees, straightenDegrees, flipHorizontal, flipVertical, cropRect)
-    // The preview effects read the latest values from here on every frame
     val liveEdits = remember { AtomicReference(edits) }
     liveEdits.set(edits)
     val saving = exportProgress != null
 
-    // Saving over the original: the untouched original is kept aside first, for Revert (like the photo editor)
     val originals = remember { OriginalsStore(context) }
     val originalKey = remember(item.id) { OriginalsStore.mediaKey(item.id) }
     var hasOriginal by remember(originalKey) { mutableStateOf(originals.has(originalKey)) }
@@ -221,7 +196,6 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
             scope.launch {
                 val success = withContext(Dispatchers.IO) {
                     try {
-                        // The original goes aside BEFORE the write truncates the file. If that fails, nothing is overwritten.
                         val kept = originals.stashIfAbsent(originalKey) { context.contentResolver.openInputStream(item.uri) }
                         if (!kept) {
                             false
@@ -340,7 +314,6 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                 val shownHeight = if (turned) width else height
                 displayWidth = shownWidth
                 displayHeight = shownHeight
-                // The player can prepare now; the strip of frames below fills in while it loads
                 metadataDone = true
                 if (shownWidth > 0 && shownHeight > 0 && duration > 0L) {
                     val frameHeight = 120
@@ -362,8 +335,6 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
         metadataDone = true
     }
 
-    // The first time the player is prepared here, with the effects already set. A rotate tap builds a new effect list:
-    // the player is stopped, gets the list and is prepared again at the same place. The other edits are read live.
     LaunchedEffect(rotationDegrees, displayWidth, displayHeight, metadataDone) {
         if (!metadataDone) return@LaunchedEffect
         val idle = player.playbackState == Player.STATE_IDLE
@@ -384,9 +355,6 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
             if (idle) player.prepare()
         }
     }
-    // A paused player draws no new frame when an edit changes. So while paused, the frame at the current place is
-    // grabbed once and shown as a picture with the edits applied on it (live while dragging, the video does not move).
-    // While playing, the player shows the edits itself.
     var stillFrame by remember { mutableStateOf<ImageBitmap?>(null) }
     var stillPositionMs by remember { mutableLongStateOf(-1L) }
     LaunchedEffect(isPlaying, ready) {
@@ -426,12 +394,10 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                 retriever.release()
             }
         }
-        // On failure the old frame stays; if there is none the player is shown
         if (frame != null) stillFrame = frame.asImageBitmap()
     }
 
     DisposableEffect(player) {
-        // Called from every signal that can bring the duration. Runs once, when the duration is known.
         fun tryBecomeReady() {
             if (ready) return
             if (player.playbackState != Player.STATE_READY) return
@@ -449,14 +415,11 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
 
             override fun onTimelineChanged(timeline: Timeline, reason: Int) = tryBecomeReady()
 
-            // The player reports the size it really shows: with a working rotate effect it swaps after a rotate tap.
-            // Also the way to learn the picture size when the metadata did not give it.
             override fun onVideoSizeChanged(videoSize: VideoSize) {
-                Log.d("VideoTrimScreen", "Video size ${videoSize.width}x${videoSize.height}, unapplied rotation ${videoSize.unappliedRotationDegrees}")
+                Log.d("VideoTrimScreen", "Video size ${videoSize.width}x${videoSize.height}")
                 if (displayWidth == 0 && videoSize.width > 0 && videoSize.height > 0) {
-                    val turned = videoSize.unappliedRotationDegrees == 90 || videoSize.unappliedRotationDegrees == 270
-                    displayWidth = if (turned) videoSize.height else videoSize.width
-                    displayHeight = if (turned) videoSize.width else videoSize.height
+                    displayWidth = videoSize.width
+                    displayHeight = videoSize.height
                 }
             }
 
@@ -474,7 +437,6 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
         onDispose { player.removeListener(listener) }
     }
 
-    // Preview stops at the chosen end and returns to the chosen start.
     LaunchedEffect(isPlaying, range) {
         while (isPlaying) {
             positionMs = player.currentPosition
@@ -537,8 +499,6 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                     }
                 },
                 actions = {
-                    // One red button that takes the file back to the original. Without a stored original it only
-                    // clears a trim saved by an older version.
                     if (hasOriginal || savedTrim != null) {
                         EditorDestructivePill(text = appString(R.string.photo_editor_revert), enabled = !saving) {
                             if (hasOriginal) {
@@ -626,9 +586,9 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    // The box has the shape of the picture after rotating, so the crop overlay lies exactly on it
+                    // the box has the shape of the picture after rotating, so the crop overlay lies exactly on it
                     Box(Modifier.aspectRatio(frameAspect)) {
-                        // Named apart from PlayerView's own "player" property, which would win inside apply.
+                        // Named apart from PlayerView's own "player" property, which would win inside apply
                         val playerToShow = player
                         AndroidView(
                             factory = { ctx ->
@@ -641,7 +601,6 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                         )
                         val still = stillFrame
                         if (stillWanted && still != null) {
-                            // Same order as the export: rotate, flip, straighten (with fill scale), filter
                             val theta = Math.toRadians(straightenDegrees.toDouble())
                             val fill = (abs(cos(theta)) + abs(sin(theta)) * frameAspect).toFloat()
                             BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -721,7 +680,7 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                                     range = range,
                                     durationMs = durationMs.toFloat(),
                                     positionMs = positionMs.toFloat(),
-                                    minGapMs = MIN_CLIP_MS,
+                                    minGapMs = 500f,
                                     enabled = !saving,
                                     color = chromeColor,
                                     frames = filmFrames,
@@ -729,12 +688,11 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
                                         val startMoved = new.start != range.start
                                         range = new
                                         player.pause()
-                                        // While dragging, jump to the nearest keyframe: fast enough for the picture to follow the thumb live.
+                                        // While dragging, jump to the nearest keyframe: fast enough for the picture to follow the thumb live
                                         player.setSeekParameters(SeekParameters.CLOSEST_SYNC)
                                         player.seekTo((if (startMoved) new.start else new.endInclusive).toLong())
                                     },
                                     onDragEnd = { startMoved ->
-                                        // On release, settle on the exact frame.
                                         player.setSeekParameters(SeekParameters.EXACT)
                                         player.seekTo((if (startMoved) range.start else range.endInclusive).toLong())
                                     }
@@ -870,130 +828,3 @@ fun VideoTrimScreen(item: MediaItem, darkTheme: Boolean, onBack: () -> Unit, onS
     }
 }
 
-private fun formatClock(ms: Long): String {
-    val totalTenths = ms / 100
-    val minutes = totalTenths / 600
-    val seconds = (totalTenths % 600) / 10
-    val tenths = totalTenths % 10
-    return "%d:%02d.%d".format(minutes, seconds, tenths)
-}
-
-// Same pill as the viewer's video control bar
-@Composable
-private fun TrimPill(background: Color, border: BorderStroke?, content: @Composable () -> Unit) {
-    Surface(
-        color = background,
-        shape = GlassPill.shape,
-        border = border,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = Spacing.Sm)
-    ) {
-        Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { content() }
-    }
-}
-
-// Same bar as the photo editor: Trim, Styles and Crop
-// A strip of frames with a handle at each end. A drag moves the closer handle. The part outside the chosen range is
-// dimmed and a thin line shows where the player is.
-@Composable
-private fun TrimRangeBar(
-    range: ClosedFloatingPointRange<Float>,
-    durationMs: Float,
-    positionMs: Float,
-    minGapMs: Float,
-    enabled: Boolean,
-    color: Color,
-    frames: List<ImageBitmap?>,
-    onChange: (ClosedFloatingPointRange<Float>) -> Unit,
-    onDragEnd: (startMoved: Boolean) -> Unit
-) {
-    val currentRange by rememberUpdatedState(range)
-    val currentOnChange by rememberUpdatedState(onChange)
-    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
-    var movingStart by remember { mutableStateOf(true) }
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-    ) {
-        Row(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp)
-                .clip(RoundedCornerShape(4.dp))
-        ) {
-            frames.forEach { frame ->
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .background(color.copy(alpha = 0.1f))
-                ) {
-                    if (frame != null) {
-                        Image(
-                            bitmap = frame,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-            }
-        }
-        Canvas(
-            Modifier
-                .fillMaxSize()
-                .pointerInput(enabled, durationMs) {
-                    if (!enabled || durationMs <= 0f) return@pointerInput
-                    val inset = 12.dp.toPx()
-                    fun valueAt(x: Float): Float {
-                        val span = size.width - 2f * inset
-                        return if (span <= 0f) 0f else ((x - inset) / span).coerceIn(0f, 1f) * durationMs
-                    }
-                    detectHorizontalDragGestures(
-                        onDragStart = { offset ->
-                            val v = valueAt(offset.x)
-                            movingStart = abs(v - currentRange.start) <= abs(v - currentRange.endInclusive)
-                        },
-                        onHorizontalDrag = { change, _ ->
-                            val v = valueAt(change.position.x)
-                            val r = currentRange
-                            val new = if (movingStart) {
-                                v.coerceAtMost(r.endInclusive - minGapMs).coerceAtLeast(0f)..r.endInclusive
-                            } else {
-                                r.start..v.coerceAtLeast(r.start + minGapMs).coerceAtMost(durationMs)
-                            }
-                            currentOnChange(new)
-                        },
-                        onDragEnd = { currentOnDragEnd(movingStart) },
-                        onDragCancel = { currentOnDragEnd(movingStart) }
-                    )
-                }
-        ) {
-            val inset = 12.dp.toPx()
-            val left = inset
-            val right = size.width - inset
-            val barHeight = size.height
-            fun xOf(v: Float) = if (durationMs <= 0f) left else left + (right - left) * (v / durationMs)
-            val startX = xOf(range.start)
-            val endX = xOf(range.endInclusive)
-            val dim = Color.Black.copy(alpha = 0.55f)
-            drawRect(dim, topLeft = Offset(left, 0f), size = Size((startX - left).coerceAtLeast(0f), barHeight))
-            drawRect(dim, topLeft = Offset(endX, 0f), size = Size((right - endX).coerceAtLeast(0f), barHeight))
-            val border = 3.dp.toPx()
-            drawRect(
-                AppColors.SelectedYellow,
-                topLeft = Offset(startX, border / 2f),
-                size = Size((endX - startX).coerceAtLeast(0f), barHeight - border),
-                style = Stroke(width = border)
-            )
-            val radius = CornerRadius(6.dp.toPx())
-            drawRoundRect(AppColors.SelectedYellow, topLeft = Offset(startX - inset, 0f), size = Size(inset, barHeight), cornerRadius = radius)
-            drawRoundRect(AppColors.SelectedYellow, topLeft = Offset(endX, 0f), size = Size(inset, barHeight), cornerRadius = radius)
-            val notch = Color.Black.copy(alpha = 0.6f)
-            drawLine(notch, Offset(startX - inset / 2f, barHeight * 0.3f), Offset(startX - inset / 2f, barHeight * 0.7f), 2.dp.toPx())
-            drawLine(notch, Offset(endX + inset / 2f, barHeight * 0.3f), Offset(endX + inset / 2f, barHeight * 0.7f), 2.dp.toPx())
-            val playX = xOf(positionMs.coerceIn(range.start, range.endInclusive))
-            drawLine(Color.White, Offset(playX, 0f), Offset(playX, barHeight), 2.dp.toPx())
-        }
-    }
-}

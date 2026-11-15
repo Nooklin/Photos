@@ -6,6 +6,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +48,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     val contrastColor: StateFlow<ContrastColor> = preferences.contrastColor
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ContrastColor.DEFAULT)
+
+    val colorful: StateFlow<Boolean> = preferences.colorful
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    fun setColorful(colorful: Boolean) {
+        viewModelScope.launch { preferences.setColorful(colorful) }
+    }
 
     fun setContrastColor(color: ContrastColor) {
         viewModelScope.launch { preferences.setContrastColor(color) }
@@ -89,6 +99,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun setMlEnabled(enabled: Boolean) {
+        if (!enabled) {
+            scanJob?.cancel()
+            _scanProgress.value = PhotoAnalysisScanner.ScanProgress(0, 0, done = true)
+        }
         viewModelScope.launch { preferences.setMlEnabled(enabled) }
     }
 
@@ -103,7 +117,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // Lives here, not in a composable, so rotation does not re-lock the app, yet a new process starts locked.
     private val _appUnlocked = MutableStateFlow(false)
     val appUnlocked: StateFlow<Boolean> = _appUnlocked
 
@@ -115,9 +128,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val scanProgress: StateFlow<PhotoAnalysisScanner.ScanProgress?> = _scanProgress
 
     // No-op while a scan runs. Reads the enabled tags fresh, not from a stale StateFlow snapshot.
+    private var scanJob: Job? = null
+
     fun scanLibrary(items: List<MediaItem>) {
         if (_scanProgress.value?.done == false) return
-        viewModelScope.launch {
+        scanJob = viewModelScope.launch {
             val enabledIds = preferences.mlEnabledTags.first()
             val enabledTags = MlTag.entries.filter { it.id in enabledIds && it != MlTag.PETS }.toSet()
             _scanProgress.value = PhotoAnalysisScanner.ScanProgress(0, 0)
@@ -144,7 +159,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // Same as pruneOrphanedMemberships in AlbumViewModel/PetViewModel, for faces and tags
     fun pruneOrphanedAnalysisData(validMediaIds: Set<Long>) {
         viewModelScope.launch {
             personRepository.pruneOrphanedFaces(validMediaIds)
@@ -152,21 +166,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // One-shot fetch, only needed when the Duplicates screen opens
     fun findDuplicateMediaIds(validMediaIds: Set<Long>, onResult: (Set<Long>) -> Unit) {
         viewModelScope.launch {
             onResult(analysisRepository.findDuplicateMediaIds(validMediaIds))
         }
     }
 
-    // Same photos as findDuplicateMediaIds, grouped for the review screen
     fun findDuplicateGroups(validMediaIds: Set<Long>, onResult: (List<List<Long>>) -> Unit) {
         viewModelScope.launch {
             onResult(analysisRepository.findDuplicateGroups(validMediaIds))
         }
     }
 
-    // null means "not loaded yet", distinct from a confirmed false
     val appLockEnabled: StateFlow<Boolean?> = preferences.appLockEnabled
         .map<Boolean, Boolean?> { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -181,16 +192,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     suspend fun verifyHiddenPin(pin: String): Boolean {
-        // While locked out the guess is not even checked, so a correct one cannot get through early.
+        // while locked out the guess is not even checked, so a correct one cannot get through early.
         if (PinAttemptGuard.remainingMs() > 0L) return false
         val hash = preferences.hiddenPinHash.first() ?: return false
-        return recordAttempt(PinHashing.matches(pin, hash))
+        return recordAttempt(withContext(Dispatchers.Default) { PinHashing.matches(pin, hash) })
     }
 
     suspend fun verifyHiddenPinRecoveryCode(code: String): Boolean {
         if (PinAttemptGuard.remainingMs() > 0L) return false
         val hash = preferences.hiddenPinRecoveryHash.first() ?: return false
-        return recordAttempt(PinHashing.matches(code, hash))
+        return recordAttempt(withContext(Dispatchers.Default) { PinHashing.matches(code, hash) })
     }
 
     private suspend fun recordAttempt(correct: Boolean): Boolean {
@@ -201,8 +212,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // New PIN and new recovery code together, the old code is invalidated so it can't work twice
     suspend fun setHiddenPin(pin: String): String {
         val recoveryCode = PinHashing.generateRecoveryCode()
-        preferences.setHiddenPinHash(PinHashing.hashWithNewSalt(pin))
-        preferences.setHiddenPinRecoveryHash(PinHashing.hashWithNewSalt(recoveryCode.replace("-", "")))
+        val (pinHash, recoveryHash) = withContext(Dispatchers.Default) {
+            PinHashing.hashWithNewSalt(pin) to PinHashing.hashWithNewSalt(recoveryCode.replace("-", ""))
+        }
+        preferences.setHiddenPinHash(pinHash)
+        preferences.setHiddenPinRecoveryHash(recoveryHash)
         return recoveryCode
     }
 
@@ -232,10 +246,23 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { preferences.setShareStripOption(category, enabled) }
     }
 
+    val showScreenshotsInLibrary: StateFlow<Boolean> = preferences.showScreenshotsInLibrary
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    fun setShowScreenshotsInLibrary(show: Boolean) {
+        viewModelScope.launch { preferences.setShowScreenshotsInLibrary(show) }
+    }
+
+    val hiddenAutoAlbums: StateFlow<Set<String>> = preferences.hiddenAutoAlbums
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    fun setAutoAlbumHidden(rule: String, hidden: Boolean) {
+        viewModelScope.launch { preferences.setAutoAlbumHidden(rule, hidden) }
+    }
+
     val sharingDisabled: StateFlow<Boolean> = preferences.sharingDisabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
-    // Disable Sharing ON also forces hiddenImageSharingEnabled off, the whole-app switch overrides it
     fun setSharingDisabled(disabled: Boolean) {
         viewModelScope.launch {
             preferences.setSharingDisabled(disabled)

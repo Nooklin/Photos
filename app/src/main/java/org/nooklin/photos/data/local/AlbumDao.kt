@@ -15,8 +15,14 @@ interface AlbumDao {
     @Query("SELECT * FROM album_membership")
     fun observeMemberships(): Flow<List<AlbumMembershipEntity>>
 
-    @Query("SELECT COUNT(*) FROM albums")
-    suspend fun albumCount(): Int
+    @Query("SELECT COUNT(*) FROM albums WHERE id = :albumId")
+    suspend fun albumExists(albumId: Long): Int
+
+    @Query("SELECT id FROM albums WHERE parentId IS NULL AND name = :name COLLATE NOCASE LIMIT 1")
+    suspend fun topLevelAlbumIdByName(name: String): Long?
+
+    @Query("SELECT mediaId FROM album_membership WHERE albumId = :albumId")
+    suspend fun memberIds(albumId: Long): List<Long>
 
     @Insert
     suspend fun insertAlbum(album: AlbumEntity): Long
@@ -30,14 +36,13 @@ interface AlbumDao {
     @Query("DELETE FROM albums WHERE id = :albumId")
     suspend fun deleteAlbumRow(albumId: Long)
 
-    // The memberships of a deleted album or folder go with the cascade, the photos themselves are never touched
+    // the memberships of a deleted album or folder go with the cascade, the photos themselves are never touched
     @Query("DELETE FROM albums WHERE parentId = :albumId")
     suspend fun deleteFoldersOf(albumId: Long)
 
     @Query("SELECT parentId FROM albums WHERE id = :albumId")
     suspend fun parentOf(albumId: Long): Long?
 
-    // A deleted folder gives its photos to the album it sat in
     @Transaction
     suspend fun deleteAlbum(albumId: Long) {
         parentOf(albumId)?.let { reassignMembership(albumId, it) }
@@ -70,7 +75,6 @@ interface AlbumDao {
     @Transaction
     suspend fun mergeAlbums(sourceAlbumId: Long, targetAlbumId: Long) {
         reassignMembership(sourceAlbumId, targetAlbumId)
-        // The folders of the merged album move to the target, their photos stay in them
         moveFolders(sourceAlbumId, targetAlbumId)
         deleteAlbum(sourceAlbumId)
     }

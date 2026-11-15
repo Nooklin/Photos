@@ -26,17 +26,22 @@ import org.nooklin.photos.ui.theme.Spacing
 
 private class ChangelogCategory(@param:StringRes val title: Int, val items: List<Int>)
 
-// What is new in 1.2.0, grouped by the part of the app
+private val changelog130 = listOf(
+    ChangelogCategory(R.string.changelog_cat_library, listOf(R.string.changelog_130_1, R.string.changelog_130_2, R.string.changelog_130_3, R.string.changelog_130_4)),
+    ChangelogCategory(R.string.changelog_cat_selecting, listOf(R.string.changelog_130_5, R.string.changelog_130_6, R.string.changelog_130_7, R.string.changelog_130_8)),
+    ChangelogCategory(R.string.common_hidden_section, listOf(R.string.changelog_130_9, R.string.changelog_130_10)),
+    ChangelogCategory(R.string.changelog_cat_general, listOf(R.string.changelog_130_11))
+)
+
 private val changelog120 = listOf(
     ChangelogCategory(
         R.string.changelog_cat_editing,
         listOf(R.string.changelog_120_1, R.string.changelog_120_2, R.string.changelog_120_3, R.string.changelog_120_4)
     ),
-    ChangelogCategory(R.string.changelog_cat_library, listOf(R.string.changelog_120_5, R.string.changelog_120_6, R.string.changelog_120_7, R.string.changelog_120_8, R.string.changelog_120_10, R.string.changelog_120_11, R.string.changelog_120_12, R.string.changelog_120_13, R.string.changelog_120_14, R.string.changelog_120_15, R.string.changelog_120_16, R.string.changelog_120_17, R.string.changelog_120_18, R.string.changelog_120_19, R.string.changelog_120_20, R.string.changelog_120_21, R.string.changelog_120_22, R.string.changelog_120_23, R.string.changelog_120_24, R.string.changelog_120_25, R.string.changelog_120_26, R.string.changelog_120_27, R.string.changelog_120_28)),
+    ChangelogCategory(R.string.changelog_cat_library, listOf(R.string.changelog_120_5, R.string.changelog_120_6, R.string.changelog_120_7, R.string.changelog_120_8, R.string.changelog_120_10, R.string.changelog_120_11, R.string.changelog_120_12, R.string.changelog_120_13, R.string.changelog_120_14, R.string.changelog_120_15, R.string.changelog_120_16, R.string.changelog_120_17, R.string.changelog_120_18, R.string.changelog_120_19, R.string.changelog_120_20, R.string.changelog_120_21, R.string.changelog_120_22, R.string.changelog_120_23, R.string.changelog_120_24, R.string.changelog_120_25, R.string.changelog_120_26, R.string.changelog_120_27, R.string.changelog_120_28, R.string.changelog_120_29, R.string.changelog_120_30, R.string.changelog_120_31, R.string.changelog_120_32, R.string.changelog_120_33)),
     ChangelogCategory(R.string.common_hidden_section, listOf(R.string.changelog_120_9))
 )
 
-// What is new in 1.1.0, grouped by the part of the app
 private val changelog110 = listOf(
     ChangelogCategory(R.string.changelog_cat_library, listOf(R.string.changelog_110_1, R.string.changelog_110_2)),
     ChangelogCategory(R.string.changelog_cat_selecting, listOf(R.string.changelog_110_4, R.string.changelog_110_7)),
@@ -69,6 +74,7 @@ fun SettingsChangelogScreen(onBack: () -> Unit) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             listOf(
+                R.string.changelog_version_130 to changelog130,
                 R.string.changelog_version_120 to changelog120,
                 R.string.changelog_version_110 to changelog110
             ).forEach { (versionTitle, categories) ->

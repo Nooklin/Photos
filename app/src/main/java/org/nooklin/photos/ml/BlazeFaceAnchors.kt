@@ -5,8 +5,6 @@ import kotlin.math.sqrt
 
 data class Anchor(val xCenter: Float, val yCenter: Float)
 
-// Rebuilds the anchor grid the model was trained against (MediaPipe port).
-// One parameterized generator, no copies. SHORT_RANGE gives 896 anchors, FULL_RANGE 2304.
 object BlazeFaceAnchors {
     data class SsdConfig(
         val numLayers: Int,
@@ -79,7 +77,6 @@ object BlazeFaceAnchors {
                     repeat(anchorsPerPosition) {
                         val xCenter = (x + config.anchorOffsetX) / featureMapSize
                         val yCenter = (y + config.anchorOffsetY) / featureMapSize
-                        // fixed_anchor_size: box size comes from the model output, not the anchors
                         anchors.add(Anchor(xCenter, yCenter))
                     }
                 }
