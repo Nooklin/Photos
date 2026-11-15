@@ -27,10 +27,4 @@
 - App data is excluded from Android backup and device transfer.
 - The video player log no longer writes the location of the file.
 
-## Verify
-
-- File: photos-v1.3.0.apk
-- APK SHA-256: `<paste Get-FileHash output>`
-- Signing certificate SHA-256: `<paste from apksigner verify --print-certs>`
-
 Requires Android 13 or newer.
