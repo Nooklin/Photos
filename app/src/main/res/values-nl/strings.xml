@@ -674,12 +674,19 @@
     <string name="changelog_130_1">De Library-kaart op Home scrolt zijwaarts met het aantal rijen dat je instelt bij Instellingen, Galerij. Mediatypes en Hulpmiddelen scrollen zijwaarts in twee rijen.</string>
     <string name="changelog_130_2">Panorama\'s hebben een eigen categorie onder Mediatypes.</string>
     <string name="changelog_130_3">Albums voor Camera, Screenshots, Downloads en WhatsApp die zichzelf vullen met nieuwe foto\'s. Verberg ze bij Instellingen, Galerij, Automatische albums. Een album dat je verwijdert, blijft verwijderd.</string>
-    <string name="changelog_130_4">Dupliceren zet de kopie naast het origineel en laat dezelfde foto niet meer twee keer zien.</string>
-    <string name="changelog_130_5">Een lange druk opent overal hetzelfde menu: een preview en Selecteren, Aan album toevoegen, Dupliceren en Verbergen. Selecteren start het selecteren, met een veeg selecteer je nog steeds snel meer foto\'s, en Terug annuleert eerst de selectie.</string>
+    <string name="changelog_130_4">Dupliceren zet de kopie naast het origineel en laat dezelfde foto niet meer twee keer zien. In de viewer spring je direct naar de kopie.</string>
+    <string name="changelog_130_5">Een lange druk opent een menu met preview in de galerij, albums, zoeken, Personen, Ontdekt, het Verborgen gedeelte en de Prullenbak. Voor foto\'s in de bibliotheek biedt het Selecteren, Aan album toevoegen, Kopiëren, Dupliceren en Verbergen. Selecteren start het selecteren, met een veeg selecteer je nog steeds snel meer foto\'s, en Terug annuleert eerst de selectie.</string>
     <string name="changelog_130_6">Het filtermenu heeft kopjes: Tonen en Sorteren.</string>
     <string name="changelog_130_7">Een tik op de grijze Deelknop legt uit dat delen uitstaat, met een vinkje om dit niet meer te tonen.</string>
     <string name="changelog_130_8">Het preview bij een lange druk is scherp en zoomt niet meer in tijdens het laden.</string>
     <string name="changelog_130_9">Verbergen vraagt eenmalig toegang tot media. Daarna toont het verbergen van foto\'s geen systeembevestiging meer.</string>
     <string name="changelog_130_10">De pincode van het Verborgen gedeelte heeft minimaal 6 cijfers. Een kortere pincode moet bij de volgende ontgrendeling worden vervangen.</string>
     <string name="changelog_130_11">Kleurrijke weergave staat nu direct onder Thema bij Instellingen, Weergave.</string>
+    <string name="changelog_130_12">Panorama\'s zijn nu alleen brede liggende afbeeldingen. Screenshots en lange smalle strips komen daar niet meer in.</string>
+    <string name="changelog_130_13">Je pincode van het Verborgen gedeelte wordt nu opgeslagen met een tragere, sterkere hash (PBKDF2). Een bestaande pincode blijft werken en wordt bijgewerkt zodra je een pincode opnieuw instelt.</string>
+    <string name="changelog_130_14">Verborgen foto\'s worden tijdens het bekijken niet meer gecachet buiten hun privémap.</string>
+    <string name="changelog_130_15">App-gegevens zijn uitgesloten van Android-back-up en apparaatoverdracht.</string>
+    <string name="changelog_130_16">Terugvegen vanuit een scherm toont geen wit vlak meer.</string>
+    <string name="changelog_130_17">Scrollen en filteren in grote bibliotheken belast de hoofdthread minder.</string>
+    <string name="changelog_130_18">De logregel van de videospeler schrijft de locatie van het bestand niet meer weg.</string>
 </resources>

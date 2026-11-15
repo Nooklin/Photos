@@ -1,6 +1,10 @@
 Version 1.3.0
-- Home: Library card scrolls sideways, Media Types and Utilities in two rows
-- Automatic albums for Camera, Screenshots, Downloads and WhatsApp
-- Same long press menu everywhere, with Select first
-- Hide without a system confirmation after one-time media access
-- Hidden Section PIN has at least 6 digits
+- Library card scrolls sideways, Media Types and Utilities in two rows
+- Automatic albums for Camera, Screenshots, Downloads, WhatsApp
+- Long press menu with preview everywhere, Select first
+- Panoramas: only wide landscape pictures
+- Hide without system confirmation after one-time media access
+- Hidden PIN: 6+ digits, stored with PBKDF2
+- Hidden photos no longer cached outside their private folder
+- App data excluded from backup
+- No white flash when swiping back

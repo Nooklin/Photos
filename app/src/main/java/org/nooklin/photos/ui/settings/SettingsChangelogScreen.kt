@@ -27,10 +27,10 @@ import org.nooklin.photos.ui.theme.Spacing
 private class ChangelogCategory(@param:StringRes val title: Int, val items: List<Int>)
 
 private val changelog130 = listOf(
-    ChangelogCategory(R.string.changelog_cat_library, listOf(R.string.changelog_130_1, R.string.changelog_130_2, R.string.changelog_130_3, R.string.changelog_130_4)),
+    ChangelogCategory(R.string.changelog_cat_library, listOf(R.string.changelog_130_1, R.string.changelog_130_2, R.string.changelog_130_12, R.string.changelog_130_3, R.string.changelog_130_4)),
     ChangelogCategory(R.string.changelog_cat_selecting, listOf(R.string.changelog_130_5, R.string.changelog_130_6, R.string.changelog_130_7, R.string.changelog_130_8)),
-    ChangelogCategory(R.string.common_hidden_section, listOf(R.string.changelog_130_9, R.string.changelog_130_10)),
-    ChangelogCategory(R.string.changelog_cat_general, listOf(R.string.changelog_130_11))
+    ChangelogCategory(R.string.common_hidden_section, listOf(R.string.changelog_130_9, R.string.changelog_130_10, R.string.changelog_130_13, R.string.changelog_130_14)),
+    ChangelogCategory(R.string.changelog_cat_general, listOf(R.string.changelog_130_11, R.string.changelog_130_15, R.string.changelog_130_16, R.string.changelog_130_17, R.string.changelog_130_18))
 )
 
 private val changelog120 = listOf(
