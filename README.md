@@ -1,97 +1,86 @@
-# Nooklin Photos
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Nooklin/Photos/main/assets/banner.svg" alt="Nooklin Photos" width="100%">
+</p>
 
-A privacy-first, open-source photo gallery for Android. No Google Play Services, no internet permission, no telemetry.
+<h1 align="center">Nooklin Photos</h1>
 
-Part of the Nooklin FOSS Android suite. License: GPL-3.0. Fonts: Work Sans and Inter (SIL Open Font License 1.1, see THIRD-PARTY-LICENSES).
+<p align="center">
+  A privacy-first, open-source photo gallery for Android with a little iOS design influence.<br />
+  No Google Play Services, no internet permission, no telemetry.
+</p>
 
-## Version 1.3.0 change log
+<p align="center">
+  <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/license-GPL--3.0-F2B84B?style=for-the-badge&labelColor=2A1F1D" alt="License GPL-3.0" /></a>
+  <img src="https://img.shields.io/badge/platform-Android%2013%2B-E2603B?style=for-the-badge&labelColor=2A1F1D" alt="Platform Android 13 or newer" />
+  <img src="https://img.shields.io/badge/telemetry-none-F2B84B?style=for-the-badge&labelColor=2A1F1D" alt="No telemetry" />
+  <img src="https://img.shields.io/badge/ads-none-E2603B?style=for-the-badge&labelColor=2A1F1D" alt="No ads" />
+  <a href="mailto:info@nooklin.org"><img src="https://img.shields.io/badge/contact-info%40nooklin.org-F2B84B?style=for-the-badge&labelColor=2A1F1D" alt="Contact" /></a>
+</p>
 
-### Library and Home
-- The Library card on Home scrolls sideways with the number of rows you set in Settings, Gallery. Media Types and Utilities scroll sideways in two rows.
-- Panoramas have their own category under Media Types. Only wide landscape pictures count, screenshots and tall strips do not.
-- Albums for Camera, Screenshots, Downloads and WhatsApp that fill themselves with new photos. Hide them under Settings, Gallery, Automatic albums. An album you delete stays deleted.
-- Duplicate puts the copy next to the original and no longer shows the same photo twice. In the viewer you jump straight to the copy.
-- Scrolling and filtering large libraries puts less work on the main thread.
+<p align="center">
+  <a href="#-install"><img src="https://img.shields.io/badge/Install-2A1F1D?style=for-the-badge" alt="Install" /></a>
+  <a href="#-features"><img src="https://img.shields.io/badge/Features-2A1F1D?style=for-the-badge" alt="Features" /></a>
+  <a href="#-privacy"><img src="https://img.shields.io/badge/Privacy-2A1F1D?style=for-the-badge" alt="Privacy" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Changelog-2A1F1D?style=for-the-badge" alt="Changelog" /></a>
+  <a href="#-get-involved"><img src="https://img.shields.io/badge/Get%20involved-2A1F1D?style=for-the-badge" alt="Get involved" /></a>
+</p>
 
-### Selecting and menus
-- A long press opens a menu with a preview in the gallery, albums, search, People, Discovered, the Hidden Section and the Recycle Bin. For photos in the library it offers Select, Add to Album, Copy, Duplicate and Hide. Select starts selecting, a swipe still selects several photos, and Back first cancels the selection.
-- The filter menu has headings: Show and Sort.
-- A tap on the greyed Share button explains that sharing is turned off, with a box to not show it again.
-- The long press preview is sharp and no longer zooms in when it loads.
-- Swiping back from a screen no longer flashes a white area.
+<p align="center"><img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/divider.svg" width="100%" height="6" alt="" /></p>
 
-### Hidden Section
-- Hide asks for access to media once. After that, hiding photos no longer shows the system confirmation.
-- The PIN has at least 6 digits. A shorter PIN has to be replaced the next time you unlock.
-- The PIN is stored with a slower, stronger hash (PBKDF2). An existing PIN keeps working and is upgraded the next time you set a PIN.
-- Hidden photos are no longer cached outside their private folder while you browse them.
+<h2 align="center">🎯 Our Mission</h2>
 
-### General
-- Colorful display is now right under Theme in Settings, Appearance.
-- App data is excluded from Android backup and device transfer.
-- The video player log no longer writes the location of the file.
+<p align="center"><b><i>Your photos should stay yours.</i></b></p>
 
-## Version 1.2.0 change log
+<p align="center">Nooklin Photos is a gallery that works fully offline. Browse, edit, search and organize your photos and videos, with on-device face recognition and a locked Hidden section, and nothing ever leaves your phone unless you share it yourself. Part of the <a href="https://github.com/Nooklin">Nooklin</a> suite of free Android apps.</p>
 
-### Editing
-- Video editor: the trim bar shows a strip of frames and a line where the player is, and Styles and Crop work on videos too.
-- Styles for video: the same filters as for photos, with a live preview. A filtered video is saved as a new clip.
-- Crop for video: the same aspect ratios, straighten, rotate and flip as for photos. A cropped video is saved as a new clip. Perspective is for photos only.
-- A cleaner Crop screen for photos and videos like on iOS: rotate, flip and aspect ratio in a row above the picture, and a ruler below for Straighten (and Vertical and Horizontal for photos).
-- Photo and video editor share one design: the same icon bar as the viewer, the same red Revert button.
-- Video editor: the preview shows a paused still frame with the edits live. The Save menu has Save Video (over the original, Revert restores it) and Save Video as New Clip. Revert brings the video back to the original, whatever was changed (trim, filter or both).
+<h2 align="center">🛡️ Principles</h2>
 
-### Library and Home
-- A photo or video opened from the camera app opens in the normal viewer: swipe through the Library and use every viewer option. Back returns to the camera app.
-- Folders inside albums, for example the album Holidays with the folders Location 1 and Location 2. Add one with New Folder in the album menu. Add photos with Add to Album, where a folder is named Album / Folder. Deleting a folder, or an album with folders, asks first and never deletes photos. Also in Hidden albums.
-- Album screen with a big photo at the top (the newest, or a cover photo you choose in the album menu with Choose cover photo), the folders as a list, and a play button for a full screen slideshow of the photos (slow zoom in and out, a dissolve between photos, now and then two photos above each other, a tap shows Back, Pause and a strip with all photos in order). The menu items are Rename Album and Rename Folder. Also in Hidden albums. The count of an album includes the photos in its folders, and an album with folders shows the front of its first 4 folders.
-- A long press on an album in the Albums and Hidden albums overviews opens a menu with Share, Rename, New Folder, Merge and Delete, and a long press on a folder opens Rename and Delete.
-- Inter (SIL Open Font License) as extra font, explanations split into short paragraphs and lists, the same row height in all Settings screens.
-- Exports and backups keep the original file names and dates (metadata.json in every zip). The Hidden Section remembers the original name and dates, and Unhide restores them.
-- Favorites has the top of an album (big photo, title, count, play button), also in Hidden. Hidden locks the moment you leave the app. An album with 2 or more folders always shows 4 cells. Settings is more compact and the Hidden Section has its own block.
-- The Hidden Section has a Calendar (under Utilities) and its Settings are grouped: Security, Display, Backup & Import.
-- Library Backup (a zip of the library, flat or organized by album and folder) and Import folder structure for the normal library, in Settings, under one entry Backup & Import. Import ignores leftover files when checking duplicates. A deleted folder gives its photos to the album it was in. In select mode the X is now a red Cancel button.
-- Swipe to select: a sideways swipe over photos in select mode selects whole rows (also moving down) and swiping over selected photos deselects them. The check mark on a selected photo has a white ring.
-- Import a folder structure (or a zip) into the Hidden Section, from Settings > Hidden Section > Import folder structure. Folders become albums and folders, photos that are already hidden are skipped and listed, the original dates stay, and the originals or the zip can be deleted afterwards.
-- Long press on a photo or video in the Library shows it small with a menu: Share, Favorite, Delete, Copy, Duplicate, Hide and Add to Album. Tap the photo to open it. (Long press used to toggle Favorite.)
-- Design: bigger tap areas on small buttons with press feedback only on the circle, a darker red for better contrast, editor choices survive Android closing the app, empty screens have a Back button, clearer error messages.
+<div align="center">
+<table align="center">
+  <tr align="center">
+    <td align="center" width="25%" valign="top">
+      <img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/principle-no-play-services.svg" width="56" height="56" alt="" />
+      <h4 align="center">No Play Services</h4>
+      <p align="center">No Google Play Services dependencies.</p>
+    </td>
+    <td align="center" width="25%" valign="top">
+      <img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/principle-no-telemetry.svg" width="56" height="56" alt="" />
+      <h4 align="center">No telemetry</h4>
+      <p align="center">No analytics, no crash reporting, no tracking.</p>
+    </td>
+    <td align="center" width="25%" valign="top">
+      <img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/principle-no-ads.svg" width="56" height="56" alt="" />
+      <h4 align="center">No ads</h4>
+      <p align="center">Ever.</p>
+    </td>
+    <td align="center" width="25%" valign="top">
+      <img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/principle-open-source.svg" width="56" height="56" alt="" />
+      <h4 align="center">Open source</h4>
+      <p align="center">GPL-3.0, so every derivative work stays free too.</p>
+    </td>
+  </tr>
+</table>
+</div>
 
-## Version 1.1.0 change log
+<p align="center"><img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/divider.svg" width="100%" height="6" alt="" /></p>
 
-### Library and Home
-- Timeline bar in the Library: Years, Months and All.
-- Calendar view, under Utilities on Home.
+<h2 align="center">📲 Install</h2>
 
-### Selecting and menus
-- Select and a menu in every group of photos: Media Types, Utilities, albums, the Albums overview, Hidden albums, Search and pets.
-- The same style for Select, menus and round buttons on every screen with a group of photos or albums, with icons in the menus.
+<p align="center">Download the APK from the latest release and check it against the hashes in the release notes (see <a href="#verify-a-release-apk">Verify a release APK</a>), or let Obtainium keep it up to date.</p>
 
-### Sharing
-- Remove metadata when sharing: all Exif, XMP and IPTC data from JPEG photos, videos are copied without their tags, and you choose what is removed (Location, Camera and device, Date and time, Description and other).
-- Share sheet: a row with the apps that accept the share, Print and Use as Wallpaper for one photo, and Cancel while a share is being prepared.
+<p align="center">
+  <a href="https://github.com/Nooklin/Photos/releases/latest"><img src="https://img.shields.io/github/v/release/Nooklin/Photos?include_prereleases&label=release&style=flat-square&labelColor=2A1F1D&color=C98A1F" alt="Latest release" /></a>
+</p>
 
-### Machine Learning
-- Duplicates review: visually similar photos in groups, keep one and clean up the rest. Switch on Duplicates under Machine Learning first.
+<p align="center">
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Nooklin/Photos"><img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png?raw=true" alt="Get Photos on Obtainium" height="80"></a>
+</p>
 
-### Hidden Section
-- Hidden Recently Deleted stays private inside the app.
+<p align="center">Requires Android 13 (API 33) or newer.</p>
 
-### General
-- Open photos and videos from other apps, and choose a photo or video for other apps.
-- English and Dutch. Pick a language under Settings, Appearance.
-- A new How to use page, as a tree that is closed by default.
-- Settings are grouped in blocks, and the version and this change log are in Settings, About.
-- A new app icon.
+<p align="center"><img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/divider.svg" width="100%" height="6" alt="" /></p>
 
-## Privacy
-
-- The app requests no internet permission, so it cannot send anything off the device.
-- No analytics, crash reporting or telemetry of any kind.
-- No Google Play Services dependency.
-- Face and pet analysis runs fully on the device, using bundled models.
-- Photos leave the device only when you share, print or send them to another app yourself.
-
-## Features
+<h2 align="center">✨ Features</h2>
 
 - Photo and video grid with a full-screen viewer (swipe, pinch-zoom, video playback)
 - Albums, favorites, screenshots, videos, panoramas
@@ -111,7 +100,18 @@ Part of the Nooklin FOSS Android suite. License: GPL-3.0. Fonts: Work Sans and I
 - Light, dark or system theme; square or aspect-ratio grid
 - Available in English and Dutch; follows the system language or can be set per app
 
-## What you need to do yourself
+<h2 align="center">🔒 Privacy</h2>
+
+- The app requests no internet permission.
+- No analytics, crash reporting or telemetry of any kind.
+- No Google Play Services dependency.
+- Face analysis runs fully on the device, using bundled models.
+- App data is excluded from Android backup and device transfer.
+- Photos leave the device only when you share, print or send them to another app yourself.
+
+<p align="center"><img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/divider.svg" width="100%" height="6" alt="" /></p>
+
+<h2 align="center">🧭 What you need to do yourself</h2>
 
 Some features do nothing until you set them up:
 
@@ -120,9 +120,10 @@ Some features do nothing until you set them up:
 - **Cars and Motorcycles:** the same scan finds these, no further steps.
 - **Scan finished notification (optional):** switch it on in Settings, Notifications, and allow notifications when Android asks.
 - **Language:** the app follows the system language. To pick one yourself, open Settings, Appearance, Language.
+- **Hiding photos:** the first time you hide a photo, Android asks you to allow media management for Nooklin Photos. After you allow it once, hiding no longer shows the system confirmation.
 - **Hidden section:** it is locked with your phone's own biometric or screen lock, so set one up in Android first.
 
-## Known limits
+<h2 align="center">⚠️ Known limits</h2>
 
 - RAW photos can be viewed where Android can decode them, but not edited.
 - A video with a filter or crop is encoded again as H.264 and saved as a new clip. This can take a while for long videos, and some videos (for example 10-bit HDR) may not export on every phone.
@@ -134,20 +135,42 @@ Some features do nothing until you set them up:
 - Scrolling in very large libraries (10k+ photos) has not been tested yet.
 - Release builds are not minified (R8 is off).
 
-## Build
+<h2 align="center">📜 Changelog</h2>
+
+<p align="center">The full history is in <a href="CHANGELOG.md">CHANGELOG.md</a>. Every release also has its own notes on the <a href="https://github.com/Nooklin/Photos/releases">releases page</a>.</p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/divider.svg" width="100%" height="6" alt="" /></p>
+
+<h2 align="center">🛠️ Build</h2>
 
 Requires Android Studio with JDK 17 or newer installed locally (the build does not download a JDK), Android 13 (API 33) or newer to run.
 
-    .\gradlew assembleDebug
+```
+.\gradlew assembleDebug
+```
 
 For a signed release, copy `keystore.properties.example` to `keystore.properties`, fill it in, then run `.\gradlew assembleRelease`. Never commit the keystore or `keystore.properties`.
 
-## Verify a release APK
+<h2 align="center" id="verify-a-release-apk">✅ Verify a release APK</h2>
 
-    apksigner verify --print-certs photos-v1.0.0.apk
+```
+apksigner verify --print-certs photos-v1.0.0.apk
+```
 
 Compare the certificate SHA-256 with the value in the release notes, and check the file hash with `Get-FileHash photos-v1.0.0.apk` (PowerShell) or `sha256sum photos-v1.0.0.apk`.
 
-## Issues and feature requests
+<h2 align="center">📄 License</h2>
 
-Use the GitHub issue tracker: https://github.com/Nooklin/Photos/issues
+<p align="center">GPL-3.0: free to use, free to modify, and any derivative work stays free too. Fonts: Work Sans and Inter (SIL Open Font License 1.1, see THIRD-PARTY-LICENSES).</p>
+
+<h2 align="center">🤝 Get involved</h2>
+
+<p align="center">Found a bug or have an idea? Open an issue on the <a href="https://github.com/Nooklin/Photos/issues">GitHub issue tracker</a>.</p>
+
+<p align="center">Have a question, or just want to say hi? Reach out at <a href="mailto:info@nooklin.org">info@nooklin.org</a>.</p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/divider.svg" width="100%" height="6" alt="" /></p>
+
+<p align="center">
+  <sub>Nooklin Photos · Free, open-source Android app under GPL-3.0 · <a href="mailto:info@nooklin.org">info@nooklin.org</a></sub>
+</p>
