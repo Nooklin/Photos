@@ -23,3 +23,7 @@ Thumbs.db
 # Captures and reports
 captures/
 *.hprof
+
+release-photos.ps1
+AUDIT.md
+SCOPE.md
