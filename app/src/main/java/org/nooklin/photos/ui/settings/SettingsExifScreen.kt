@@ -26,7 +26,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import org.nooklin.photos.data.local.ShareStripOptions
 import org.nooklin.photos.data.local.StripCategory
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
@@ -59,8 +58,9 @@ fun SettingsExifScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SettingsHeading(appString(R.string.common_sharing))
             SettingsGroup(
-                appString(R.string.common_sharing),
+                null,
                 listOf({
                     SettingsToggleRow(
                         appString(R.string.settings_exif_disable_sharing),
@@ -76,23 +76,19 @@ fun SettingsExifScreen(
                     )
                 })
             )
-            Text(
-                appString(R.string.settings_exif_on_by_default_turns_off),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
+            SettingsHint(appString(R.string.settings_exif_on_by_default_turns_off))
 
+            SettingsHeading(appString(R.string.settings_exif_exif_data))
             SettingsGroup(
-                appString(R.string.settings_exif_exif_data),
+                null,
                 listOf({ SettingsToggleRow(appString(R.string.settings_exif_remove_exif_data_when_sharing), removeExifOnShare, Icons.Filled.LocationOff, onCheckedChange = onRemoveExifOnShareChange) })
             )
-            Text(
-                appString(R.string.settings_exif_when_on_the_default_sharing),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
+            SettingsHint(appString(R.string.settings_exif_when_on_the_default_sharing))
 
             if (removeExifOnShare) {
+                SettingsHeading(appString(R.string.settings_exif_what_to_remove))
                 SettingsGroup(
-                    appString(R.string.settings_exif_what_to_remove),
+                    null,
                     listOf(
                         { SettingsToggleRow(appString(R.string.settings_exif_strip_location), stripOptions.location, Icons.Filled.LocationOn, onCheckedChange = { onStripOptionChange(StripCategory.LOCATION, it) }) },
                         { SettingsToggleRow(appString(R.string.settings_exif_strip_camera), stripOptions.camera, Icons.Filled.CameraAlt, onCheckedChange = { onStripOptionChange(StripCategory.CAMERA, it) }) },
@@ -100,10 +96,7 @@ fun SettingsExifScreen(
                         { SettingsToggleRow(appString(R.string.settings_exif_strip_description), stripOptions.description, Icons.Filled.Description, onCheckedChange = { onStripOptionChange(StripCategory.DESCRIPTION, it) }) }
                     )
                 )
-                Text(
-                    appString(R.string.settings_exif_what_to_remove_help),
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-                )
+                SettingsHint(appString(R.string.settings_exif_what_to_remove_help))
             }
         }
     }

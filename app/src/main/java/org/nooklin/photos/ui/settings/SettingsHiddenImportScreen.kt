@@ -193,10 +193,7 @@ fun SettingsHiddenImportScreen(
     ) { padding ->
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(padding)) {
             item {
-                Text(
-                    appString(if (hidden) R.string.import_row_info else R.string.import_row_info_library),
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = Spacing.Lg)
-                )
+                SettingsHint(appString(if (hidden) R.string.import_row_info else R.string.import_row_info_library))
                 Text(
                     appString(R.string.import_how_title),
                     fontWeight = FontWeight.Bold,
@@ -205,7 +202,7 @@ fun SettingsHiddenImportScreen(
                 Text(
                     appString(R.string.import_how_steps),
                     lineHeight = 24.sp,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
+                    modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
                 )
                 Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { folderLauncher.launch(null) }, enabled = progress == null && !scanning) {
@@ -230,7 +227,7 @@ fun SettingsHiddenImportScreen(
                 Text(
                     appString(R.string.import_example_title),
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = Spacing.Xl, bottom = 8.dp)
+                    modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = Spacing.Xl, bottom = 8.dp)
                 )
                 Text(
                     appString(R.string.import_example),
@@ -246,7 +243,7 @@ fun SettingsHiddenImportScreen(
                 Text(
                     appString(if (hidden) R.string.import_rules else R.string.import_rules_library),
                     lineHeight = 24.sp,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = Spacing.Lg, bottom = 16.dp)
+                    modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = Spacing.Lg, bottom = 16.dp)
                 )
             }
             if (scanning) {
@@ -266,7 +263,7 @@ fun SettingsHiddenImportScreen(
                     Text(
                         appString(if (source?.isZip == true) R.string.import_selected_zip else R.string.import_selected_folder, sourceName),
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
+                        modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = 8.dp)
                     )
                 }
                 item {

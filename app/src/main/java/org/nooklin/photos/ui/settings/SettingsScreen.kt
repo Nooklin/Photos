@@ -66,51 +66,41 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SettingsHeading(appString(R.string.settings_head_general))
             SettingsGroup(
                 null,
                 listOf(
                     { SettingsNavRow(appString(R.string.common_appearance), Icons.Filled.Palette) { onNavigate("appearance") } },
-                    { SettingsNavRow(appString(R.string.common_gallery), Icons.Filled.PhotoLibrary) { onNavigate("gallery") } }
+                    { SettingsNavRow(appString(R.string.common_gallery), Icons.Filled.PhotoLibrary) { onNavigate("gallery") } },
+                    { SettingsNavRow(appString(R.string.common_notifications), Icons.Filled.Notifications) { onNavigate("notifications") } }
                 )
             )
-            Spacer(Modifier.height(8.dp))
+            SettingsHeading(appString(R.string.settings_head_library))
             SettingsGroup(
                 null,
                 listOf(
-                    { SettingsNavRow(appString(R.string.settings_backup_import_row), Icons.Filled.CloudUpload) { onNavigate("backupimport") } }
+                    { SettingsNavRow(appString(R.string.settings_backup_import_row), Icons.Filled.CloudUpload) { onNavigate("backupimport") } },
+                    { SettingsNavRow(appString(R.string.common_machine_learning), Icons.Filled.Psychology) { onNavigate("machinelearning") } }
                 )
             )
-            Spacer(Modifier.height(8.dp))
+            SettingsHeading(appString(R.string.settings_head_privacy))
             SettingsGroup(
                 null,
                 listOf(
                     { SettingsNavRow(appString(R.string.common_privacy), Icons.Filled.Lock) { onNavigate("security") } },
-                    { SettingsNavRow(appString(R.string.common_sharing), Icons.Filled.Share) { onNavigate("exif") } }
-                )
-            )
-            Spacer(Modifier.height(8.dp))
-            SettingsGroup(
-                null,
-                listOf(
+                    { SettingsNavRow(appString(R.string.common_sharing), Icons.Filled.Share) { onNavigate("exif") } },
                     { SettingsNavRow(appString(R.string.common_hidden_section), Icons.Filled.VisibilityOff) { onNavigate("hiddensection") } }
                 )
             )
-            Spacer(Modifier.height(8.dp))
+            SettingsHeading(appString(R.string.settings_head_about))
             SettingsGroup(
                 null,
                 listOf(
-                    { SettingsNavRow(appString(R.string.common_machine_learning), Icons.Filled.Psychology) { onNavigate("machinelearning") } }
-                )
-            )
-            Spacer(Modifier.height(8.dp))
-            SettingsGroup(
-                null,
-                listOf(
-                    { SettingsNavRow(appString(R.string.common_notifications), Icons.Filled.Notifications) { onNavigate("notifications") } },
                     { SettingsNavRow(appString(R.string.common_help_support), Icons.AutoMirrored.Filled.Help) { onNavigate("help") } },
                     { SettingsNavRow(appString(R.string.common_about), Icons.Filled.Info) { onNavigate("about") } }
                 )
             )
+            Spacer(Modifier.height(16.dp))
         }
     }
 }

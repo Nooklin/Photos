@@ -1,6 +1,9 @@
 package org.nooklin.photos.ui.hidden
 
 
+import org.nooklin.photos.data.local.AlbumOrder
+import org.nooklin.photos.data.local.sortedAlbums
+import org.nooklin.photos.ui.albums.HomeAlbumRows
 import org.nooklin.photos.ui.common.FlatRowTile
 import org.nooklin.photos.ui.common.FlatBlock
 import org.nooklin.photos.ui.common.TileSpec
@@ -20,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -30,7 +32,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,7 +52,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -82,7 +82,6 @@ import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import androidx.compose.ui.semantics.Role
-import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 import org.nooklin.photos.ui.common.TouchTargetBox
 
@@ -91,6 +90,8 @@ import org.nooklin.photos.ui.common.TouchTargetBox
 fun HiddenHomeScreen(
     items: List<HiddenItem>,
     albums: List<HiddenAlbumWithPreview>,
+    albumOrder: AlbumOrder,
+    previewsOff: Boolean,
     hiddenAlbumsEnabled: Boolean,
     gridColumns: Int,
     hiddenSections: Set<HomeSection> = emptySet(),
@@ -121,7 +122,9 @@ fun HiddenHomeScreen(
         if (items.isEmpty()) 0 else ceil(items.size / previewColumns.toFloat()).toInt()
     )
 
-    val homeAlbums = albums.sortedByDescending { it.itemCount }.take(10)
+    val homeAlbums = remember(albums, albumOrder) {
+        albums.sortedAlbums(albumOrder.homeSort, albumOrder.manual, { it.id }, { it.name }, { it.itemCount })
+    }
 
     var albumsExpanded by remember { mutableStateOf(true) }
     var mediaTypesExpanded by remember { mutableStateOf(true) }
@@ -217,19 +220,13 @@ fun HiddenHomeScreen(
                                 titleFontSize = 20.sp
                             ) { albumsExpanded = !albumsExpanded }
                             if (albumsExpanded) {
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    items(homeAlbums.size, key = { homeAlbums[it].id }) { index ->
-                                        val album = homeAlbums[index]
-                                        Column(
-                                            Modifier.width(136.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
-                                        ) {
-                                            HiddenAlbumThumbnail(album.previewFiles, size = 136.dp, fillSlots = album.folderCount >= 2, corner = 18.dp)
-                                            Text(album.name, maxLines = 1, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-                                            Text(appString(R.string.common_items, album.itemCount), color = Color.Gray, fontSize = 13.sp)
-                                        }
+                                HomeAlbumRows(homeAlbums, albumOrder.homeRows, key = { it.id }) { album ->
+                                    Column(
+                                        Modifier.width(136.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
+                                    ) {
+                                        HiddenAlbumThumbnail(album.previewFiles, size = 136.dp, fillSlots = album.folderCount >= 2, corner = 18.dp, previewOff = previewsOff)
+                                        Text(album.name, maxLines = 1, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+                                        Text(appString(R.string.common_items, album.itemCount), color = Color.Gray, fontSize = 13.sp)
                                     }
                                 }
                             }

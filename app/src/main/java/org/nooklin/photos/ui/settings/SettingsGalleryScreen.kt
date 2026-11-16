@@ -2,19 +2,14 @@ package org.nooklin.photos.ui.settings
 
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.Screenshot
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -23,7 +18,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import org.nooklin.photos.data.local.GridStyle
 import org.nooklin.photos.data.local.GroupBy
 import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
@@ -64,97 +58,86 @@ fun SettingsGalleryScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-            SettingsSectionTitle(appString(R.string.settings_gallery_photo_grid_size))
-            Row(
-                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                (MIN_GRID_COLUMNS..MAX_GRID_COLUMNS).forEach { count ->
-                    FilterChip(
-                        selected = gridColumns == count,
-                        onClick = { onGridColumnsChange(count) },
-                        label = { Text("$count") }
-                    )
-                }
-            }
-
-            SettingsSectionTitle(appString(R.string.settings_gallery_home_library_preview_rows))
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                (MIN_LIBRARY_PREVIEW_ROWS..MAX_LIBRARY_PREVIEW_ROWS).forEach { count ->
-                    FilterChip(
-                        selected = libraryPreviewRows == count,
-                        onClick = { onLibraryPreviewRowsChange(count) },
-                        label = { Text("$count") }
-                    )
-                }
-            }
-            Text(
-                appString(R.string.settings_gallery_how_many_rows_of_thumbnails),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
-            )
-
+            SettingsHeading(appString(R.string.settings_head_grid))
             SettingsGroup(
-                appString(R.string.settings_gallery_ratio),
-                listOf(
-                    GridStyle.SQUARE to appString(R.string.settings_gallery_square),
-                    GridStyle.ORIGINAL to appString(R.string.settings_gallery_aspect)
-                ).map { (style, label) ->
-                    { SettingsRadioRow(label, gridStyle == style) { onGridStyleChange(style) } }
-                }
-            )
-
-            SettingsGroup(
-                appString(R.string.settings_gallery_group_by),
-                listOf(
-                    GroupBy.NONE to appString(R.string.settings_gallery_none),
-                    GroupBy.DAY to appString(R.string.settings_gallery_day),
-                    GroupBy.WEEK to appString(R.string.settings_gallery_week),
-                    GroupBy.MONTH to appString(R.string.settings_gallery_month),
-                    GroupBy.YEAR to appString(R.string.settings_gallery_year)
-                ).map { (mode, label) ->
-                    { SettingsRadioRow(label, groupBy == mode) { onGroupByChange(mode) } }
-                }
-            )
-            Text(
-                appString(R.string.settings_gallery_applies_to_the_full_library),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
-            )
-
-            SettingsToggleRow(
-                label = appString(R.string.settings_gallery_show_screenshots),
-                checked = showScreenshotsInLibrary,
-                icon = Icons.Filled.Screenshot,
-                onCheckedChange = onShowScreenshotsInLibraryChange
-            )
-            Text(
-                appString(R.string.settings_gallery_show_screenshots_hint),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
-            )
-
-            SettingsSectionTitle(appString(R.string.settings_auto_albums))
-            listOf(
-                "camera" to "Camera",
-                "screenshots" to "Screenshots",
-                "downloads" to "Downloads",
-                "whatsapp" to "WhatsApp"
-            ).forEach { (rule, name) ->
-                SettingsToggleRow(
-                    label = name,
-                    checked = rule !in hiddenAutoAlbums,
-                    icon = Icons.Filled.PhotoAlbum,
-                    onCheckedChange = { show -> onAutoAlbumHiddenChange(rule, !show) }
+                null,
+                listOf<@Composable () -> Unit>(
+                    {
+                        SettingsChoiceRow(
+                            appString(R.string.settings_gallery_photo_grid_size),
+                            (MIN_GRID_COLUMNS..MAX_GRID_COLUMNS).map { it to "$it" },
+                            gridColumns
+                        ) { onGridColumnsChange(it) }
+                    },
+                    {
+                        SettingsChoiceRow(
+                            appString(R.string.settings_gallery_ratio),
+                            listOf(
+                                GridStyle.SQUARE to appString(R.string.settings_gallery_square),
+                                GridStyle.ORIGINAL to appString(R.string.settings_gallery_aspect)
+                            ),
+                            gridStyle
+                        ) { onGridStyleChange(it) }
+                    },
+                    {
+                        SettingsChoiceRow(
+                            appString(R.string.settings_gallery_group_by),
+                            listOf(
+                                GroupBy.NONE to appString(R.string.settings_gallery_none),
+                                GroupBy.DAY to appString(R.string.settings_gallery_day),
+                                GroupBy.WEEK to appString(R.string.settings_gallery_week),
+                                GroupBy.MONTH to appString(R.string.settings_gallery_month),
+                                GroupBy.YEAR to appString(R.string.settings_gallery_year)
+                            ),
+                            groupBy
+                        ) { onGroupByChange(it) }
+                    }
                 )
-            }
-            Text(
-                appString(R.string.settings_auto_albums_hint),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
             )
+            SettingsHint(appString(R.string.settings_gallery_applies_to_the_full_library))
+
+            SettingsHeading(appString(R.string.settings_head_home))
+            SettingsGroup(
+                null,
+                listOf<@Composable () -> Unit>({
+                    SettingsChoiceRow(
+                        appString(R.string.settings_gallery_home_library_preview_rows),
+                        (MIN_LIBRARY_PREVIEW_ROWS..MAX_LIBRARY_PREVIEW_ROWS).map { it to "$it" },
+                        libraryPreviewRows
+                    ) { onLibraryPreviewRowsChange(it) }
+                })
+            )
+            SettingsHint(appString(R.string.settings_gallery_how_many_rows_of_thumbnails))
+
+            SettingsHeading(appString(R.string.common_albums))
+            AlbumHomeSettings(
+                hidden = false,
+                extra = listOf("camera" to "Camera", "screenshots" to "Screenshots", "downloads" to "Downloads", "whatsapp" to "WhatsApp").map { (rule, name) ->
+                    {
+                        SettingsToggleRow(
+                            label = name,
+                            checked = rule !in hiddenAutoAlbums,
+                            icon = Icons.Filled.PhotoAlbum,
+                            onCheckedChange = { show -> onAutoAlbumHiddenChange(rule, !show) }
+                        )
+                    }
+                }
+            )
+            SettingsHint(appString(R.string.settings_auto_albums_hint))
+
+            SettingsHeading(appString(R.string.settings_head_library))
+            SettingsGroup(
+                null,
+                listOf<@Composable () -> Unit>({
+                    SettingsToggleRow(
+                        label = appString(R.string.settings_gallery_show_screenshots),
+                        checked = showScreenshotsInLibrary,
+                        icon = Icons.Filled.Screenshot,
+                        onCheckedChange = onShowScreenshotsInLibraryChange
+                    )
+                })
+            )
+            SettingsHint(appString(R.string.settings_gallery_show_screenshots_hint))
         }
     }
 }

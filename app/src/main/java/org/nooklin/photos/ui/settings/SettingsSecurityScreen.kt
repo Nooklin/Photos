@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
@@ -44,23 +43,19 @@ fun SettingsSecurityScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SettingsHeading(appString(R.string.common_app_lock))
             SettingsGroup(
-                appString(R.string.common_app_lock),
+                null,
                 listOf({ SettingsToggleRow(appString(R.string.common_app_lock), appLockEnabled, Icons.Filled.Lock, onCheckedChange = onAppLockEnabledChange) })
             )
-            Text(
-                appString(R.string.settings_security_app_lock_uses_your_device),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
+            SettingsHint(appString(R.string.settings_security_app_lock_uses_your_device))
 
+            SettingsHeading(appString(R.string.common_screenshots))
             SettingsGroup(
-                appString(R.string.common_screenshots),
+                null,
                 listOf({ SettingsToggleRow(appString(R.string.common_disable_screenshots), disableScreenshots, Icons.Filled.Screenshot, onCheckedChange = onDisableScreenshotsChange) })
             )
-            Text(
-                appString(R.string.settings_security_when_on_screenshots_and_screen),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
+            SettingsHint(appString(R.string.settings_security_when_on_screenshots_and_screen))
         }
     }
 }

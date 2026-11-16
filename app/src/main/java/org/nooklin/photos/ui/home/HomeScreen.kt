@@ -1,6 +1,9 @@
 package org.nooklin.photos.ui.home
 
 
+import org.nooklin.photos.data.local.AlbumOrder
+import org.nooklin.photos.data.local.sortedAlbums
+import org.nooklin.photos.ui.albums.HomeAlbumRows
 import org.nooklin.photos.ui.common.FlatRowTile
 import org.nooklin.photos.ui.common.FlatBlock
 import org.nooklin.photos.ui.common.TileSpec
@@ -57,7 +60,6 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -99,7 +101,6 @@ import androidx.compose.runtime.LaunchedEffect
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import androidx.compose.ui.semantics.Role
-import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 import org.nooklin.photos.ui.common.TouchTargetBox
 
@@ -110,6 +111,7 @@ fun HomeScreen(
     gridColumns: Int,
     libraryPreviewRows: Int,
     albums: List<AlbumWithPreview>,
+    albumOrder: AlbumOrder,
     discoveredAlbums: List<DiscoveredAlbum>,
     sectionOrder: List<HomeSection>,
     hiddenSections: Set<HomeSection> = emptySet(),
@@ -131,7 +133,9 @@ fun HomeScreen(
 ) {
     val previewColumns = gridColumns.coerceAtLeast(2) // the small Home preview never goes to one huge column
 
-    val homeAlbums = remember(albums) { albums.sortedByDescending { it.itemCount }.take(10) }
+    val homeAlbums = remember(albums, albumOrder) {
+        albums.sortedAlbums(albumOrder.homeSort, albumOrder.manual, { it.id }, { it.name }, { it.itemCount })
+    }
 
     val homeDiscovered = remember(discoveredAlbums) { discoveredAlbums.sortedByDescending { it.itemCount }.take(10) }
 
@@ -167,6 +171,7 @@ fun HomeScreen(
                     HomeSection.ALBUMS -> item {
                         AlbumsBlock(
                             homeAlbums = homeAlbums,
+                            rows = albumOrder.homeRows,
                             expanded = albumsExpanded,
                             onToggle = { albumsExpanded = !albumsExpanded },
                             onOpenAlbums = onOpenAlbums,
@@ -305,6 +310,7 @@ private fun LibraryBlock(
 @Composable
 private fun AlbumsBlock(
     homeAlbums: List<AlbumWithPreview>,
+    rows: Int,
     expanded: Boolean,
     onToggle: () -> Unit,
     onOpenAlbums: () -> Unit,
@@ -319,19 +325,13 @@ private fun AlbumsBlock(
                 titleFontSize = 20.sp
             ) { onToggle() }
             if (expanded) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(homeAlbums.size, key = { homeAlbums[it].id }) { index ->
-                        val album = homeAlbums[index]
-                        Column(
-                            Modifier.width(136.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
-                        ) {
-                            AlbumThumbnail(album.previewItems, size = 136.dp, fillSlots = album.folderCount >= 2, corner = 18.dp)
-                            Text(album.name, maxLines = 1, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-                            Text(appString(R.string.common_items, album.itemCount), color = Color.Gray, fontSize = 13.sp)
-                        }
+                HomeAlbumRows(homeAlbums, rows, key = { it.id }) { album ->
+                    Column(
+                        Modifier.width(136.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
+                    ) {
+                        AlbumThumbnail(album.previewItems, size = 136.dp, fillSlots = album.folderCount >= 2, corner = 18.dp)
+                        Text(album.name, maxLines = 1, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(appString(R.string.common_items, album.itemCount), color = Color.Gray, fontSize = 13.sp)
                     }
                 }
             }

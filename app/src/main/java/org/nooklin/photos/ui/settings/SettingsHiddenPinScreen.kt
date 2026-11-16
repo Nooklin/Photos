@@ -22,7 +22,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.nooklin.photos.ui.hidden.HiddenPinEntryScreen
 import org.nooklin.photos.ui.hidden.HiddenPinRecoveryCodeScreen
@@ -64,22 +63,18 @@ fun SettingsHiddenPinScreen(
             }
         ) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-                Text(
-                    appString(R.string.settings_hidden_pin_an_extra_layer_of_protection),
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
-                )
-                Text(
-                    appString(R.string.settings_hidden_pin_when_you_set_a_pin),
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)
-                )
+                SettingsHint(appString(R.string.settings_hidden_pin_an_extra_layer_of_protection))
+                SettingsHint(appString(R.string.settings_hidden_pin_when_you_set_a_pin))
                 if (!pinSet) {
+                    SettingsHeading(appString(R.string.settings_hidden_pin_set_up))
                     SettingsGroup(
-                        appString(R.string.settings_hidden_pin_set_up),
+                        null,
                         listOf({ SettingsNavRow(appString(R.string.settings_hidden_pin_set_pin), Icons.Filled.Password) { step = Step.SETUP_NEW } })
                     )
                 } else {
+                    SettingsHeading(appString(R.string.settings_hidden_pin_manage))
                     SettingsGroup(
-                        appString(R.string.settings_hidden_pin_manage),
+                        null,
                         listOf(
                             {
                                 SettingsNavRow(appString(R.string.settings_hidden_pin_change_pin), Icons.Filled.Password) {

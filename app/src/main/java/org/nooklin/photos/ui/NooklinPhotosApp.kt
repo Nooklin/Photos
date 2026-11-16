@@ -78,6 +78,7 @@ import org.nooklin.photos.ui.settings.LibraryTransferViewModel
 import org.nooklin.photos.toMediaStoreId
 import org.nooklin.photos.data.local.AppThemeMode
 import org.nooklin.photos.ui.albums.AlbumViewModel
+import org.nooklin.photos.ui.albums.AlbumOrderViewModel
 import org.nooklin.photos.ui.common.BackupNoticeDialog
 import org.nooklin.photos.ui.common.StableList
 import org.nooklin.photos.ui.albums.AlbumWithPreview
@@ -117,6 +118,7 @@ fun NooklinPhotosApp(
     val hiddenViewModel: HiddenViewModel = viewModel()
     val settingsViewModel: SettingsViewModel = viewModel()
     val albumViewModel: AlbumViewModel = viewModel()
+    val albumOrderViewModel: AlbumOrderViewModel = viewModel()
     val libraryTransferViewModel: LibraryTransferViewModel = viewModel()
     val discoveredViewModel: DiscoveredViewModel = viewModel()
     val petViewModel: PetViewModel = viewModel()
@@ -649,6 +651,7 @@ fun NooklinPhotosApp(
                 viewModel = viewModel,
                 hiddenViewModel = hiddenViewModel,
                 settingsViewModel = settingsViewModel,
+                albumOrderViewModel = albumOrderViewModel,
                 albumViewModel = albumViewModel,
                 gridStyleState = gridStyleState,
                 gridColumnsState = gridColumnsState,
@@ -708,6 +711,7 @@ fun NooklinPhotosApp(
                 context = context,
                 viewModel = viewModel,
                 hiddenViewModel = hiddenViewModel,
+                albumOrderViewModel = albumOrderViewModel,
                 settingsViewModel = settingsViewModel,
                 gridStyleState = gridStyleState,
                 gridColumnsState = gridColumnsState,
@@ -732,6 +736,7 @@ fun NooklinPhotosApp(
             hiddenAlbumRoutes(
                 viewModel = viewModel,
                 hiddenViewModel = hiddenViewModel,
+                albumOrderViewModel = albumOrderViewModel,
                 settingsViewModel = settingsViewModel,
                 gridColumnsState = gridColumnsState,
                 hiddenUiStateHolder = hiddenUiStateHolder,

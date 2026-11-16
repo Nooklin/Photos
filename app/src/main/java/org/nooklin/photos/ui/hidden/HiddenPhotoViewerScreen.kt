@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.hidden
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import org.nooklin.photos.ui.common.VideoControlBar
 import org.nooklin.photos.ui.common.VideoControlState
 import androidx.compose.animation.AnimatedVisibility
@@ -132,6 +134,7 @@ fun HiddenPhotoViewerScreen(
     onAddToAlbum: (albumId: Long, item: HiddenItem) -> Unit,
     onCreateAlbum: (name: String, onCreated: (Long) -> Unit) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     if (items.value.isEmpty()) {
         LaunchedEffect(Unit) { onBack() }
         return
@@ -336,7 +339,10 @@ fun HiddenPhotoViewerScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                IconButton(onClick = { onToggleFavorite(item) }) {
+                                IconButton(onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                    onToggleFavorite(item)
+                                }) {
                                     Icon(
                                         imageVector = if (item.isFavorite) {
                                             Icons.Filled.Favorite

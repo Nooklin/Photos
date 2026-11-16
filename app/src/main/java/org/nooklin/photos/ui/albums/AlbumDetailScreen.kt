@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui.albums
 
+import org.nooklin.photos.data.local.AlbumSort
 import org.nooklin.photos.ui.common.rememberGroupSelection
 import org.nooklin.photos.ui.common.groupSelectionTitle
 import org.nooklin.photos.ui.common.GroupSelectionActions
@@ -111,6 +112,8 @@ fun AlbumDetailScreen(
     isFolder: Boolean = false,
     canCreateFolder: Boolean = true,
     folders: List<AlbumWithPreview> = emptyList(),
+    folderSort: AlbumSort = AlbumSort.NAME,
+    onFolderSort: ((AlbumSort) -> Unit)? = null,
     onFolderClick: (Long) -> Unit = {},
     onRenameFolder: (Long, String) -> Unit = { _, _ -> },
     onDeleteFolder: (Long) -> Unit = {},
@@ -203,6 +206,7 @@ fun AlbumDetailScreen(
                 },
                 actions = {
                     if (groupActions != null && photos.isNotEmpty()) GroupSelectionActions(selection, photos, groupActions)
+                    if (onFolderSort != null && folders.size >= 2) AlbumSortButton(folderSort, withManual = false, onSort = onFolderSort)
                     CircleIconButton(
                         icon = Icons.Filled.Add,
                         contentDescription = appString(R.string.common_add_photos),

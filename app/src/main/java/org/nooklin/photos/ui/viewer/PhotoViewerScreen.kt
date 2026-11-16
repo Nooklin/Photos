@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.viewer
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import org.nooklin.photos.ui.common.VideoControlBar
 import org.nooklin.photos.ui.common.VideoControlState
 import androidx.compose.animation.AnimatedVisibility
@@ -138,6 +140,7 @@ fun PhotoViewerScreen(
     onCreateAlbumAndAdd: (name: String, item: MediaItem) -> Unit,
     onLibraryChanged: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     if (items.value.isEmpty()) {
         LaunchedEffect(Unit) { onBack() }
         return
@@ -390,7 +393,10 @@ fun PhotoViewerScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                IconButton(onClick = { onToggleFavorite(item) }) {
+                                IconButton(onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                    onToggleFavorite(item)
+                                }) {
                                     Icon(
                                         imageVector = if (item.isFavorite) {
                                             Icons.Filled.Favorite

@@ -21,7 +21,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import org.nooklin.photos.ui.common.ConfirmDeleteDialog
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
@@ -49,8 +48,9 @@ fun SettingsHiddenSharingScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SettingsHeading(appString(R.string.common_hidden_image_sharing))
             SettingsGroup(
-                appString(R.string.common_hidden_image_sharing),
+                null,
                 listOf({
                     SettingsToggleRow(
                         appString(R.string.settings_hidden_sharing_allow_sharing_hidden_images),
@@ -68,15 +68,9 @@ fun SettingsHiddenSharingScreen(
                 })
             )
             if (sharingDisabled) {
-                Text(
-                    appString(R.string.settings_hidden_sharing_sharing_is_turned_off_for),
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-                )
+                SettingsHint(appString(R.string.settings_hidden_sharing_sharing_is_turned_off_for))
             } else {
-                Text(
-                    appString(R.string.settings_hidden_sharing_when_off_the_default_the),
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-                )
+                SettingsHint(appString(R.string.settings_hidden_sharing_when_off_the_default_the))
             }
         }
     }

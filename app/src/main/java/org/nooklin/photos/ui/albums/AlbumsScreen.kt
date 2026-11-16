@@ -1,6 +1,14 @@
 package org.nooklin.photos.ui.albums
 
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.LaunchedEffect
+import org.nooklin.photos.data.local.AlbumOrder
+import org.nooklin.photos.data.local.AlbumSort
+import org.nooklin.photos.data.local.sortedAlbums
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -75,6 +83,8 @@ fun AlbumsScreen(
     onMergeAlbum: (Long) -> Unit,
     itemsOfAlbums: (Set<Long>) -> List<MediaItem>,
     removeExifOnShare: Boolean,
+    order: AlbumOrder,
+    onOrderChange: ((AlbumOrder) -> AlbumOrder) -> Unit,
     onBack: () -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -87,14 +97,24 @@ fun AlbumsScreen(
     var contextDeleteId by remember { mutableStateOf<Long?>(null) }
     var renameAlbum by remember { mutableStateOf<AlbumWithPreview?>(null) }
     var folderParentId by remember { mutableStateOf<Long?>(null) }
+    var reordering by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf<List<AlbumWithPreview>?>(null) }
+    val gridState = rememberLazyGridState()
+    var dragId by remember { mutableStateOf<Long?>(null) }
+    val sorted = remember(albums, order) {
+        albums.sortedAlbums(order.sort, order.manual, { it.id }, { it.name }, { it.itemCount })
+    }
+    val shown = draft ?: sorted
+    LaunchedEffect(order) { draft = null }
 
     BackHandler(enabled = selection.isSelecting) { selection.exit() }
+    BackHandler(enabled = reordering) { reordering = false }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
+                    if (reordering) Text(appString(R.string.album_reorder_hint), fontSize = AppText.Body) else Text(
                         groupSelectionTitle(selection, appString(R.string.common_albums)),
                         fontWeight = FontWeight.Bold
                     )
@@ -141,7 +161,17 @@ fun AlbumsScreen(
                             }
                         }
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { selection.exit() })
+                    } else if (reordering) {
+                        PillButton(text = appString(R.string.album_reorder_done), color = MaterialTheme.colorScheme.primary, onClick = { reordering = false })
                     } else {
+                        AlbumSortButton(order.sort, withManual = true) { mode ->
+                            if (mode == AlbumSort.MANUAL) {
+                                onOrderChange { it.copy(sort = AlbumSort.MANUAL, manual = if (it.sort == AlbumSort.MANUAL) it.manual else sorted.map { a -> a.id }) }
+                                reordering = true
+                            } else {
+                                onOrderChange { it.copy(sort = mode) }
+                            }
+                        }
                         CircleIconButton(
                             icon = Icons.Filled.Add,
                             contentDescription = appString(R.string.albums_new_album),
@@ -154,19 +184,37 @@ fun AlbumsScreen(
     ) { padding ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(gridColumns),
-            modifier = Modifier.fillMaxSize().padding(padding),
+            state = gridState,
+            modifier = Modifier.fillMaxSize().padding(padding).dragToReorder(
+                gridState,
+                enabled = reordering,
+                onStart = { index -> dragId = (draft ?: sorted).getOrNull(index)?.id },
+                onMove = { from, to ->
+                    val list = (draft ?: sorted).toMutableList()
+                    list.add(to, list.removeAt(from))
+                    draft = list
+                },
+                onDone = { dragId = null; draft?.let { list -> onOrderChange { it.copy(manual = list.map { a -> a.id }) } } }
+            ),
             contentPadding = PaddingValues(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(Spacing.Lg)
         ) {
-            items(albums, key = { it.id }) { album ->
+            items(shown, key = { it.id }) { album ->
                 val selected = album.id in selection.selectedIds
+                    val lifted = dragId == album.id
+                    val liftScale by animateFloatAsState(if (lifted) 1.08f else 1f, label = "lift")
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .combinedClickable(
-                            onClick = { if (selection.isSelecting) selection.toggle(album.id) else onAlbumClick(album.id) },
-                            onLongClick = { if (!selection.isSelecting) menuAlbumId = album.id }
+                        .animateItem()
+                        .zIndex(if (lifted) 1f else 0f)
+                        .graphicsLayer { scaleX = liftScale; scaleY = liftScale; alpha = if (lifted) 0.85f else 1f }
+                        .then(
+                            if (reordering) Modifier else Modifier.combinedClickable(
+                                onClick = { if (selection.isSelecting) selection.toggle(album.id) else onAlbumClick(album.id) },
+                                onLongClick = { if (!selection.isSelecting) menuAlbumId = album.id }
+                            )
                         )
                 ) {
                     Box {

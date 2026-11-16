@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui
 
+import org.nooklin.photos.ui.albums.AlbumOrderViewModel
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
     context: Context,
     viewModel: GalleryViewModel,
     hiddenViewModel: HiddenViewModel,
+    albumOrderViewModel: AlbumOrderViewModel,
     settingsViewModel: SettingsViewModel,
     gridStyleState: State<GridStyle>,
     gridColumnsState: State<Int>,
@@ -95,6 +97,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             else -> HiddenHomeScreen(
                 items = hiddenUiState.items,
                 albums = hiddenTopAlbums,
+                albumOrder = albumOrderViewModel.hidden.collectAsStateWithLifecycle().value,
+                previewsOff = albumOrderViewModel.hiddenPreviewsOff.collectAsStateWithLifecycle().value,
                 hiddenAlbumsEnabled = hiddenAlbumsEnabled,
                 gridColumns = gridColumns,
                 hiddenSections = hiddenHomeHiddenSections,

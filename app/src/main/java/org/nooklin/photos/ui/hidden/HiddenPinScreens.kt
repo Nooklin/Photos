@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.hidden
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -103,6 +105,7 @@ fun HiddenPinEntryScreen(
     var checking by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val lockSeconds = rememberPinLockSeconds()
+    val haptic = LocalHapticFeedback.current
 
     PinScreenFrame(title = appString(R.string.hidden_pin_screens_enter_pin), body = appString(R.string.hidden_pin_screens_enter_your_extra_pin_for)) {
         OutlinedTextField(
@@ -126,8 +129,10 @@ fun HiddenPinEntryScreen(
                 checking = true
                 scope.launch {
                     if (verify(pin)) {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                         onVerified()
                     } else {
+                        haptic.performHapticFeedback(HapticFeedbackType.Reject)
                         error = appString(R.string.hidden_pin_screens_incorrect_pin)
                         pin = ""
                         checking = false
@@ -257,6 +262,7 @@ fun HiddenPinRecoveryEntryScreen(
     var checking by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val lockSeconds = rememberPinLockSeconds()
+    val haptic = LocalHapticFeedback.current
 
     PinScreenFrame(
         title = appString(R.string.hidden_pin_screens_enter_recovery_code),
@@ -282,8 +288,10 @@ fun HiddenPinRecoveryEntryScreen(
                 checking = true
                 scope.launch {
                     if (verify(code.replace("-", "").trim())) {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                         onVerified()
                     } else {
+                        haptic.performHapticFeedback(HapticFeedbackType.Reject)
                         error = appString(R.string.hidden_pin_screens_incorrect_recovery_code)
                         checking = false
                     }

@@ -45,7 +45,9 @@ data class HiddenItem(
     val originalName: String? = null,
     val originalModified: Long? = null,
     val originalTaken: Long? = null
-)
+) {
+    val sortDate: Long get() = originalTaken ?: originalModified ?: hiddenAt
+}
 
 data class HiddenAlbumWithPreview(
     val id: Long,
@@ -271,7 +273,7 @@ class HiddenMediaRepository(
                 )
             } else null
         }
-            .sortedByDescending { it.hiddenAt }
+            .sortedByDescending { it.sortDate }
     }
 
     suspend fun listHidden(): List<HiddenItem> = listEntries(deleted = false)

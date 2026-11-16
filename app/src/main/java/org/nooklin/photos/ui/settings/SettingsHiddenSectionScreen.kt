@@ -4,8 +4,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -23,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
@@ -49,19 +46,18 @@ fun SettingsHiddenSectionScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SettingsHeading(appString(R.string.common_hidden_section))
             SettingsGroup(
-                appString(R.string.common_hidden_section),
+                null,
                 listOf({ 
                     SettingsToggleRow(appString(R.string.settings_hidden_section_enable_hidden_section), hiddenSectionEnabled, Icons.Filled.Lock, onCheckedChange = onHiddenSectionEnabledChange) 
                 })
             )
             if (hiddenSectionEnabled) {
-                Text(
-                    appString(R.string.settings_hidden_section_when_disabling_hidden_section_all),
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp)
-                )
+                SettingsHint(appString(R.string.settings_hidden_section_when_disabling_hidden_section_all))
+                SettingsHeading(appString(R.string.settings_hidden_group_security))
                 SettingsGroup(
-                    appString(R.string.settings_hidden_group_security),
+                    null,
                     listOf(
                         {
                             SettingsNavRow(
@@ -71,14 +67,15 @@ fun SettingsHiddenSectionScreen(
                         }
                     )
                 )
+                SettingsHeading(appString(R.string.settings_hidden_group_display))
                 SettingsGroup(
-                    appString(R.string.settings_hidden_group_display),
+                    null,
                     listOf(
                         { SettingsNavRow(appString(R.string.common_hidden_albums), Icons.Filled.PhotoAlbum) { onNavigate("hiddenalbums") } },
                         { SettingsNavRow(appString(R.string.common_hidden_image_sharing), Icons.Filled.Share) { onNavigate("hiddensharing") } }
                     )
                 )
-                Spacer(Modifier.height(8.dp))
+                SettingsHeading(appString(R.string.settings_backup_import_row))
                 SettingsGroup(
                     null,
                     listOf(

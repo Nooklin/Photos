@@ -3,6 +3,7 @@ package org.nooklin.photos.ui
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -18,6 +19,8 @@ import org.nooklin.photos.data.HiddenItem
 import org.nooklin.photos.data.local.LocalMetadataStore
 import org.nooklin.photos.ui.common.StableList
 import org.nooklin.photos.ui.common.ZoomLaunch
+import org.nooklin.photos.ui.albums.AlbumOrderViewModel
+import org.nooklin.photos.data.local.sortedAlbums
 import org.nooklin.photos.ui.hidden.HiddenAlbumDetailScreen
 import org.nooklin.photos.ui.hidden.HiddenAlbumPhotoPickerScreen
 import org.nooklin.photos.ui.hidden.HiddenAlbumsScreen
@@ -31,6 +34,7 @@ import org.nooklin.photos.ui.settings.settingsNavGraph
 internal fun NavGraphBuilder.hiddenAlbumRoutes(
     viewModel: GalleryViewModel,
     hiddenViewModel: HiddenViewModel,
+    albumOrderViewModel: AlbumOrderViewModel,
     settingsViewModel: SettingsViewModel,
     gridColumnsState: State<Int>,
     hiddenUiStateHolder: State<HiddenUiState>,
@@ -73,8 +77,13 @@ internal fun NavGraphBuilder.hiddenAlbumRoutes(
         )
     }
     composable(ROUTE_HIDDEN_ALBUMS) {
+        val albumOrder by albumOrderViewModel.hidden.collectAsStateWithLifecycle()
+        val previewsOff by albumOrderViewModel.hiddenPreviewsOff.collectAsStateWithLifecycle()
         HiddenAlbumsScreen(
             albums = hiddenTopAlbums,
+            order = albumOrder,
+            onOrderChange = { change -> albumOrderViewModel.update(true, change) },
+            previewsOff = previewsOff,
             gridColumns = gridColumns,
             onAlbumClick = { albumId -> navController.navigate("hiddenalbums/$albumId") },
             onCreateAlbum = { name -> hiddenViewModel.createAlbum(name) },
@@ -92,6 +101,12 @@ internal fun NavGraphBuilder.hiddenAlbumRoutes(
         }
         val albumItems = remember(hiddenUiState.items, memberFileNames) {
             hiddenUiState.items.filter { it.file.name in memberFileNames }
+        }
+        val albumOrder by albumOrderViewModel.hidden.collectAsStateWithLifecycle()
+        val previewsOff by albumOrderViewModel.hiddenPreviewsOff.collectAsStateWithLifecycle()
+        val albumFolders = remember(hiddenUiState.albums, albumId, albumOrder.folderSort) {
+            hiddenUiState.albums.filter { it.parentId == albumId }
+                .sortedAlbums(albumOrder.folderSort, emptyList(), { it.id }, { it.name }, { it.itemCount })
         }
         HiddenAlbumDetailScreen(
             albumName = album?.name ?: appString(R.string.nooklin_photos_app_album),
@@ -123,7 +138,10 @@ internal fun NavGraphBuilder.hiddenAlbumRoutes(
             onBack = { navController.popBackStack() },
             isFolder = album?.parentId != null,
             canCreateFolder = folderDepth(albumId) { id -> hiddenUiState.albums.find { it.id == id }?.parentId } < MAX_FOLDER_DEPTH,
-            folders = hiddenUiState.albums.filter { it.parentId == albumId },
+            folders = albumFolders,
+            folderSort = albumOrder.folderSort,
+            onFolderSort = { mode -> albumOrderViewModel.update(true) { it.copy(folderSort = mode) } },
+            previewsOff = previewsOff,
             onFolderClick = { folderId -> navController.navigate("hiddenalbums/$folderId") },
             onRenameFolder = { id, name -> hiddenViewModel.renameAlbum(id, name) },
             onDeleteFolder = { id -> hiddenViewModel.deleteAlbum(id) },

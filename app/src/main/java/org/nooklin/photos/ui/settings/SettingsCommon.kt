@@ -49,10 +49,95 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import org.nooklin.photos.appString
+import org.nooklin.photos.R
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.Column
+import org.nooklin.photos.ui.common.GlassPill
+import org.nooklin.photos.ui.theme.AppText
+import androidx.compose.material3.MaterialTheme
 
 @Composable
-fun SettingsSectionTitle(title: String) {
-    Text(title, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
+fun SettingsHint(text: String) {
+    Text(
+        text,
+        fontSize = AppText.Caption,
+        color = Color.Gray,
+        modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
+    )
+}
+
+@Composable
+fun SettingsHint(text: androidx.compose.ui.text.AnnotatedString) {
+    Text(
+        text,
+        fontSize = AppText.Caption,
+        color = Color.Gray,
+        modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
+    )
+}
+
+@Composable
+fun SettingsHeading(title: String) {
+    Text(
+        title,
+        fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, top = 28.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+fun <T> SettingsChoiceRow(
+    label: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    fontFor: (T) -> FontFamily? = { null },
+    onSelect: (T) -> Unit
+) {
+    var open by remember { mutableStateOf(false) }
+    val current = options.firstOrNull { it.first == selected }?.second.orEmpty()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .clickable(role = Role.Button) { open = true }
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(current, color = Color.Gray)
+            Icon(Icons.Filled.ChevronRight, contentDescription = null)
+        }
+    }
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            shape = GlassPill.shape,
+            containerColor = GlassPill.adaptivePopupBackground,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface,
+            title = { Text(label) },
+            text = {
+                Column {
+                    options.forEach { (value, text) ->
+                        SettingsRadioRow(text, value == selected, fontFamily = fontFor(value)) { onSelect(value); open = false }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(appString(R.string.common_cancel)) } }
+        )
+    }
 }
 
 // RadioButton keeps a real onClick: with null the dot didn't visually update on a device.

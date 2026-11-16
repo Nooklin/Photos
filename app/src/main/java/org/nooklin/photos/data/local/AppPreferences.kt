@@ -3,6 +3,8 @@ package org.nooklin.photos.data.local
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -114,6 +116,32 @@ private val SHARING_NOTICE_HIDDEN_KEY = booleanPreferencesKey("sharing_notice_hi
 private val AUTO_ALBUMS_KEY = stringSetPreferencesKey("auto_albums")
 private val HIDDEN_AUTO_ALBUMS_KEY = stringSetPreferencesKey("hidden_auto_albums")
 private val VIDEO_TRIMS_KEY = stringSetPreferencesKey("video_trims")
+private val HAPTICS_KEY = booleanPreferencesKey("haptics_enabled")
+private val HIDDEN_ALBUM_PREVIEWS_OFF_KEY = booleanPreferencesKey("hidden_album_previews_off")
+
+private fun albumSortOf(value: String?, fallback: AlbumSort): AlbumSort =
+    AlbumSort.entries.firstOrNull { it.name == value } ?: fallback
+
+private fun readAlbumOrder(prefs: Preferences, hidden: Boolean): AlbumOrder {
+    val p = if (hidden) "hidden_" else ""
+    return AlbumOrder(
+        sort = albumSortOf(prefs[stringPreferencesKey(p + "album_sort")], AlbumSort.NAME),
+        folderSort = albumSortOf(prefs[stringPreferencesKey(p + "folder_sort")], AlbumSort.NAME),
+        manual = prefs[stringPreferencesKey(p + "album_manual_order")]
+            ?.split(',')?.mapNotNull { it.toLongOrNull() } ?: emptyList(),
+        homeSort = albumSortOf(prefs[stringPreferencesKey(p + "home_album_sort")], AlbumSort.SIZE),
+        homeRows = (prefs[intPreferencesKey(p + "home_album_rows")] ?: 1).coerceIn(1, 2)
+    )
+}
+
+private fun writeAlbumOrder(prefs: MutablePreferences, hidden: Boolean, order: AlbumOrder) {
+    val p = if (hidden) "hidden_" else ""
+    prefs[stringPreferencesKey(p + "album_sort")] = order.sort.name
+    prefs[stringPreferencesKey(p + "folder_sort")] = order.folderSort.name
+    prefs[stringPreferencesKey(p + "album_manual_order")] = order.manual.joinToString(",")
+    prefs[stringPreferencesKey(p + "home_album_sort")] = order.homeSort.name
+    prefs[intPreferencesKey(p + "home_album_rows")] = order.homeRows.coerceIn(1, 2)
+}
 
 class AppPreferences(private val context: Context) {
 
@@ -441,6 +469,32 @@ class AppPreferences(private val context: Context) {
             val current = prefs[HIDDEN_AUTO_ALBUMS_KEY] ?: emptySet()
             prefs[HIDDEN_AUTO_ALBUMS_KEY] = if (hidden) current + rule else current - rule
         }
+    }
+
+    fun albumOrder(hidden: Boolean): Flow<AlbumOrder> =
+        context.appSettingsDataStore.data.map { prefs -> readAlbumOrder(prefs, hidden) }
+
+    suspend fun updateAlbumOrder(hidden: Boolean, change: (AlbumOrder) -> AlbumOrder) {
+        context.appSettingsDataStore.edit { prefs ->
+            writeAlbumOrder(prefs, hidden, change(readAlbumOrder(prefs, hidden)))
+        }
+    }
+
+    // Hidden albums and folders show a placeholder instead of their photos
+    val hiddenAlbumPreviewsOff: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
+        prefs[HIDDEN_ALBUM_PREVIEWS_OFF_KEY] ?: false
+    }
+
+    suspend fun setHiddenAlbumPreviewsOff(off: Boolean) {
+        context.appSettingsDataStore.edit { prefs -> prefs[HIDDEN_ALBUM_PREVIEWS_OFF_KEY] = off }
+    }
+
+    val hapticsEnabled: Flow<Boolean> = context.appSettingsDataStore.data.map { prefs ->
+        prefs[HAPTICS_KEY] ?: true
+    }
+
+    suspend fun setHapticsEnabled(on: Boolean) {
+        context.appSettingsDataStore.edit { prefs -> prefs[HAPTICS_KEY] = on }
     }
 
     val videoTrims: Flow<Set<String>> = context.appSettingsDataStore.data.map { prefs ->

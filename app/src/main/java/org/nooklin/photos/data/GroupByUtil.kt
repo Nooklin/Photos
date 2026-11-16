@@ -12,7 +12,7 @@ fun groupItemsByDate(items: List<MediaItem>, groupBy: GroupBy): Map<String, List
     if (groupBy == GroupBy.NONE) emptyMap() else DateLabeler(groupBy).let { labeler -> items.groupBy { labeler.label(it.dateAdded * 1000L) } }
 
 fun groupHiddenItemsByDate(items: List<HiddenItem>, groupBy: GroupBy): Map<String, List<HiddenItem>> =
-    if (groupBy == GroupBy.NONE) emptyMap() else DateLabeler(groupBy).let { labeler -> items.groupBy { labeler.label(it.hiddenAt) } }
+    if (groupBy == GroupBy.NONE) emptyMap() else DateLabeler(groupBy).let { labeler -> items.groupBy { labeler.label(it.sortDate) } }
 
 private class DateLabeler(private val groupBy: GroupBy) {
     private val format: SimpleDateFormat? = when (groupBy) {

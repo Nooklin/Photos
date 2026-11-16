@@ -7,6 +7,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.nooklin.photos.data.local.AppPreferences
 import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
 import org.nooklin.photos.ui.NooklinPhotosApp
@@ -14,9 +20,14 @@ import android.os.SystemClock
 import androidx.activity.viewModels
 import org.nooklin.photos.ui.hidden.HiddenViewModel
 
+private object NoHaptics : HapticFeedback {
+    override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {}
+}
+
 class MainActivity : FragmentActivity() {
     private val hiddenViewModel: HiddenViewModel by viewModels()
     private var stoppedAtMs = 0L
+    private val haptics by lazy { AppPreferences(applicationContext).hapticsEnabled }
     private var externalRequest by mutableStateOf<ExternalRequest?>(null)
 
     private var leftByUser = false
@@ -62,7 +73,11 @@ class MainActivity : FragmentActivity() {
         externalRequest = intent.toExternalRequest(this)
         enableEdgeToEdge()
         setContent {
-            NooklinPhotosApp(externalRequest = externalRequest, onExternalFinish = ::finishExternal)
+            val realHaptics = LocalHapticFeedback.current
+            val hapticsOn by haptics.collectAsStateWithLifecycle(true)
+            CompositionLocalProvider(LocalHapticFeedback provides if (hapticsOn) realHaptics else NoHaptics) {
+                NooklinPhotosApp(externalRequest = externalRequest, onExternalFinish = ::finishExternal)
+            }
         }
     }
 

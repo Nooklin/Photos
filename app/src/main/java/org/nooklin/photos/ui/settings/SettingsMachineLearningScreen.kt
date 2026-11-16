@@ -84,8 +84,9 @@ fun SettingsMachineLearningScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            SettingsHeading(appString(R.string.common_machine_learning))
             SettingsGroup(
-                appString(R.string.common_machine_learning),
+                null,
                 listOf({
                     SettingsToggleRow(
                         label = appString(R.string.settings_machine_learning_use_machine_learning),
@@ -104,13 +105,14 @@ fun SettingsMachineLearningScreen(
             Text(
                 appString(R.string.settings_machine_learning_machine_learning_takes_place_entirely),
                 color = Color.Gray,
-                fontSize = AppText.Body,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+                fontSize = AppText.Caption,
+                modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
             )
 
             if (mlEnabled) {
+                SettingsHeading(appString(R.string.settings_machine_learning_tags_to_scan))
                 SettingsGroup(
-                    appString(R.string.settings_machine_learning_tags_to_scan),
+                    null,
                     MlTag.entries.filter { it != MlTag.PETS }.map { tag ->
                         {
                             Column {
@@ -125,12 +127,12 @@ fun SettingsMachineLearningScreen(
                     }
                 )
 
-                SettingsSectionTitle(appString(R.string.settings_machine_learning_scan))
+                SettingsHeading(appString(R.string.settings_machine_learning_scan))
                 Text(
                     appString(R.string.settings_machine_learning_scans_your_library_on_this),
                     color = Color.Gray,
-                    fontSize = AppText.Body,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                    fontSize = AppText.Caption,
+                    modifier = Modifier.padding(start = 24.dp, end = 16.dp, bottom = 12.dp)
                 )
                 Button(
                     onClick = onScanLibrary,
@@ -144,7 +146,7 @@ fun SettingsMachineLearningScreen(
                         appString(R.string.settings_machine_learning_turn_on_at_least_one),
                         color = Color.Gray,
                         fontSize = AppText.Caption,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
+                        modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = 8.dp)
                     )
                 }
                 if (scanProgress != null && scanning && scanProgress.total > 0) {
@@ -168,12 +170,12 @@ fun SettingsMachineLearningScreen(
                     )
                 }
 
-                SettingsSectionTitle(appString(R.string.common_reset))
+                SettingsHeading(appString(R.string.common_reset))
                 Text(
                     appString(R.string.settings_machine_learning_clears_everything_detected_so_far),
                     color = Color.Gray,
-                    fontSize = AppText.Body,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                    fontSize = AppText.Caption,
+                    modifier = Modifier.padding(start = 24.dp, end = 16.dp, bottom = 12.dp)
                 )
                 OutlinedButton(
                     onClick = { showClearConfirm = true },

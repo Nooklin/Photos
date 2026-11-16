@@ -107,10 +107,10 @@
 
 <h2 align="center">🔒 Privacy</h2>
 
-- The app requests no internet permission.
+- The app requests no internet permission, so it cannot send anything off the device.
 - No analytics, crash reporting or telemetry of any kind.
 - No Google Play Services dependency.
-- Face analysis runs fully on the device, using bundled models.
+- Face and pet analysis runs fully on the device, using bundled models.
 - App data is excluded from Android backup and device transfer.
 - Photos leave the device only when you share, print or send them to another app yourself.
 - The Hidden Section PIN is stored as a PBKDF2 hash, and hidden photos are not cached outside their private folder.

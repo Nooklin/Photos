@@ -34,7 +34,6 @@ import java.util.Locale
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 import org.nooklin.photos.ui.hidden.HiddenExportProgress
-import org.nooklin.photos.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,17 +77,15 @@ fun SettingsLibraryBackupScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-            Text(
-                appString(R.string.library_backup_intro),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = Spacing.Lg)
-            )
+            SettingsHint(appString(R.string.library_backup_intro))
             BackupExplanation(
                 stepsText = appString(R.string.library_backup_steps),
                 exampleTitle = appString(R.string.library_backup_example_title),
                 example = appString(R.string.library_backup_example)
             )
+            SettingsHeading(appString(R.string.library_backup_flat))
             SettingsGroup(
-                appString(R.string.library_backup_flat),
+                null,
                 listOf({
                     SettingsNavRow(appString(R.string.library_backup_flat), Icons.Filled.FolderZip) {
                         statusMessage = null
@@ -96,12 +93,10 @@ fun SettingsLibraryBackupScreen(
                     }
                 })
             )
-            Text(
-                appString(R.string.library_backup_flat_info),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = Spacing.Lg)
-            )
+            SettingsHint(appString(R.string.library_backup_flat_info))
+            SettingsHeading(appString(R.string.library_backup_organized))
             SettingsGroup(
-                appString(R.string.library_backup_organized),
+                null,
                 listOf({
                     SettingsNavRow(appString(R.string.library_backup_organized), Icons.Filled.Photo) {
                         statusMessage = null
@@ -109,10 +104,7 @@ fun SettingsLibraryBackupScreen(
                     }
                 })
             )
-            Text(
-                appString(R.string.library_backup_organized_info),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = Spacing.Lg)
-            )
+            SettingsHint(appString(R.string.library_backup_organized_info))
             if (progress != null) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     if (progress.total > 0) {

@@ -38,6 +38,8 @@ import org.nooklin.photos.ui.albums.AlbumDetailScreen
 import org.nooklin.photos.ui.albums.AlbumMergeScreen
 import org.nooklin.photos.ui.albums.AlbumPhotoPickerScreen
 import org.nooklin.photos.ui.albums.AlbumViewModel
+import org.nooklin.photos.ui.albums.AlbumOrderViewModel
+import org.nooklin.photos.data.local.sortedAlbums
 import org.nooklin.photos.ui.albums.AlbumWithPreview
 import org.nooklin.photos.ui.albums.AlbumsScreen
 import org.nooklin.photos.ui.common.GroupActions
@@ -59,6 +61,7 @@ internal fun NavGraphBuilder.mainRoutes(
     hiddenViewModel: HiddenViewModel,
     settingsViewModel: SettingsViewModel,
     albumViewModel: AlbumViewModel,
+    albumOrderViewModel: AlbumOrderViewModel,
     gridStyleState: State<GridStyle>,
     gridColumnsState: State<Int>,
     libraryPreviewRowsState: State<Int>,
@@ -123,11 +126,13 @@ internal fun NavGraphBuilder.mainRoutes(
             }
         }
     ) {
+        val homeAlbumOrder by albumOrderViewModel.library.collectAsStateWithLifecycle()
         HomeScreen(
             items = uiState.visibleItems,
             gridColumns = gridColumns,
             libraryPreviewRows = libraryPreviewRows,
             albums = albumsWithPreview,
+            albumOrder = homeAlbumOrder,
             discoveredAlbums = discoveredAlbums,
             sectionOrder = homeSectionOrder,
             hiddenSections = homeHiddenSections,
@@ -244,8 +249,11 @@ internal fun NavGraphBuilder.mainRoutes(
         )
     }
     composable(ROUTE_ALBUMS) {
+        val albumOrder by albumOrderViewModel.library.collectAsStateWithLifecycle()
         AlbumsScreen(
             albums = albumsWithPreview,
+            order = albumOrder,
+            onOrderChange = { change -> albumOrderViewModel.update(false, change) },
             gridColumns = gridColumns,
             onAlbumClick = { albumId -> navController.navigate("album/$albumId") },
             onCreateAlbum = { name -> albumViewModel.createAlbum(name) },
@@ -291,6 +299,7 @@ internal fun NavGraphBuilder.mainRoutes(
         val albumPhotos = remember(uiState.allItems, memberIds) {
             uiState.allItems.filter { it.id in memberIds }
         }
+        val albumOrder by albumOrderViewModel.library.collectAsStateWithLifecycle()
         AlbumDetailScreen(
             albumName = album?.name ?: appString(R.string.nooklin_photos_app_album),
             photos = albumPhotos,
@@ -309,7 +318,11 @@ internal fun NavGraphBuilder.mainRoutes(
             onAddPhotos = { navController.navigate("album/$albumId/pick") },
             isFolder = album?.parentId != null,
             canCreateFolder = folderDepth(albumId) { id -> albumEntities.find { it.id == id }?.parentId } < MAX_FOLDER_DEPTH,
-            folders = albumFolders,
+            folders = remember(albumFolders, albumOrder.folderSort) {
+                albumFolders.sortedAlbums(albumOrder.folderSort, emptyList(), { it.id }, { it.name }, { it.itemCount })
+            },
+            folderSort = albumOrder.folderSort,
+            onFolderSort = { mode -> albumOrderViewModel.update(false) { it.copy(folderSort = mode) } },
             totalCount = album?.itemCount ?: albumPhotos.size,
             onFolderClick = { folderId -> navController.navigate("album/$folderId") },
             onRenameFolder = { id, name -> albumViewModel.renameAlbum(id, name) },

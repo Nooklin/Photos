@@ -24,6 +24,7 @@ Thumbs.db
 captures/
 *.hprof
 
+# Local release script and internal notes, kept on disk, not on GitHub
 release-photos.ps1
 AUDIT.md
 SCOPE.md

@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.hidden
 
+import org.nooklin.photos.data.local.AlbumSort
+import org.nooklin.photos.ui.albums.AlbumSortButton
 import androidx.compose.material.icons.filled.IosShare
 import org.nooklin.photos.ui.gallery.CardAction
 import androidx.activity.compose.BackHandler
@@ -114,6 +116,9 @@ fun HiddenAlbumDetailScreen(
     isFolder: Boolean = false,
     canCreateFolder: Boolean = true,
     folders: List<HiddenAlbumWithPreview> = emptyList(),
+    folderSort: AlbumSort = AlbumSort.NAME,
+    onFolderSort: ((AlbumSort) -> Unit)? = null,
+    previewsOff: Boolean = false,
     onFolderClick: (Long) -> Unit = {},
     onRenameFolder: (Long, String) -> Unit = { _, _ -> },
     onDeleteFolder: (Long) -> Unit = {},
@@ -281,6 +286,7 @@ fun HiddenAlbumDetailScreen(
                         }
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                     } else {
+                        if (onFolderSort != null && folders.size >= 2) AlbumSortButton(folderSort, withManual = false, onSort = onFolderSort)
                         CircleIconButton(
                             icon = Icons.Filled.Add,
                             contentDescription = appString(R.string.common_add_photos),
@@ -400,7 +406,7 @@ fun HiddenAlbumDetailScreen(
                                 isFolder = true
                             )
                         },
-                        thumbnail = { size -> HiddenAlbumThumbnail(folder.previewFiles.take(1), size = size) }
+                        thumbnail = { size -> HiddenAlbumThumbnail(folder.previewFiles.take(1), size = size, previewOff = previewsOff) }
                     )
                 }
                 items(items.size, key = { items[it].file.name }) { index ->

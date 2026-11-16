@@ -93,17 +93,15 @@ fun SettingsHiddenBackupScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-            Text(
-                appString(R.string.settings_hidden_backup_photos_are_stored_in_this),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = Spacing.Lg)
-            )
+            SettingsHint(appString(R.string.settings_hidden_backup_photos_are_stored_in_this))
             BackupExplanation(
                 stepsText = appString(R.string.backup_how_steps),
                 exampleTitle = appString(R.string.backup_example_title),
                 example = appString(R.string.backup_example)
             )
+            SettingsHeading(appString(R.string.settings_hidden_backup_export_all))
             SettingsGroup(
-                appString(R.string.settings_hidden_backup_export_all),
+                null,
                 listOf({
                     SettingsNavRow(appString(R.string.settings_hidden_backup_export_all_hidden_photos_zip), Icons.Filled.FolderZip) {
                         statusMessage = null
@@ -111,13 +109,11 @@ fun SettingsHiddenBackupScreen(
                     }
                 })
             )
-            Text(
-                appString(R.string.settings_hidden_backup_the_simplest_fastest_option_every),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = Spacing.Lg)
-            )
+            SettingsHint(appString(R.string.settings_hidden_backup_the_simplest_fastest_option_every))
 
+            SettingsHeading(appString(R.string.settings_hidden_backup_export_organized_by_album))
             SettingsGroup(
-                appString(R.string.settings_hidden_backup_export_organized_by_album),
+                null,
                 listOf({
                     SettingsNavRow(appString(R.string.settings_hidden_backup_export_organized_by_album_zip), Icons.Filled.Photo) {
                         statusMessage = null
@@ -125,13 +121,11 @@ fun SettingsHiddenBackupScreen(
                     }
                 })
             )
-            Text(
-                appString(R.string.settings_hidden_backup_keeps_which_hidden_album_each),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = Spacing.Lg)
-            )
+            SettingsHint(appString(R.string.settings_hidden_backup_keeps_which_hidden_album_each))
 
+            SettingsHeading(appString(R.string.settings_hidden_backup_export_selected_photos))
             SettingsGroup(
-                appString(R.string.settings_hidden_backup_export_selected_photos),
+                null,
                 listOf({
                     SettingsNavRow(appString(R.string.settings_hidden_backup_export_selected_photos_zip), Icons.Filled.Checklist) {
                         statusMessage = null
@@ -139,10 +133,7 @@ fun SettingsHiddenBackupScreen(
                     }
                 })
             )
-            Text(
-                appString(R.string.settings_hidden_backup_pick_a_specific_subset_of),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = Spacing.Lg)
-            )
+            SettingsHint(appString(R.string.settings_hidden_backup_pick_a_specific_subset_of))
             if (progress != null) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     if (progress.total > 0) {
@@ -176,12 +167,12 @@ fun BackupExplanation(stepsText: String, exampleTitle: String, example: String) 
     Text(
         stepsText,
         lineHeight = 24.sp,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
+        modifier = Modifier.padding(start = 24.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
     )
     Text(
         exampleTitle,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+        modifier = Modifier.padding(start = 24.dp, end = 16.dp, bottom = 8.dp)
     )
     Text(
         example,

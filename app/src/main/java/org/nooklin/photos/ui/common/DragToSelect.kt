@@ -6,6 +6,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -29,7 +32,9 @@ fun Modifier.dragToSelect(
     isSelected: (Any) -> Boolean,
     onItemDragged: (key: Any, select: Boolean) -> Unit,
     scrollBy: (suspend (Float) -> Unit)? = null
-): Modifier = if (!enabled) this else this.pointerInput(enabled) {
+): Modifier = if (!enabled) this else this.composed {
+    val haptic = LocalHapticFeedback.current
+    pointerInput(enabled) {
     val edgeDirection = mutableIntStateOf(0)
     var edgeSpeed = 0f
     coroutineScope {
@@ -110,7 +115,10 @@ fun Modifier.dragToSelect(
                 if (hit != null && anchor >= 0) {
                     val lo = minOf(anchor, hit)
                     val hi = maxOf(anchor, hit)
-                    if (lo != runLo || hi != runHi) moveRun(lo, hi)
+                    if (lo != runLo || hi != runHi) {
+                        moveRun(lo, hi)
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    }
                 }
             }
 
@@ -145,4 +153,5 @@ fun Modifier.dragToSelect(
             }
         }
     }
+}
 }

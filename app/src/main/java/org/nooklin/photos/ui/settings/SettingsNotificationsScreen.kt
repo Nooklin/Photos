@@ -27,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
@@ -82,8 +81,9 @@ fun SettingsNotificationsScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SettingsHeading(appString(R.string.common_notifications))
             SettingsGroup(
-                appString(R.string.common_notifications),
+                null,
                 listOf({
                     SettingsToggleRow(
                         appString(R.string.settings_notifications_library_scan_complete),
@@ -95,15 +95,9 @@ fun SettingsNotificationsScreen(
                     )
                 })
             )
-            Text(
-                appString(R.string.settings_notifications_notifies_you_when_a_machine),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
+            SettingsHint(appString(R.string.settings_notifications_notifies_you_when_a_machine))
             if (showPermissionDeniedNotice) {
-                Text(
-                    appString(R.string.settings_notifications_notification_permission_was_denied_you),
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-                )
+                SettingsHint(appString(R.string.settings_notifications_notification_permission_was_denied_you))
             }
         }
     }

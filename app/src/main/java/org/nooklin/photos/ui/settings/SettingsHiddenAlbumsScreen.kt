@@ -22,6 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import org.nooklin.photos.ui.albums.AlbumOrderViewModel
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
@@ -32,6 +36,8 @@ fun SettingsHiddenAlbumsScreen(
     onHiddenAlbumsEnabledChange: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
+    val vm: AlbumOrderViewModel = viewModel()
+    val previewsOff by vm.hiddenPreviewsOff.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -45,23 +51,34 @@ fun SettingsHiddenAlbumsScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SettingsHeading(appString(R.string.common_hidden_albums))
             SettingsGroup(
-                appString(R.string.common_hidden_albums),
+                null,
                 listOf({ SettingsToggleRow(appString(R.string.common_show_hidden_albums), hiddenAlbumsEnabled, Icons.Filled.PhotoAlbum, onCheckedChange = onHiddenAlbumsEnabledChange) })
             )
-            Text(
-                AnnotatedString.fromHtml(
+            SettingsHint(AnnotatedString.fromHtml(
                     appString(R.string.settings_hidden_albums_when_off_hidden_albums_section)
-                ),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
-            )
+                ))
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                AnnotatedString.fromHtml(
+            SettingsHint(AnnotatedString.fromHtml(
                     appString(R.string.settings_hidden_albums_when_on_hidden_albums_section)
-                ),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                ))
+            SettingsHeading(appString(R.string.settings_head_home))
+            AlbumHomeSettings(hidden = true)
+
+            SettingsHeading(appString(R.string.settings_head_previews))
+            SettingsGroup(
+                null,
+                listOf<@Composable () -> Unit>({
+                    SettingsToggleRow(
+                        label = appString(R.string.hidden_previews_off),
+                        checked = previewsOff,
+                        icon = Icons.Filled.PhotoAlbum,
+                        onCheckedChange = { vm.setHiddenPreviewsOff(it) }
+                    )
+                })
             )
+            SettingsHint(appString(R.string.hidden_previews_off_sub))
         }
     }
 }

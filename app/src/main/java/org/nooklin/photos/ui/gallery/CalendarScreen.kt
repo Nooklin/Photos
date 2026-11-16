@@ -83,7 +83,7 @@ fun HiddenCalendarScreen(
     val context = LocalContext.current
     CalendarContent(
         items = items,
-        timeMillis = { it.hiddenAt },
+        timeMillis = { it.sortDate },
         zoomKey = { it.file.absolutePath },
         onBack = onBack,
         onOpenDay = onOpenDay

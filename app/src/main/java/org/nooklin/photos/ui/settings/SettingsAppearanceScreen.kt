@@ -78,85 +78,85 @@ fun SettingsAppearanceScreen(
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SettingsHeading(appString(R.string.settings_head_look))
             SettingsGroup(
-                appString(R.string.settings_appearance_theme),
-                listOf(
-                    AppThemeMode.SYSTEM to appString(R.string.settings_appearance_follow_system),
-                    AppThemeMode.LIGHT to appString(R.string.settings_appearance_light),
-                    AppThemeMode.DARK to appString(R.string.settings_appearance_dark),
-                    AppThemeMode.BLACK to appString(R.string.settings_appearance_black)
-                ).map { (mode, label) ->
-                    { SettingsRadioRow(label, themeMode == mode) { onThemeModeChange(mode) } }
-                }
-            )
-            Text(
-                appString(R.string.settings_appearance_black_uses_a_true_black),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
-
-            SettingsGroup(
-                appString(R.string.settings_appearance_colors),
-                listOf({
-                    SettingsToggleRow(appString(R.string.settings_appearance_colorful_display), colorful, Icons.Filled.Palette, onCheckedChange = onColorfulChange)
-                })
-            )
-            Text(
-                appString(R.string.settings_appearance_colorful_display_explanation),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
-
-            SettingsGroup(
-                appString(R.string.settings_appearance_language),
-                listOf(
-                    "" to appString(R.string.settings_appearance_follow_system),
-                    "en" to "English",
-                    "nl" to "Nederlands"
-                ).map { (tag, label) ->
+                null,
+                listOf<@Composable () -> Unit>(
                     {
-                        SettingsRadioRow(label, if (tag.isEmpty()) languageTags.isEmpty() else languageTags.startsWith(tag)) {
+                        SettingsChoiceRow(
+                            appString(R.string.settings_appearance_theme),
+                            listOf(
+                                AppThemeMode.SYSTEM to appString(R.string.settings_appearance_follow_system),
+                                AppThemeMode.LIGHT to appString(R.string.settings_appearance_light),
+                                AppThemeMode.DARK to appString(R.string.settings_appearance_dark),
+                                AppThemeMode.BLACK to appString(R.string.settings_appearance_black)
+                            ),
+                            themeMode
+                        ) { onThemeModeChange(it) }
+                    },
+                    {
+                        SettingsToggleRow(appString(R.string.settings_appearance_colorful_display), colorful, Icons.Filled.Palette, onCheckedChange = onColorfulChange)
+                    },
+                    {
+                        Column(Modifier.padding(top = 8.dp)) {
+                            Text(appString(R.string.settings_appearance_contrast_color), modifier = Modifier.padding(horizontal = 16.dp))
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                items(ContrastColor.entries, key = { it.storageKey }) { option ->
+                                    ContrastColorSwatch(
+                                        option = option,
+                                        selected = option == contrastColor,
+                                        onClick = { onContrastColorChange(option) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                )
+            )
+            SettingsHint(appString(R.string.settings_appearance_black_uses_a_true_black))
+            SettingsHint(appString(R.string.settings_appearance_colorful_display_explanation))
+            SettingsHint(appString(R.string.settings_appearance_tints_buttons_accents_and_pill))
+
+            SettingsHeading(appString(R.string.settings_head_language))
+            SettingsGroup(
+                null,
+                listOf<@Composable () -> Unit>(
+                    {
+                        SettingsChoiceRow(
+                            appString(R.string.settings_appearance_language),
+                            listOf(
+                                "" to appString(R.string.settings_appearance_follow_system),
+                                "en" to "English",
+                                "nl" to "Nederlands"
+                            ),
+                            if (languageTags.isEmpty()) "" else languageTags.substringBefore('-')
+                        ) { tag ->
                             languageTags = tag
                             localeManager.applicationLocales = LocaleList.forLanguageTags(tag)
                         }
+                    },
+                    {
+                        SettingsChoiceRow(
+                            appString(R.string.settings_appearance_font),
+                            listOf(
+                                AppFont.INTER to AppFont.INTER.label,
+                                AppFont.SYSTEM_DEFAULT to AppFont.SYSTEM_DEFAULT.label,
+                                AppFont.WORK_SANS to AppFont.WORK_SANS.label
+                            ),
+                            appFont,
+                            fontFor = { fontFamilyFor(it) }
+                        ) { onAppFontChange(it) }
                     }
-                }
+                )
             )
-            Text(
-                appString(R.string.settings_appearance_language_explanation),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
+            SettingsHint(appString(R.string.settings_appearance_language_explanation))
 
-            SettingsGroup(
-                appString(R.string.settings_appearance_font),
-                listOf(
-                    AppFont.INTER to AppFont.INTER.label,
-                    AppFont.SYSTEM_DEFAULT to AppFont.SYSTEM_DEFAULT.label,
-                    AppFont.WORK_SANS to AppFont.WORK_SANS.label
-                ).map { (font, label) ->
-                    { SettingsRadioRow(label, appFont == font, fontFamily = fontFamilyFor(font)) { onAppFontChange(font) } }
-                }
-            )
-
-            SettingsGroup(
-                appString(R.string.settings_appearance_contrast_color),
-                listOf({
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(ContrastColor.entries, key = { it.storageKey }) { option ->
-                            ContrastColorSwatch(
-                                option = option,
-                                selected = option == contrastColor,
-                                onClick = { onContrastColorChange(option) }
-                            )
-                        }
-                    }
-                })
-            )
-            Text(
-                appString(R.string.settings_appearance_tints_buttons_accents_and_pill),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
+            SettingsHeading(appString(R.string.settings_head_feedback))
+            SettingsGroup(null, listOf<@Composable () -> Unit>({ HapticsSetting() }))
+            SettingsHint(appString(R.string.settings_haptics_hint))
         }
     }
 }
