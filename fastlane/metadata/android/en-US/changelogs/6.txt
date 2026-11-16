@@ -1,0 +1,6 @@
+Version 1.3.1
+- Home: flat tiles, rounder album corners, Customize Home
+- Folders up to 6 levels deep, also when importing a folder or zip
+- Swipe to select keeps scrolling at the top and bottom of the screen
+- Selecting in the Hidden Section works like the library, with Share
+- Recently Deleted: Recover All and Delete All

@@ -344,15 +344,17 @@ class HiddenMediaRepository(
             // Filter the sorted items so the first 4 are the newest
             return items.filter { it.file.name in names }
         }
+        fun treeMembers(albumId: Long): List<HiddenItem> =
+            (membersOf(albumId) + foldersByParent[albumId].orEmpty().flatMap { treeMembers(it.id) }).distinctBy { it.file.name }
         albums.map { album ->
             val members = membersOf(album.id)
             val cover = members.find { it.file.name == album.coverFileName }
             val folders = foldersByParent[album.id].orEmpty()
             val folderFronts = folders.mapNotNull { folder ->
-                val inFolder = membersOf(folder.id)
+                val inFolder = treeMembers(folder.id)
                 (inFolder.find { it.file.name == folder.coverFileName } ?: inFolder.firstOrNull())?.thumbnailFile
             }.take(4)
-            val total = (members + folders.flatMap { membersOf(it.id) }).distinctBy { it.file.name }.size
+            val total = treeMembers(album.id).size
             val files = when {
                 folderFronts.isNotEmpty() -> folderFronts
                 cover != null -> (listOf(cover) + members.filter { it !== cover }).map { it.thumbnailFile }

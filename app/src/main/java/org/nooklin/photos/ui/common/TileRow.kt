@@ -1,6 +1,5 @@
 package org.nooklin.photos.ui.common
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,16 +39,15 @@ fun TileRow(tiles: List<TileSpec>) {
         val tileWidth = maxWidth * 0.43f
         LazyHorizontalGrid(
             rows = GridCells.Fixed(rows),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(TileGap),
             verticalArrangement = Arrangement.spacedBy(TileGap),
             modifier = Modifier.fillMaxWidth().height(TileHeight * rows + TileGap * (rows - 1) + 12.dp)
         ) {
             items(tiles) { tile ->
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                     modifier = Modifier
                         .width(tileWidth)
                         .height(TileHeight)
@@ -60,7 +57,7 @@ fun TileRow(tiles: List<TileSpec>) {
                         Modifier.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(tile.icon, contentDescription = null, modifier = Modifier.size(22.dp))
+                        Icon(tile.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
                         Text(
                             tile.label,
                             maxLines = 1,

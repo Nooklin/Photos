@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -69,6 +70,7 @@ import org.nooklin.photos.ui.common.CircleIconButton
 import org.nooklin.photos.ui.common.MenuIcon
 import org.nooklin.photos.ui.common.GlassPill
 import org.nooklin.photos.ui.common.PillButton
+import org.nooklin.photos.ui.common.SelectionCountBar
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Restore
 import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
@@ -170,14 +172,16 @@ fun RecycleBinScreen(
     menuEntry?.let { entry ->
         CardMenu(
             ratio = entry.aspectRatioOrUnknown(),
-            onOpen = { onItemClick(entries.indexOf(entry)) },
+            onOpen = { menuEntry = null; onItemClick(entries.indexOf(entry)) },
             onDismiss = { menuEntry = null },
             rows = listOf(
                 CardAction(appString(R.string.common_select), Icons.Filled.CheckCircle) {
+                    menuEntry = null
                     isSelecting = true
                     toggleSelect(entry.mediaId)
                 },
                 CardAction(appString(R.string.recycle_bin_recover), Icons.Filled.Restore) {
+                    menuEntry = null
                     pendingRecoverIds = listOf(entry.mediaId)
                     if (restoreConfirmTitle != null && restoreConfirmText != null) {
                         showBulkRestoreConfirm = true
@@ -186,6 +190,7 @@ fun RecycleBinScreen(
                     }
                 },
                 CardAction(appString(R.string.recycle_bin_delete_permanently), Icons.Filled.Delete, destructive = true) {
+                    menuEntry = null
                     pendingDeleteIds = listOf(entry.mediaId)
                     showDeleteConfirm = true
                 }
@@ -212,56 +217,60 @@ fun RecycleBinScreen(
                 },
                 actions = {
                     if (entries.isNotEmpty()) {
-                        if (isSelecting) {
-                            Box {
-                                CircleIconButton(
-                                    icon = Icons.Filled.MoreVert,
-                                    contentDescription = appString(R.string.common_more),
-                                    onClick = { actionsMenuExpanded = true }
-                                )
-                                DropdownMenu(
-                                    expanded = actionsMenuExpanded,
-                                    onDismissRequest = { actionsMenuExpanded = false },
-                                    shape = GlassPill.shape,
-                                    containerColor = GlassPill.adaptivePopupBackground
-                                ) {
-                                    val all = selectedIds.isEmpty()
-                                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-                                        DropdownMenuItem(
-                                            leadingIcon = { MenuIcon(Icons.Filled.Delete) },
-                                            text = {
-                                                Text(
-                                                    if (all) appString(R.string.recycle_bin_delete_all) else appString(R.string.common_delete),
-                                                    color = GlassPill.destructiveText
-                                                )
-                                            },
-                                            onClick = {
-                                                actionsMenuExpanded = false
-                                                pendingDeleteIds = targetIds()
-                                                showDeleteConfirm = true
+                        Box {
+                            CircleIconButton(
+                                icon = Icons.Filled.MoreVert,
+                                contentDescription = appString(R.string.common_more),
+                                onClick = { actionsMenuExpanded = true }
+                            )
+                            DropdownMenu(
+                                expanded = actionsMenuExpanded,
+                                onDismissRequest = { actionsMenuExpanded = false },
+                                shape = GlassPill.shape,
+                                containerColor = GlassPill.adaptivePopupBackground
+                            ) {
+                                val all = selectedIds.isEmpty()
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                    DropdownMenuItem(
+                                        leadingIcon = { MenuIcon(Icons.Filled.Delete) },
+                                        text = {
+                                            Text(
+                                                if (all) appString(R.string.recycle_bin_delete_all) else appString(R.string.common_delete),
+                                                color = GlassPill.destructiveText
+                                            )
+                                        },
+                                        onClick = {
+                                            actionsMenuExpanded = false
+                                            pendingDeleteIds = targetIds()
+                                            showDeleteConfirm = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        leadingIcon = { MenuIcon(Icons.Filled.Restore) },
+                                        text = { Text(if (all) appString(R.string.recycle_bin_recover_all) else appString(R.string.recycle_bin_recover)) },
+                                        onClick = {
+                                            actionsMenuExpanded = false
+                                            pendingRecoverIds = targetIds()
+                                            if (restoreConfirmTitle != null && restoreConfirmText != null) {
+                                                showBulkRestoreConfirm = true
+                                            } else {
+                                                performRecover(pendingRecoverIds)
                                             }
-                                        )
-                                        DropdownMenuItem(
-                                            leadingIcon = { MenuIcon(Icons.Filled.Restore) },
-                                            text = { Text(if (all) appString(R.string.recycle_bin_recover_all) else appString(R.string.recycle_bin_recover)) },
-                                            onClick = {
-                                                actionsMenuExpanded = false
-                                                pendingRecoverIds = targetIds()
-                                                if (restoreConfirmTitle != null && restoreConfirmText != null) {
-                                                    showBulkRestoreConfirm = true
-                                                } else {
-                                                    performRecover(pendingRecoverIds)
-                                                }
-                                            }
-                                        )
-                                    }
+                                        }
+                                    )
                                 }
                             }
+                        }
+                        if (isSelecting) {
                             PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                         }
                     }
                 }
             )
+        },
+        floatingActionButtonPosition = FabPosition.Center,
+        floatingActionButton = {
+            if (isSelecting) SelectionCountBar(selectedIds.size)
         }
     ) { padding ->
         if (entries.isEmpty()) {

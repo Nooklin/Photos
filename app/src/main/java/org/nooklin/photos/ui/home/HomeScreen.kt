@@ -1,6 +1,8 @@
 package org.nooklin.photos.ui.home
 
 
+import org.nooklin.photos.ui.common.FlatRowTile
+import org.nooklin.photos.ui.common.FlatBlock
 import org.nooklin.photos.ui.common.TileSpec
 import org.nooklin.photos.ui.common.TileRow
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -148,7 +150,7 @@ fun HomeScreen(
     ) { padding ->
         LazyColumn(Modifier.padding(padding)) {
             for (section in sectionOrder) {
-                // Sections switched off in Reorder Home Screen are skipped, Library and Settings can not be
+                // Sections switched off in Customize Home are skipped, Library and Settings can not be
                 if (section in hiddenSections) continue
                 when (section) {
                     HomeSection.LIBRARY -> item {
@@ -227,7 +229,7 @@ private fun LibraryBlock(
     coroutineScope: CoroutineScope,
     onItemClick: (Int, Rect, ImageBitmap?) -> Unit
 ) {
-    GlassBlock {
+    FlatBlock {
         Column {
             SectionHeader(
                 appString(R.string.common_library),
@@ -246,12 +248,12 @@ private fun LibraryBlock(
                 scrollToIndex = { i -> rowState.scrollToItem(i) }
             )
             BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                val cell = (maxWidth - 4.dp) / (previewColumns + 0.5f)
+                val cell = (maxWidth - 32.dp) / (previewColumns + 0.5f)
                 val rows = previewRows.coerceAtMost(shown.size).coerceAtLeast(1)
                 LazyHorizontalGrid(
                     rows = GridCells.Fixed(rows),
                     state = rowState,
-                    contentPadding = PaddingValues(horizontal = 2.dp),
+                    contentPadding = PaddingValues(horizontal = 15.dp),
                     modifier = Modifier.fillMaxWidth().height(cell * rows)
                 ) {
                     itemsIndexed(shown, key = { _, item -> item.id }) { index, item ->
@@ -308,7 +310,7 @@ private fun AlbumsBlock(
     onOpenAlbums: () -> Unit,
     onOpenAlbumDetail: (Long) -> Unit
 ) {
-    GlassBlock {
+    FlatBlock {
         Column {
             SectionHeader(
                 appString(R.string.common_albums),
@@ -319,16 +321,16 @@ private fun AlbumsBlock(
             if (expanded) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(homeAlbums.size, key = { homeAlbums[it].id }) { index ->
                         val album = homeAlbums[index]
                         Column(
-                            Modifier.width(120.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
+                            Modifier.width(136.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
                         ) {
-                            AlbumThumbnail(album.previewItems, size = 120.dp, fillSlots = album.folderCount >= 2)
-                            Text(album.name, maxLines = 1)
-                            Text("${album.itemCount}", color = Color.Gray)
+                            AlbumThumbnail(album.previewItems, size = 136.dp, fillSlots = album.folderCount >= 2, corner = 18.dp)
+                            Text(album.name, maxLines = 1, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+                            Text(appString(R.string.common_items, album.itemCount), color = Color.Gray, fontSize = 13.sp)
                         }
                     }
                 }
@@ -345,7 +347,7 @@ private fun DiscoveredBlock(
     onOpenDiscovered: () -> Unit,
     onOpenDiscoveredDetail: (String) -> Unit
 ) {
-    GlassBlock {
+    FlatBlock {
         Column {
             SectionHeader(
                 appString(R.string.common_discovered),
@@ -356,16 +358,16 @@ private fun DiscoveredBlock(
             if (expanded) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(homeDiscovered.size, key = { homeDiscovered[it].tagId }) { index ->
                         val album = homeDiscovered[index]
                         Column(
-                            Modifier.width(120.dp).clickable(role = Role.Button) { onOpenDiscoveredDetail(album.tagId) }
+                            Modifier.width(136.dp).clickable(role = Role.Button) { onOpenDiscoveredDetail(album.tagId) }
                         ) {
-                            AlbumThumbnail(album.previewItems, size = 120.dp)
-                            Text(album.label, maxLines = 1)
-                            Text("${album.itemCount}", color = Color.Gray)
+                            AlbumThumbnail(album.previewItems, size = 136.dp, corner = 18.dp)
+                            Text(album.label, maxLines = 1, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+                            Text(appString(R.string.common_items, album.itemCount), color = Color.Gray, fontSize = 13.sp)
                         }
                     }
                 }
@@ -381,7 +383,7 @@ private fun MediaTypesBlock(
     onToggle: () -> Unit,
     onOpenCategory: (MediaCategory) -> Unit
 ) {
-    GlassBlock {
+    FlatBlock {
         Column {
             SectionHeader(appString(R.string.common_media_types), expanded, titleFontSize = 20.sp) { onToggle() }
             if (expanded) {
@@ -413,7 +415,7 @@ private fun UtilitiesBlock(
     duplicatesMlEnabled: Boolean,
     onOpenCalendar: () -> Unit
 ) {
-    GlassBlock {
+    FlatBlock {
         Column {
             SectionHeader(appString(R.string.common_utilities), expanded, titleFontSize = 20.sp) { onToggle() }
             if (expanded) {
@@ -432,50 +434,13 @@ private fun UtilitiesBlock(
 
 @Composable
 private fun SettingsRowBlock(onOpenSettings: () -> Unit) {
-    GlassBlock {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .clickable(role = Role.Button) { onOpenSettings() },
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
-            Text(appString(R.string.common_settings))
-        }
-    }
+    FlatRowTile(appString(R.string.common_settings), Icons.Filled.Settings, onOpenSettings)
 }
 
 /** Bottom-of-Home entry point into ReorderHomeScreen, always last regardless of sectionOrder. */
 @Composable
 private fun ReorderHomeRowBlock(onOpenReorderHome: () -> Unit) {
-    GlassBlock {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .clickable(role = Role.Button) { onOpenReorderHome() },
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Filled.Reorder, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
-            Text(appString(R.string.common_reorder_home_screen))
-        }
-    }
-}
-
-// Translucent surface with a subtle border (iOS 26 look).
-@Composable
-private fun GlassBlock(content: @Composable () -> Unit) {
-    Surface(
-        color = GlassPill.adaptiveGlassBackground,
-        shape = RoundedCornerShape(20.dp),
-        border = GlassPill.adaptiveBorder,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 2.dp, vertical = Spacing.Sm)
-    ) {
-        content()
-    }
+    FlatRowTile(appString(R.string.common_reorder_home_screen), Icons.Filled.Reorder, onOpenReorderHome)
 }
 
 @Composable

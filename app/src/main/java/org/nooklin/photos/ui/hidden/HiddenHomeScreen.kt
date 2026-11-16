@@ -1,6 +1,8 @@
 package org.nooklin.photos.ui.hidden
 
 
+import org.nooklin.photos.ui.common.FlatRowTile
+import org.nooklin.photos.ui.common.FlatBlock
 import org.nooklin.photos.ui.common.TileSpec
 import org.nooklin.photos.ui.common.TileRow
 
@@ -140,7 +142,7 @@ fun HiddenHomeScreen(
     ) { padding ->
         LazyColumn(Modifier.padding(padding)) {
             item {
-                GlassBlock {
+                FlatBlock {
                     Column {
                         SectionHeader(
                             appString(R.string.common_hidden_library),
@@ -206,7 +208,7 @@ fun HiddenHomeScreen(
 
             item {
                 if (hiddenAlbumsEnabled && HomeSection.ALBUMS !in hiddenSections) {
-                    GlassBlock {
+                    FlatBlock {
                         Column {
                             SectionHeader(
                                 appString(R.string.common_hidden_albums),
@@ -217,16 +219,16 @@ fun HiddenHomeScreen(
                             if (albumsExpanded) {
                                 LazyRow(
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
                                     items(homeAlbums.size, key = { homeAlbums[it].id }) { index ->
                                         val album = homeAlbums[index]
                                         Column(
-                                            Modifier.width(120.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
+                                            Modifier.width(136.dp).clickable(role = Role.Button) { onOpenAlbumDetail(album.id) }
                                         ) {
-                                            HiddenAlbumThumbnail(album.previewFiles, size = 120.dp, fillSlots = album.folderCount >= 2)
-                                            Text(album.name, maxLines = 1)
-                                            Text("${album.itemCount}", color = Color.Gray)
+                                            HiddenAlbumThumbnail(album.previewFiles, size = 136.dp, fillSlots = album.folderCount >= 2, corner = 18.dp)
+                                            Text(album.name, maxLines = 1, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+                                            Text(appString(R.string.common_items, album.itemCount), color = Color.Gray, fontSize = 13.sp)
                                         }
                                     }
                                 }
@@ -237,7 +239,7 @@ fun HiddenHomeScreen(
             }
 
             if (HomeSection.MEDIA_TYPES !in hiddenSections) item {
-                GlassBlock {
+                FlatBlock {
                     Column {
                         SectionHeader(appString(R.string.common_media_types), mediaTypesExpanded, titleFontSize = 20.sp) {
                             mediaTypesExpanded = !mediaTypesExpanded
@@ -259,7 +261,7 @@ fun HiddenHomeScreen(
             }
 
             if (HomeSection.UTILITIES !in hiddenSections) item {
-                GlassBlock {
+                FlatBlock {
                     Column {
                         SectionHeader(appString(R.string.common_utilities), utilitiesExpanded, titleFontSize = 20.sp) {
                             utilitiesExpanded = !utilitiesExpanded
@@ -278,19 +280,7 @@ fun HiddenHomeScreen(
                 }
             }
 
-            item {
-                GlassBlock {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(role = Role.Button) { onOpenCustomize() }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(appString(R.string.common_show_or_hide_sections))
-                    }
-                }
-            }
+            item { FlatRowTile(appString(R.string.common_show_or_hide_sections), null, onOpenCustomize) }
 
             item { Box(Modifier.height(32.dp).fillMaxWidth()) {} }
         }
@@ -302,20 +292,6 @@ private data class HiddenCategoryRowSpec(val label: String, val icon: ImageVecto
 @Composable
 private fun HiddenCategoryGrid(rows: List<HiddenCategoryRowSpec>) {
     TileRow(rows.map { TileSpec(it.label, it.icon, it.onClick) })
-}
-
-@Composable
-private fun GlassBlock(content: @Composable () -> Unit) {
-    Surface(
-        color = GlassPill.adaptiveGlassBackground,
-        shape = RoundedCornerShape(20.dp),
-        border = GlassPill.adaptiveBorder,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 2.dp, vertical = Spacing.Sm)
-    ) {
-        content()
-    }
 }
 
 @Composable

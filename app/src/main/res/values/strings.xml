@@ -138,7 +138,7 @@
     <string name="hide_access_not_now">Not now</string>
     <string name="common_utilities">Utilities</string>
     <string name="common_recently_deleted">Recently Deleted</string>
-    <string name="common_show_or_hide_sections">Show or Hide Sections</string>
+    <string name="common_show_or_hide_sections">Customize Home</string>
     <string name="common_collapse">Collapse</string>
     <string name="common_expand">Expand</string>
     <string name="common_share">Share</string>
@@ -318,7 +318,7 @@
     <string name="settings_how_to_favorites_recently_saved_and_recently">Favorites, Recently Saved and Recently Deleted</string>
     <string name="settings_how_to_tap_the_heart_in_the">Tap the heart in the viewer to make an item a favorite.\n\nRecently Saved shows items from the last 30 days.\n\nItems you delete go to Recently Deleted for 30 days, where you can recover them. After that they are removed, and Android asks for your confirmation before files are permanently deleted.</string>
     <string name="settings_how_to_media_types_and_your_home">Media Types and your Home screen</string>
-    <string name="settings_how_to_home_lists_videos_panoramas_screenshot">Home lists Videos, Panoramas, Screenshots, Screen Recordings, Slow Motion and RAW.\n\nUse Reorder Home Screen at the bottom of Home to change the order of sections and tiles, or to hide the ones you do not use.</string>
+    <string name="settings_how_to_home_lists_videos_panoramas_screenshot">Home lists Videos, Panoramas, Screenshots, Screen Recordings, Slow Motion and RAW.\n\nUse Customize Home at the bottom of Home to change the order of sections and tiles, or to hide the ones you do not use.</string>
     <string name="settings_how_to_editing">Editing</string>
     <string name="settings_how_to_tap_the_edit_button_in">Tap the edit button in the viewer.\n\n• Photos can be rotated, flipped and cropped, and changed with Styles and Adjust (for example brightness, contrast, exposure, highlights and shadows). Tap the check mark to save.\n• Videos open a video editor with Trim (with a strip of frames), Styles and Crop.\n• The ... menu also has Duplicate, which makes a copy of the item.</string>
     <string name="settings_how_to_share_from_the_viewer_s">Share from the viewer\'s bottom bar. Copy in the ... menu puts the photo on the clipboard.\n\nIn the Library, press and hold a photo, choose Select and then Share to open a share sheet for several items, with a row of apps, Save to Folder, Export Unmodified Original and Copy. With one photo selected it also offers Print and Use as Wallpaper. Cancel stops a share that is still being prepared, for example a video.\n\nWith Remove Exif data on, you choose in Settings &gt; Sharing what is removed: Location, Camera and device, Date and time, and Description and other. All four are on by default.</string>
@@ -404,7 +404,7 @@
     <string name="settings_security_app_lock_uses_your_device">App Lock uses your device\'s own lock screen (PIN, pattern, password, or biometric), not a separate Nooklin Photos password.</string>
     <string name="settings_security_when_on_screenshots_and_screen">When on, screenshots and screen recording are blocked while using this app.</string>
     <string name="gallery_search">Search</string>
-    <string name="common_reorder_home_screen">Reorder Home Screen</string>
+    <string name="common_reorder_home_screen">Customize Home</string>
     <string name="reorder_home_choose_the_order_sections_appear">Choose the order sections appear in on Home, and which ones are shown.</string>
     <string name="reorder_home_the_order_of_these_tiles">The order of these tiles also applies to the Hidden section.</string>
     <string name="reorder_home_move_up">Move up</string>
@@ -549,7 +549,6 @@
     <string name="video_editor_saved_new_clip">Saved as a new clip.</string>
     <string name="changelog_version_120">Version 1.2.0</string>
     <string name="changelog_version_110">Version 1.1.0</string>
-    <string name="changelog_cat_editing">Editing</string>
     <string name="changelog_120_1">Video editor: the trim bar shows a strip of frames and a line where the player is, and Styles and Crop work on videos too.</string>
     <string name="changelog_120_2">Styles for video: the same filters as for photos, with a live preview. A filtered video is saved as a new clip.</string>
     <string name="changelog_120_3">Crop for video: the same aspect ratios, straighten, rotate and flip as for photos. A cropped video is saved as a new clip. Perspective is for photos only.</string>
@@ -672,6 +671,26 @@
     <string name="sharing_off_dont_show">Don\'t show this again</string>
     <string name="filter_menu_show">Show</string>
     <string name="filter_menu_sort">Sort</string>
+    <string name="changelog_cat_video_editor">Video editor</string>
+    <string name="changelog_cat_photo_editor">Photo editor</string>
+    <string name="changelog_cat_other_apps">Opening from other apps</string>
+    <string name="changelog_cat_albums">Albums and folders</string>
+    <string name="changelog_cat_backup">Backup and import</string>
+    <string name="changelog_cat_viewer">Viewer</string>
+    <string name="changelog_cat_settings_design">Settings and design</string>
+    <string name="changelog_version_131">Version 1.3.1</string>
+    <string name="changelog_cat_home">Home</string>
+    <string name="changelog_cat_panoramas">Panoramas</string>
+    <string name="changelog_cat_auto_albums">Automatic albums</string>
+    <string name="changelog_cat_duplicate">Duplicate</string>
+    <string name="changelog_cat_longpress">Long press menu</string>
+    <string name="changelog_cat_filter">Filter menu</string>
+    <string name="changelog_cat_appearance">Appearance</string>
+    <string name="changelog_cat_privacy">Privacy</string>
+    <string name="changelog_cat_smooth">Speed and smoothness</string>
+    <string name="changelog_cat_folders">Folders</string>
+    <string name="changelog_cat_swipe">Swipe to select</string>
+    <string name="changelog_cat_recent">Recently Deleted</string>
     <string name="changelog_version_130">Version 1.3.0</string>
     <string name="changelog_130_1">The Library card on Home scrolls sideways with the number of rows you set in Settings, Gallery. Media Types and Utilities scroll sideways in two rows.</string>
     <string name="changelog_130_2">Panoramas have their own category under Media Types.</string>
@@ -691,4 +710,10 @@
     <string name="changelog_130_16">Swiping back from a screen no longer flashes a white area.</string>
     <string name="changelog_130_17">Scrolling and filtering large libraries puts less work on the main thread.</string>
     <string name="changelog_130_18">The video player log no longer writes the location of the file.</string>
+    <string name="changelog_131_1">Folders can go up to 6 levels deep. Importing a folder or zip keeps its structure, in the library and in the Hidden Section.</string>
+    <string name="changelog_131_2">Swiping to select keeps scrolling while you hold your finger at the top or bottom of the screen.</string>
+    <string name="changelog_131_3">Selecting in the Hidden Section works the same as in the library, including Share when it is turned on.</string>
+    <string name="changelog_131_5">Media Types, Utilities, Albums and Discovered sit directly on the page, in the Hidden Section too. The tiles are filled without an outline, and the albums have rounder corners.</string>
+    <string name="changelog_131_6">Reorder Home Screen is now called Customize Home, on Home and in the Hidden Section.</string>
+    <string name="changelog_131_4">Recently Deleted has a menu with Recover All and Delete All. Selecting there works like the rest of the app.</string>
 </resources>

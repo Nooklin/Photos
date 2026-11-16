@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui.hidden
 
+import androidx.compose.material.icons.filled.IosShare
 import org.nooklin.photos.ui.gallery.CardAction
 import androidx.activity.compose.BackHandler
 import org.nooklin.photos.data.local.MAX_GRID_COLUMNS
@@ -111,6 +112,7 @@ fun HiddenAlbumDetailScreen(
     onAddPhotos: () -> Unit,
     onBack: () -> Unit,
     isFolder: Boolean = false,
+    canCreateFolder: Boolean = true,
     folders: List<HiddenAlbumWithPreview> = emptyList(),
     onFolderClick: (Long) -> Unit = {},
     onRenameFolder: (Long, String) -> Unit = { _, _ -> },
@@ -118,7 +120,9 @@ fun HiddenAlbumDetailScreen(
     onCreateFolder: (String) -> Unit = {},
     totalCount: Int = items.size,
     coverFileName: String? = null,
-    onSetCover: (String?) -> Unit = {}
+    onSetCover: (String?) -> Unit = {},
+    shareEnabled: Boolean = false,
+    removeExifOnShare: Boolean = true
 ) {
     val screenColumns = rememberScreenGridColumns("albums", gridColumns)
     val cols = screenColumns.columns
@@ -163,6 +167,8 @@ fun HiddenAlbumDetailScreen(
 
     BackHandler(enabled = isSelecting) { exitSelection() }
 
+    val shareHidden = rememberHiddenShare(removeExifOnShare)
+
     menuItem?.let { item ->
         HiddenItemMenu(
             item = item,
@@ -172,6 +178,7 @@ fun HiddenAlbumDetailScreen(
             onUnhide = { onUnhide(item) },
             onDelete = { isSelecting = true; selectedNames = setOf(item.file.name); showDeleteConfirm = true },
             onAddToAlbum = { isSelecting = true; selectedNames = setOf(item.file.name); showAddToAlbumDialog = true },
+            onShare = if (shareEnabled) ({ shareHidden(listOf(item)) {} }) else null,
             onDismiss = { menuItem = null },
             extra = CardAction(appString(R.string.hidden_album_detail_remove_from_this_album), Icons.Filled.RemoveCircleOutline) {
                 onRemoveFromAlbum(item)
@@ -217,6 +224,15 @@ fun HiddenAlbumDetailScreen(
                                 containerColor = GlassPill.adaptivePopupBackground
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                    if (shareEnabled) DropdownMenuItem(
+                                        text = { Text(appString(R.string.common_share)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.IosShare) },
+                                        enabled = selectedNames.isNotEmpty(),
+                                        onClick = {
+                                            actionsMenuExpanded = false
+                                            shareHidden(items.filter { it.file.name in selectedNames }) { exitSelection() }
+                                        }
+                                    )
                                     DropdownMenuItem(
                                         text = { Text(appString(R.string.common_favorite)) },
                                         leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
@@ -227,20 +243,20 @@ fun HiddenAlbumDetailScreen(
                                         }
                                     )
                                     DropdownMenuItem(
+                                        text = { Text(appString(R.string.common_add_to_album)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.PhotoAlbum) },
+                                        onClick = {
+                                            actionsMenuExpanded = false
+                                            showAddToAlbumDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
                                         text = { Text(appString(R.string.common_unhide)) },
                                         leadingIcon = { MenuIcon(Icons.Filled.Visibility) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             items.filter { it.file.name in selectedNames }.forEach { onUnhide(it) }
                                             exitSelection()
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(appString(R.string.common_add_to_album)) },
-                                        leadingIcon = { MenuIcon(Icons.Filled.PhotoAlbum) },
-                                        onClick = {
-                                            actionsMenuExpanded = false
-                                            showAddToAlbumDialog = true
                                         }
                                     )
                                     DropdownMenuItem(
@@ -297,7 +313,7 @@ fun HiddenAlbumDetailScreen(
                                         showCoverPicker = true
                                     }
                                 )
-                                if (!isFolder) {
+                                if (canCreateFolder) {
                                     DropdownMenuItem(
                                         text = { Text(appString(R.string.folder_new)) },
                                         onClick = {

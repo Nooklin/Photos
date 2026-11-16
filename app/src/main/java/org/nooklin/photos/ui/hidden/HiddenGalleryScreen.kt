@@ -1,5 +1,9 @@
 package org.nooklin.photos.ui.hidden
 
+import org.nooklin.photos.ui.common.SelectionCountBar
+import androidx.compose.material3.FabPosition
+import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.foundation.gestures.scrollBy
 import org.nooklin.photos.ui.common.MenuSectionHeader
 import androidx.activity.compose.BackHandler
 import org.nooklin.photos.ui.common.aspectRatioOrUnknown
@@ -130,7 +134,9 @@ fun HiddenGalleryScreen(
     sortOrder: SortOrder = SortOrder.NEWEST_FIRST,
     onSortOrderChange: (SortOrder) -> Unit = {},
     gridStyle: GridStyle = GridStyle.SQUARE,
-    groupBy: GroupBy = GroupBy.NONE
+    groupBy: GroupBy = GroupBy.NONE,
+    shareEnabled: Boolean = false,
+    removeExifOnShare: Boolean = true
 ) {
     val gridStyle = if (gridColumns == 1) GridStyle.ORIGINAL else gridStyle
     val groupBy = if (gridColumns == 1) GroupBy.NONE else groupBy
@@ -174,6 +180,8 @@ fun HiddenGalleryScreen(
 
     BackHandler(enabled = isSelecting) { exitSelection() }
 
+    val shareHidden = rememberHiddenShare(removeExifOnShare)
+
     menuItem?.let { item ->
         HiddenItemMenu(
             item = item,
@@ -183,6 +191,7 @@ fun HiddenGalleryScreen(
             onUnhide = { onUnhide(item) },
             onDelete = { isSelecting = true; selectedNames = setOf(item.file.name); showDeleteConfirm = true },
             onAddToAlbum = { isSelecting = true; selectedNames = setOf(item.file.name); showAddToAlbumDialog = true },
+            onShare = if (shareEnabled) ({ shareHidden(listOf(item)) {} }) else null,
             onDismiss = { menuItem = null }
         )
     }
@@ -326,6 +335,15 @@ fun HiddenGalleryScreen(
                                 containerColor = GlassPill.adaptivePopupBackground
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                    if (shareEnabled) DropdownMenuItem(
+                                        text = { Text(appString(R.string.common_share)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.IosShare) },
+                                        enabled = selectedNames.isNotEmpty(),
+                                        onClick = {
+                                            actionsMenuExpanded = false
+                                            shareHidden(items.filter { it.file.name in selectedNames }) { exitSelection() }
+                                        }
+                                    )
                                     DropdownMenuItem(
                                         text = { Text(appString(R.string.common_favorite)) },
                                         leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
@@ -336,20 +354,20 @@ fun HiddenGalleryScreen(
                                         }
                                     )
                                     DropdownMenuItem(
+                                        text = { Text(appString(R.string.common_add_to_album)) },
+                                        leadingIcon = { MenuIcon(Icons.Filled.PhotoAlbum) },
+                                        onClick = {
+                                            actionsMenuExpanded = false
+                                            showAddToAlbumDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
                                         text = { Text(appString(R.string.common_unhide)) },
                                         leadingIcon = { MenuIcon(Icons.Filled.Visibility) },
                                         onClick = {
                                             actionsMenuExpanded = false
                                             items.filter { it.file.name in selectedNames }.forEach { onUnhide(it) }
                                             exitSelection()
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(appString(R.string.common_add_to_album)) },
-                                        leadingIcon = { MenuIcon(Icons.Filled.PhotoAlbum) },
-                                        onClick = {
-                                            actionsMenuExpanded = false
-                                            showAddToAlbumDialog = true
                                         }
                                     )
                                     DropdownMenuItem(
@@ -367,6 +385,10 @@ fun HiddenGalleryScreen(
                     }
                 }
             )
+        },
+        floatingActionButtonPosition = FabPosition.Center,
+        floatingActionButton = {
+            if (isSelecting && !hasHero) SelectionCountBar(selectedNames.size)
         }
     ) { padding ->
         if (items.isEmpty()) {
@@ -398,6 +420,7 @@ fun HiddenGalleryScreen(
                             .dragToSelect(
                                 enabled = isSelecting,
                                 hitTest = hitTestSquareGrid,
+                                scrollBy = { gridState.scrollBy(it) },
                                 orderedKeys = {
                                     orderedKeys(gridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is String && it in itemNames }
                                 },
@@ -459,6 +482,7 @@ fun HiddenGalleryScreen(
                             .dragToSelect(
                                 enabled = isSelecting,
                                 hitTest = hitTestSquareGrid,
+                                scrollBy = { gridState.scrollBy(it) },
                                 orderedKeys = {
                                     orderedKeys(gridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is String && it in itemNames }
                                 },
@@ -514,6 +538,7 @@ fun HiddenGalleryScreen(
                         .dragToSelect(
                             enabled = isSelecting,
                             hitTest = hitTestStaggeredGrid,
+                            scrollBy = { staggeredGridState.scrollBy(it) },
                             orderedKeys = {
                                 orderedKeys(staggeredGridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is String && it in itemNames }
                             },

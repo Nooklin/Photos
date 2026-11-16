@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PhotoAlbum
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -31,26 +32,32 @@ fun HiddenItemMenu(
     onDelete: () -> Unit,
     onAddToAlbum: () -> Unit,
     onDismiss: () -> Unit,
+    onShare: (() -> Unit)? = null,
     extra: CardAction? = null
 ) {
     val context = LocalContext.current
+    // every action closes the card, like the long press card in the Library
+    fun closing(action: () -> Unit): () -> Unit = { action(); onDismiss() }
     CardMenu(
         ratio = item.aspectRatioOrUnknown(),
-        onOpen = onOpen,
+        onOpen = closing(onOpen),
         onDismiss = onDismiss,
-        topActions = listOf(
-            CardAction(
-                appString(R.string.common_favorite),
-                if (item.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                onClick = onFavorite
-            ),
-            CardAction(appString(R.string.common_unhide), Icons.Filled.Visibility, onClick = onUnhide),
-            CardAction(appString(R.string.common_delete), Icons.Filled.Delete, destructive = true, onClick = onDelete)
-        ),
+        topActions = buildList {
+            if (onShare != null) add(CardAction(appString(R.string.common_share), Icons.Filled.Share, onClick = closing(onShare)))
+            add(
+                CardAction(
+                    appString(R.string.common_favorite),
+                    if (item.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                    onClick = closing(onFavorite)
+                )
+            )
+            add(CardAction(appString(R.string.common_unhide), Icons.Filled.Visibility, onClick = closing(onUnhide)))
+            add(CardAction(appString(R.string.common_delete), Icons.Filled.Delete, destructive = true, onClick = closing(onDelete)))
+        },
         rows = buildList {
-            add(CardAction(appString(R.string.common_select), Icons.Filled.CheckCircle, onClick = onSelect))
-            add(CardAction(appString(R.string.common_add_to_album), Icons.Filled.PhotoAlbum, onClick = onAddToAlbum))
-            if (extra != null) add(extra)
+            add(CardAction(appString(R.string.common_select), Icons.Filled.CheckCircle, onClick = closing(onSelect)))
+            add(CardAction(appString(R.string.common_add_to_album), Icons.Filled.PhotoAlbum, onClick = closing(onAddToAlbum)))
+            if (extra != null) add(CardAction(extra.label, extra.icon, extra.enabled, extra.destructive, extra.onDisabledClick, closing(extra.onClick)))
         }
     ) {
         AsyncImage(

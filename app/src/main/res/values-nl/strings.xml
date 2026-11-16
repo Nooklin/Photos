@@ -136,7 +136,7 @@
     <string name="hide_access_not_now">Niet nu</string>
     <string name="common_utilities">Hulpmiddelen</string>
     <string name="common_recently_deleted">Recent verwijderd</string>
-    <string name="common_show_or_hide_sections">Secties tonen of verbergen</string>
+    <string name="common_show_or_hide_sections">Home aanpassen</string>
     <string name="common_collapse">Inklappen</string>
     <string name="common_expand">Uitklappen</string>
     <string name="common_share">Deel</string>
@@ -316,7 +316,7 @@
     <string name="settings_how_to_favorites_recently_saved_and_recently">Favorieten, Recent opgeslagen en Recent verwijderd</string>
     <string name="settings_how_to_tap_the_heart_in_the">Tik in de viewer op het hartje om van een item een favoriet te maken.\n\nRecent opgeslagen toont items van de afgelopen 30 dagen.\n\nItems die je verwijdert gaan 30 dagen naar Recent verwijderd, waar je ze kunt herstellen. Daarna worden ze verwijderd en vraagt Android om je bevestiging voordat bestanden definitief worden gewist.</string>
     <string name="settings_how_to_media_types_and_your_home">Mediatypen en je Home-scherm</string>
-    <string name="settings_how_to_home_lists_videos_panoramas_screenshot">Home toont Video\'s, Panorama\'s, Schermafbeeldingen, Schermopnamen, Slow motion en RAW.\n\nGebruik Home-scherm herschikken onderaan Home om de volgorde van secties en tegels te wijzigen of om degene die je niet gebruikt te verbergen.</string>
+    <string name="settings_how_to_home_lists_videos_panoramas_screenshot">Home toont Video\'s, Panorama\'s, Schermafbeeldingen, Schermopnamen, Slow motion en RAW.\n\nGebruik Home aanpassen onderaan Home om de volgorde van secties en tegels te wijzigen of om degene die je niet gebruikt te verbergen.</string>
     <string name="settings_how_to_editing">Bewerken</string>
     <string name="settings_how_to_tap_the_edit_button_in">Tik in de viewer op de knop Wijzig.\n\n• Foto\'s kunnen worden gedraaid, gespiegeld en bijgesneden en aangepast met Stijlen en Aanpassen (bijvoorbeeld helderheid, contrast, belichting, hooglichten en schaduwen). Tik op het vinkje om op te slaan.\n• Video\'s openen een videoeditor met Knippen (met een strook beelden), Stijlen en Bijsnijden.\n• Het menu ... bevat ook Dupliceer, waarmee een kopie van het item wordt gemaakt.</string>
     <string name="settings_how_to_share_from_the_viewer_s">Deel via de onderbalk van de viewer. Kopieer in het menu ... zet de foto op het klembord.\n\nIn de Bibliotheek houd je een foto ingedrukt, kies je Selecteer en daarna Deel. Dan opent een deelvenster voor meerdere items, met een rij apps, Opslaan in map, Origineel ongewijzigd exporteren en Kopiëren. Bij één geselecteerde foto zie je ook Afdrukken en Als achtergrond gebruiken. Annuleren stopt een deelactie die nog wordt voorbereid, bijvoorbeeld een video.\n\nMet Exif-gegevens verwijderen aan kies je in Instellingen &gt; Delen wat verwijderd wordt: Locatie, Camera en toestel, Datum en tijd, en Beschrijving en overig. Standaard staan alle vier aan.</string>
@@ -402,7 +402,7 @@
     <string name="settings_security_app_lock_uses_your_device">App-vergrendeling gebruikt de eigen schermvergrendeling van je apparaat (pincode, patroon, wachtwoord of biometrie), geen apart Nooklin Photos-wachtwoord.</string>
     <string name="settings_security_when_on_screenshots_and_screen">Wanneer aan worden schermafbeeldingen en schermopnamen geblokkeerd terwijl je deze app gebruikt.</string>
     <string name="gallery_search">Zoek</string>
-    <string name="common_reorder_home_screen">Home-scherm herschikken</string>
+    <string name="common_reorder_home_screen">Home aanpassen</string>
     <string name="reorder_home_choose_the_order_sections_appear">Kies in welke volgorde de secties op Home staan en welke worden getoond.</string>
     <string name="reorder_home_the_order_of_these_tiles">De volgorde van deze tegels geldt ook voor de Verborgen sectie.</string>
     <string name="reorder_home_move_up">Omhoog</string>
@@ -547,7 +547,6 @@
     <string name="video_editor_saved_new_clip">Opgeslagen als nieuwe clip.</string>
     <string name="changelog_version_120">Versie 1.2.0</string>
     <string name="changelog_version_110">Versie 1.1.0</string>
-    <string name="changelog_cat_editing">Bewerken</string>
     <string name="changelog_120_1">Video-editor: de knipbalk toont een strook met beelden en een lijn waar de speler is, en Stijlen en Bijsnijden werken nu ook voor video\'s.</string>
     <string name="changelog_120_2">Stijlen voor video: dezelfde filters als voor foto\'s, met een live voorbeeld. Een video met filter wordt als nieuwe clip opgeslagen.</string>
     <string name="changelog_120_3">Bijsnijden voor video: dezelfde beeldverhoudingen, rechtzetten, draaien en spiegelen als voor foto\'s. Een bijgesneden video wordt als nieuwe clip opgeslagen. Perspectief is alleen voor foto\'s.</string>
@@ -670,6 +669,26 @@
     <string name="sharing_off_dont_show">Niet meer tonen</string>
     <string name="filter_menu_show">Tonen</string>
     <string name="filter_menu_sort">Sorteren</string>
+    <string name="changelog_cat_video_editor">Video-editor</string>
+    <string name="changelog_cat_photo_editor">Foto-editor</string>
+    <string name="changelog_cat_other_apps">Openen vanuit andere apps</string>
+    <string name="changelog_cat_albums">Albums en mappen</string>
+    <string name="changelog_cat_backup">Back-up en import</string>
+    <string name="changelog_cat_viewer">Viewer</string>
+    <string name="changelog_cat_settings_design">Instellingen en ontwerp</string>
+    <string name="changelog_version_131">Versie 1.3.1</string>
+    <string name="changelog_cat_home">Home</string>
+    <string name="changelog_cat_panoramas">Panorama\'s</string>
+    <string name="changelog_cat_auto_albums">Automatische albums</string>
+    <string name="changelog_cat_duplicate">Dupliceren</string>
+    <string name="changelog_cat_longpress">Lang indrukken-menu</string>
+    <string name="changelog_cat_filter">Filtermenu</string>
+    <string name="changelog_cat_appearance">Weergave</string>
+    <string name="changelog_cat_privacy">Privacy</string>
+    <string name="changelog_cat_smooth">Snelheid en soepelheid</string>
+    <string name="changelog_cat_folders">Mappen</string>
+    <string name="changelog_cat_swipe">Swipen om te selecteren</string>
+    <string name="changelog_cat_recent">Onlangs verwijderd</string>
     <string name="changelog_version_130">Versie 1.3.0</string>
     <string name="changelog_130_1">De Library-kaart op Home scrolt zijwaarts met het aantal rijen dat je instelt bij Instellingen, Galerij. Mediatypes en Hulpmiddelen scrollen zijwaarts in twee rijen.</string>
     <string name="changelog_130_2">Panorama\'s hebben een eigen categorie onder Mediatypes.</string>
@@ -689,4 +708,10 @@
     <string name="changelog_130_16">Terugvegen vanuit een scherm toont geen wit vlak meer.</string>
     <string name="changelog_130_17">Scrollen en filteren in grote bibliotheken belast de hoofdthread minder.</string>
     <string name="changelog_130_18">De logregel van de videospeler schrijft de locatie van het bestand niet meer weg.</string>
+    <string name="changelog_131_1">Mappen kunnen tot 6 niveaus diep. Een map of zip importeren behoudt de structuur, in de bibliotheek en in het verborgen gedeelte.</string>
+    <string name="changelog_131_2">Swipen om te selecteren blijft scrollen zolang je je vinger bovenaan of onderaan het scherm houdt.</string>
+    <string name="changelog_131_3">Selecteren in het verborgen gedeelte werkt hetzelfde als in de bibliotheek, inclusief Delen als dat aan staat.</string>
+    <string name="changelog_131_5">Mediatypes, Hulpmiddelen, Albums en Ontdekt staan direct op de pagina, ook in het Verborgen gedeelte. De tegels zijn gevuld zonder rand en albums hebben ronder hoeken.</string>
+    <string name="changelog_131_6">Home-scherm herschikken heet nu Home aanpassen, op Home en in het Verborgen gedeelte.</string>
+    <string name="changelog_131_4">Onlangs verwijderd heeft een menu met Alles herstellen en Alles verwijderen. Selecteren werkt daar zoals in de rest van de app.</string>
 </resources>

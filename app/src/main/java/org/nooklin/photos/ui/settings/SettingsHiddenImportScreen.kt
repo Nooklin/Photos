@@ -57,7 +57,15 @@ import androidx.compose.ui.semantics.Role
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 
-private class ImportRow(val album: String?, val folder: String?, val count: Int)
+private class ImportRow(val album: String?, val folders: List<String>, val count: Int) {
+    val key get() = (listOf(album.orEmpty()) + folders).joinToString("/")
+}
+
+private fun ImportEntry.prefixKeys(): List<String> {
+    val keys = mutableListOf(album.orEmpty())
+    for (f in folders) keys.add(keys.last() + "/" + f)
+    return keys
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,10 +131,7 @@ fun SettingsHiddenImportScreen(
 
     fun key(e: ImportEntry) = e.album.orEmpty()
     fun included(e: ImportEntry): Boolean {
-        val album = e.album.orEmpty()
-        if (album in excluded) return false
-        val folderKey = if (e.folder != null) "$album/${e.folder}" else null
-        return folderKey == null || folderKey !in excluded
+        return e.prefixKeys().none { it in excluded }
     }
     val selected = entries.filter { included(it) }
 
@@ -145,9 +150,17 @@ fun SettingsHiddenImportScreen(
     val rows = remember(entries) {
         val list = mutableListOf<ImportRow>()
         entries.groupBy { it.album }.toSortedMap(compareBy { it ?: "" }).forEach { (album, inAlbum) ->
-            list.add(ImportRow(album, null, inAlbum.size))
-            inAlbum.filter { it.folder != null }.groupBy { it.folder }.toSortedMap(compareBy { it ?: "" })
-                .forEach { (folder, inFolder) -> list.add(ImportRow(album, folder, inFolder.size)) }
+            list.add(ImportRow(album, emptyList(), inAlbum.size))
+            val paths = inAlbum.flatMap { e -> e.folders.indices.map { e.folders.take(it + 1) } }.distinct()
+                .sortedWith { a, b ->
+                    val n = minOf(a.size, b.size)
+                    for (i in 0 until n) {
+                        val c = a[i].compareTo(b[i])
+                        if (c != 0) return@sortedWith c
+                    }
+                    a.size - b.size
+                }
+            paths.forEach { path -> list.add(ImportRow(album, path, inAlbum.count { it.folders.take(path.size) == path })) }
         }
         list
     }
@@ -258,34 +271,36 @@ fun SettingsHiddenImportScreen(
                 }
                 item {
                     Text(
-                        appString(R.string.import_summary, entries.size, rows.count { it.folder == null && it.album != null }),
+                        appString(R.string.import_summary, entries.size, rows.count { it.folders.isEmpty() && it.album != null }),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
                 items(rows) { row ->
-                    val album = row.album.orEmpty()
-                    val rowKey = if (row.folder == null) album else "$album/${row.folder}"
-                    val albumOff = album in excluded
+                    val rowKey = row.key
+                    val parentOff = row.key.substringBeforeLast('/', "").let { parent ->
+                        parent.isNotEmpty() && (listOf(row.album.orEmpty()) + row.folders.dropLast(1))
+                            .runningReduce { acc, part -> "$acc/$part" }.any { it in excluded }
+                    }
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable(enabled = progress == null && (row.folder == null || !albumOff), role = Role.Button) {
+                            .clickable(enabled = progress == null && !parentOff, role = Role.Button) {
                                 excluded = if (rowKey in excluded) excluded - rowKey else excluded + rowKey
                             }
-                            .padding(start = if (row.folder == null) 8.dp else 40.dp, end = 16.dp),
+                            .padding(start = (8 + 32 * row.folders.size).dp, end = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = rowKey !in excluded && !(row.folder != null && albumOff),
+                            checked = rowKey !in excluded && !parentOff,
                             onCheckedChange = null,
-                            enabled = progress == null && (row.folder == null || !albumOff),
+                            enabled = progress == null && !parentOff,
                             modifier = Modifier.padding(12.dp)
                         )
                         Text(
                             when {
                                 row.album == null -> appString(R.string.import_loose)
-                                row.folder != null -> row.folder
+                                row.folders.isNotEmpty() -> row.folders.last()
                                 else -> row.album
                             },
                             modifier = Modifier.weight(1f)

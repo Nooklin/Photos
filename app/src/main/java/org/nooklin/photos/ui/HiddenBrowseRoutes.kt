@@ -131,6 +131,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
     }
     composable(ROUTE_HIDDEN_LIBRARY) {
         HiddenGalleryScreen(
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare,
             items = hiddenUiState.visibleItems,
             gridColumns = gridColumns,
             onGridColumnsChange = settingsViewModel::setGridColumns,
@@ -157,6 +159,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
         val hiddenFavorites = hiddenUiState.items.filter { it.isFavorite }
         val hiddenFavoritesCover by remember { LocalMetadataStore(context).hiddenFavoritesCover }.collectAsStateWithLifecycle(initialValue = null)
         HiddenGalleryScreen(
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare,
             items = hiddenFavorites,
             gridColumns = gridColumns,
             existingAlbums = hiddenTargets,
@@ -199,6 +203,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
     composable(ROUTE_HIDDEN_VIDEOS) {
         val hiddenVideos = hiddenUiState.items.filter { it.isVideo }
         HiddenGalleryScreen(
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare,
             items = hiddenVideos,
             gridColumns = gridColumns,
             existingAlbums = hiddenTargets,
@@ -240,6 +246,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
     composable(ROUTE_HIDDEN_SLOW_MOTION) {
         val hiddenSlowMotion = hiddenUiState.items.filter { it.isSlowMotion }
         HiddenGalleryScreen(
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare,
             items = hiddenSlowMotion,
             gridColumns = gridColumns,
             existingAlbums = hiddenTargets,
@@ -280,6 +288,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
     composable(ROUTE_HIDDEN_RAW) {
         val hiddenRaw = hiddenUiState.items.filter { it.isRaw }
         HiddenGalleryScreen(
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare,
             items = hiddenRaw,
             gridColumns = gridColumns,
             existingAlbums = hiddenTargets,
@@ -320,6 +330,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
     composable(ROUTE_HIDDEN_SCREENSHOTS) {
         val hiddenScreenshots = hiddenUiState.items.filter { it.isScreenshot }
         HiddenGalleryScreen(
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare,
             items = hiddenScreenshots,
             gridColumns = gridColumns,
             existingAlbums = hiddenTargets,
@@ -360,6 +372,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
     composable(ROUTE_HIDDEN_PANORAMAS) {
         val hiddenPanoramas = hiddenUiState.items.filter { it.isPanorama }
         HiddenGalleryScreen(
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare,
             items = hiddenPanoramas,
             gridColumns = gridColumns,
             existingAlbums = hiddenTargets,
@@ -400,6 +414,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
     composable(ROUTE_HIDDEN_SCREEN_RECORDINGS) {
         val hiddenScreenRecordings = hiddenUiState.items.filter { it.isScreenRecording }
         HiddenGalleryScreen(
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare,
             items = hiddenScreenRecordings,
             gridColumns = gridColumns,
             existingAlbums = hiddenTargets,
@@ -443,6 +459,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             .filter { it.hiddenAt >= cutoff }
             .sortedByDescending { it.hiddenAt }
         HiddenGalleryScreen(
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare,
             items = hiddenRecentlySaved,
             gridColumns = gridColumns,
             existingAlbums = hiddenTargets,

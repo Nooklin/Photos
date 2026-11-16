@@ -109,6 +109,7 @@ fun AlbumDetailScreen(
     onDeleteAlbum: () -> Unit,
     onAddPhotos: () -> Unit,
     isFolder: Boolean = false,
+    canCreateFolder: Boolean = true,
     folders: List<AlbumWithPreview> = emptyList(),
     onFolderClick: (Long) -> Unit = {},
     onRenameFolder: (Long, String) -> Unit = { _, _ -> },
@@ -237,7 +238,7 @@ fun AlbumDetailScreen(
                                         showCoverPicker = true
                                     }
                                 )
-                                if (!isFolder) {
+                                if (canCreateFolder) {
                                     DropdownMenuItem(
                                         text = { Text(appString(R.string.folder_new)) },
                                         leadingIcon = { MenuIcon(Icons.Filled.CreateNewFolder) },
@@ -246,6 +247,8 @@ fun AlbumDetailScreen(
                                             showNewFolderDialog = true
                                         }
                                     )
+                                }
+                                if (!isFolder) {
                                     DropdownMenuItem(
                                         text = { Text(appString(R.string.common_merge_into)) },
                                         leadingIcon = { MenuIcon(Icons.Filled.CallMerge) },

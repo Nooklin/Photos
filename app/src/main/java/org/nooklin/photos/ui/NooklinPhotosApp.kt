@@ -1,6 +1,7 @@
 package org.nooklin.photos.ui
 
 import androidx.compose.ui.graphics.toArgb
+import org.nooklin.photos.data.HiddenAlbumWithPreview
 import org.nooklin.photos.data.HiddenItem
 
 import org.nooklin.photos.ui.common.GroupActions
@@ -227,10 +228,11 @@ fun NooklinPhotosApp(
     val hiddenUiState by hiddenUiStateHolder
     val hiddenTopAlbums = remember(hiddenUiState.albums) { hiddenUiState.albums.filter { it.parentId == null } }
     val hiddenTargets = remember(hiddenUiState.albums) {
-        hiddenTopAlbums.flatMap { album ->
-            listOf(album) + hiddenUiState.albums.filter { it.parentId == album.id }
-                .map { folder -> folder.copy(name = album.name + " / " + folder.name) }
-        }
+        fun withFolders(album: HiddenAlbumWithPreview): List<HiddenAlbumWithPreview> =
+            listOf(album) + hiddenUiState.albums.filter { it.parentId == album.id }.flatMap { folder ->
+                withFolders(folder.copy(name = album.name + " / " + folder.name))
+            }
+        hiddenTopAlbums.flatMap { withFolders(it) }
     }
 
     // Hidden content must stay out of recents and screen capture even when the optional setting is off
@@ -266,19 +268,16 @@ fun NooklinPhotosApp(
             }
             val foldersByParent = albumEntities.filter { it.parentId != null }.groupBy { it.parentId }
             fun membersOf(id: Long): List<org.nooklin.photos.data.MediaItem> = itemsByAlbum[id].orEmpty()
+            fun treeMembers(id: Long): List<org.nooklin.photos.data.MediaItem> =
+                (membersOf(id) + foldersByParent[id].orEmpty().flatMap { treeMembers(it.id) }).distinctBy { it.id }
             fun frontOf(album: org.nooklin.photos.data.local.AlbumEntity, memberItems: List<org.nooklin.photos.data.MediaItem>) =
                 memberItems.find { it.id == album.coverMediaId } ?: memberItems.firstOrNull()
             albumEntities.map { album ->
                 val memberItems = membersOf(album.id)
                 val cover = memberItems.find { it.id == album.coverMediaId }
                 val folders = foldersByParent[album.id].orEmpty()
-                val folderFronts = folders.mapNotNull { folder -> frontOf(folder, membersOf(folder.id)) }.take(4)
-                val itemCount = if (folders.isEmpty()) memberItems.size else {
-                    val ids = HashSet<Long>()
-                    memberItems.forEach { ids.add(it.id) }
-                    folders.forEach { f -> membersOf(f.id).forEach { ids.add(it.id) } }
-                    ids.size
-                }
+                val folderFronts = folders.mapNotNull { folder -> frontOf(folder, treeMembers(folder.id)) }.take(4)
+                val itemCount = if (folders.isEmpty()) memberItems.size else treeMembers(album.id).size
                 AlbumWithPreview(
                     id = album.id,
                     name = album.name,
@@ -300,10 +299,11 @@ fun NooklinPhotosApp(
     }
     val albumTargets = remember(allCollections, hiddenAutoAlbumIds) {
         val topLevel = allCollections.filter { it.parentId == null && it.id !in hiddenAutoAlbumIds }
-        topLevel.flatMap { album ->
-            listOf(album) + allCollections.filter { it.parentId == album.id }
-                .map { folder -> folder.copy(name = album.name + " / " + folder.name) }
-        }
+        fun withFolders(album: AlbumWithPreview): List<AlbumWithPreview> =
+            listOf(album) + allCollections.filter { it.parentId == album.id }.flatMap { folder ->
+                withFolders(folder.copy(name = album.name + " / " + folder.name))
+            }
+        topLevel.flatMap { withFolders(it) }
     }
 
     val petsWithPreview by produceState(emptyList<PetWithPreview>(), petEntities, petMemberships, uiState.allItems) {
@@ -742,7 +742,9 @@ fun NooklinPhotosApp(
                 navController = navController,
                 capturedZoomLaunchState = capturedZoomLaunchState,
                 hiddenViewerItemsOverrideState = hiddenViewerItemsOverrideState,
-                openViewerZoomed = ::openViewerZoomed
+                openViewerZoomed = ::openViewerZoomed,
+                removeExifOnShareState = removeExifOnShareState,
+                hiddenImageSharingEnabledState = hiddenImageSharingEnabledState
             )
             utilityRoutes(
                 context = context,

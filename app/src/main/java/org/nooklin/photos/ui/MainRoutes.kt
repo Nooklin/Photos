@@ -23,6 +23,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.data.folderDepth
+import org.nooklin.photos.data.MAX_FOLDER_DEPTH
 import org.nooklin.photos.data.MediaCategory
 import org.nooklin.photos.data.MediaItem
 import org.nooklin.photos.data.MediaStoreRepository
@@ -252,7 +254,9 @@ internal fun NavGraphBuilder.mainRoutes(
             onCreateFolder = { parentId, name -> albumViewModel.createFolder(parentId, name) },
             onMergeAlbum = { id -> navController.navigate("album/$id/merge") },
             itemsOfAlbums = { ids ->
-                val allIds = ids + albumEntities.filter { it.parentId in ids }.map { it.id }
+                val allIds = HashSet(ids)
+                var added = true
+                while (added) added = allIds.addAll(albumEntities.filter { it.parentId in allIds }.map { it.id })
                 val memberIds = albumMemberships.filter { it.albumId in allIds }.map { it.mediaId }.toSet()
                 uiState.allItems.filter { it.id in memberIds }
             },
@@ -304,6 +308,7 @@ internal fun NavGraphBuilder.mainRoutes(
             onDeleteAlbum = { albumViewModel.deleteAlbum(albumId) { navController.popBackStack() } },
             onAddPhotos = { navController.navigate("album/$albumId/pick") },
             isFolder = album?.parentId != null,
+            canCreateFolder = folderDepth(albumId) { id -> albumEntities.find { it.id == id }?.parentId } < MAX_FOLDER_DEPTH,
             folders = albumFolders,
             totalCount = album?.itemCount ?: albumPhotos.size,
             onFolderClick = { folderId -> navController.navigate("album/$folderId") },

@@ -11,6 +11,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import org.nooklin.photos.R
 import org.nooklin.photos.appString
+import org.nooklin.photos.data.folderDepth
+import org.nooklin.photos.data.MAX_FOLDER_DEPTH
 import org.nooklin.photos.data.HiddenAlbumWithPreview
 import org.nooklin.photos.data.HiddenItem
 import org.nooklin.photos.data.local.LocalMetadataStore
@@ -39,8 +41,12 @@ internal fun NavGraphBuilder.hiddenAlbumRoutes(
     navController: NavHostController,
     capturedZoomLaunchState: MutableState<ZoomLaunch?>,
     hiddenViewerItemsOverrideState: MutableState<List<HiddenItem>?>,
-    openViewerZoomed: (Any, String) -> Unit
+    openViewerZoomed: (Any, String) -> Unit,
+    removeExifOnShareState: State<Boolean>,
+    hiddenImageSharingEnabledState: State<Boolean>
 ) {
+    val removeExifOnShare by removeExifOnShareState
+    val hiddenImageSharingEnabled by hiddenImageSharingEnabledState
     val gridColumns by gridColumnsState
     val hiddenUiState by hiddenUiStateHolder
     val capturedZoomLaunch by capturedZoomLaunchState
@@ -116,13 +122,16 @@ internal fun NavGraphBuilder.hiddenAlbumRoutes(
             onAddPhotos = { navController.navigate("hiddenalbums/$albumId/pick") },
             onBack = { navController.popBackStack() },
             isFolder = album?.parentId != null,
+            canCreateFolder = folderDepth(albumId) { id -> hiddenUiState.albums.find { it.id == id }?.parentId } < MAX_FOLDER_DEPTH,
             folders = hiddenUiState.albums.filter { it.parentId == albumId },
             onFolderClick = { folderId -> navController.navigate("hiddenalbums/$folderId") },
             onRenameFolder = { id, name -> hiddenViewModel.renameAlbum(id, name) },
             onDeleteFolder = { id -> hiddenViewModel.deleteAlbum(id) },
             onCreateFolder = { name -> hiddenViewModel.createFolder(albumId, name) },
             coverFileName = album?.coverFileName,
-            onSetCover = { fileName -> hiddenViewModel.setAlbumCover(albumId, fileName) }
+            onSetCover = { fileName -> hiddenViewModel.setAlbumCover(albumId, fileName) },
+            shareEnabled = hiddenImageSharingEnabled,
+            removeExifOnShare = removeExifOnShare
         )
     }
     composable("hiddenalbums/{albumId}/pick") { entry ->

@@ -37,7 +37,7 @@ interface AlbumDao {
     suspend fun deleteAlbumRow(albumId: Long)
 
     // the memberships of a deleted album or folder go with the cascade, the photos themselves are never touched
-    @Query("DELETE FROM albums WHERE parentId = :albumId")
+    @Query("DELETE FROM albums WHERE id IN (WITH RECURSIVE sub(id) AS (SELECT id FROM albums WHERE parentId = :albumId UNION SELECT a.id FROM albums a JOIN sub ON a.parentId = sub.id) SELECT id FROM sub)")
     suspend fun deleteFoldersOf(albumId: Long)
 
     @Query("SELECT parentId FROM albums WHERE id = :albumId")

@@ -24,7 +24,7 @@ class ImportSource(val uri: Uri, val isZip: Boolean)
 
 class ImportEntry(
     val album: String?,
-    val folder: String?,
+    val folders: List<String>,
     val name: String,
     val modified: Long,
     val isVideo: Boolean,
@@ -38,14 +38,28 @@ class ImportResult(val imported: Int, val skipped: List<String>, val failed: Int
 
 class ImportProgress(val checking: Boolean, val done: Int, val total: Int)
 
-private fun mapPath(dirs: List<String>, isZip: Boolean): Pair<String?, String?> {
+const val MAX_FOLDER_DEPTH = 6
+
+// an album is level 1, a folder in it level 2 and so on
+fun folderDepth(id: Long, parentOf: (Long) -> Long?): Int {
+    var depth = 1
+    var current = parentOf(id)
+    while (current != null && depth <= MAX_FOLDER_DEPTH) {
+        depth++
+        current = parentOf(current)
+    }
+    return depth
+}
+
+private fun mapPath(dirs: List<String>, isZip: Boolean): Pair<String?, List<String>> {
     var d = dirs
     if (d.firstOrNull() == "Hidden Images") d = emptyList()
     else if (d.firstOrNull() == "Hidden Albums") d = d.drop(1)
     // Our own library export, only trusted in a zip: a real folder named Albums stays an album
     else if (isZip && d.firstOrNull() == "Library") d = emptyList()
     else if (isZip && d.firstOrNull() == "Albums") d = d.drop(1)
-    return d.getOrNull(0) to d.getOrNull(1)
+    // the album is level 1, deeper directories are cut off at the limit
+    return d.getOrNull(0) to d.drop(1).take(MAX_FOLDER_DEPTH - 1)
 }
 
 internal fun mediaKind(name: String, providerMime: String?): String? {
@@ -95,10 +109,10 @@ suspend fun scanImportFolder(context: Context, tree: Uri): List<ImportEntry> =
                         stack.add(id to (dirs + name))
                     } else {
                         val kind = mediaKind(name, mime) ?: continue
-                        val (album, folder) = mapPath(dirs, false)
+                        val (album, folders) = mapPath(dirs, false)
                         result.add(
                             ImportEntry(
-                                album, folder, name, modified, kind.startsWith("video/"), kind,
+                                album, folders, name, modified, kind.startsWith("video/"), kind,
                                 DocumentsContract.buildDocumentUriUsingTree(tree, id).toString()
                             )
                         )
@@ -127,9 +141,9 @@ suspend fun scanImportZip(context: Context, zip: Uri): List<ImportEntry> =
                     val name = parts.lastOrNull() ?: continue
                     if (name.startsWith(".") || parts.firstOrNull() == "__MACOSX") continue
                     val kind = mediaKind(name, null) ?: continue
-                    val (album, folder) = mapPath(parts.dropLast(1), true)
+                    val (album, folders) = mapPath(parts.dropLast(1), true)
                     result.add(
-                        ImportEntry(album, folder, name, entry.time.coerceAtLeast(0L), kind.startsWith("video/"), kind, entry.name)
+                        ImportEntry(album, folders, name, entry.time.coerceAtLeast(0L), kind.startsWith("video/"), kind, entry.name)
                     )
                 }
             }
@@ -138,7 +152,7 @@ suspend fun scanImportZip(context: Context, zip: Uri): List<ImportEntry> =
         if (files == null) result else result.map { e ->
             val m = files.optJSONObject(e.ref) ?: return@map e
             ImportEntry(
-                e.album, e.folder, m.optString("name").ifBlank { e.name },
+                e.album, e.folders, m.optString("name").ifBlank { e.name },
                 m.optLong("modified", 0L).takeIf { it > 0L } ?: e.modified,
                 e.isVideo, e.mime, e.ref,
                 m.optLong("taken", 0L), m.optLong("added", 0L)
@@ -195,16 +209,16 @@ suspend fun runImport(
             }
             if (temp.length() <= 0L) { failed++; return false }
             if (!known.add(hash)) {
-                skipped.add(listOfNotNull(entry.album, entry.folder, entry.name).joinToString(" / "))
+                skipped.add((listOfNotNull(entry.album) + entry.folders + entry.name).joinToString(" / "))
                 return false
             }
             val date = if (entry.modified > 0L) entry.modified else System.currentTimeMillis()
             val key = sink.store(temp, entry, date)
             if (key == null) { failed++; return false }
-            val target = when {
-                entry.album == null -> null
-                entry.folder == null -> albumId(entry.album)
-                else -> folderId(albumId(entry.album), entry.folder)
+            val target = entry.album?.let { album ->
+                var id = albumId(album)
+                for (folder in entry.folders) id = folderId(id, folder)
+                id
             }
             if (target != null) sink.addMember(target, key)
             imported++

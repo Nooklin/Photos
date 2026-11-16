@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui.common
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -86,7 +87,8 @@ private fun Modifier.cellDragToSelect(
     cells: () -> List<DragCell>,
     accepts: (Any) -> Boolean,
     isSelected: (Any) -> Boolean,
-    onItemDragged: (key: Any, select: Boolean) -> Unit
+    onItemDragged: (key: Any, select: Boolean) -> Unit,
+    scrollBy: (suspend (Float) -> Unit)? = null
 ): Modifier = dragToSelect(
     enabled = enabled,
     hitTest = { pos ->
@@ -96,7 +98,8 @@ private fun Modifier.cellDragToSelect(
     },
     orderedKeys = { orderedKeys(cells().map { it.index to it.key }, accepts) },
     isSelected = isSelected,
-    onItemDragged = onItemDragged
+    onItemDragged = onItemDragged,
+    scrollBy = scrollBy
 )
 
 private fun LazyGridState.dragCells(): List<DragCell> =
@@ -109,14 +112,16 @@ fun Modifier.groupDragToSelect(selection: GroupSelection?, state: LazyGridState)
     if (selection == null) this else cellDragToSelect(
         selection.isSelecting, state::dragCells, { it is Long },
         { key -> key is Long && key in selection.selectedIds },
-        { key, select -> if (key is Long) selection.setSelected(key, select) }
+        { key, select -> if (key is Long) selection.setSelected(key, select) },
+        { state.scrollBy(it) }
     )
 
 fun Modifier.groupDragToSelect(selection: GroupSelection?, state: LazyStaggeredGridState): Modifier =
     if (selection == null) this else cellDragToSelect(
         selection.isSelecting, state::dragCells, { it is Long },
         { key -> key is Long && key in selection.selectedIds },
-        { key, select -> if (key is Long) selection.setSelected(key, select) }
+        { key, select -> if (key is Long) selection.setSelected(key, select) },
+        { state.scrollBy(it) }
     )
 
 // For the screens that keep their own selection. accepts picks the photo cells (not headers or folders)
@@ -126,7 +131,7 @@ fun Modifier.gridDragToSelect(
     accepts: (Any) -> Boolean,
     isSelected: (Any) -> Boolean,
     onItemDragged: (key: Any, select: Boolean) -> Unit
-): Modifier = cellDragToSelect(enabled, state::dragCells, accepts, isSelected, onItemDragged)
+): Modifier = cellDragToSelect(enabled, state::dragCells, accepts, isSelected, onItemDragged) { state.scrollBy(it) }
 
 @Composable
 fun rememberGroupSelection(): GroupSelection = remember { GroupSelection() }

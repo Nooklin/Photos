@@ -114,7 +114,7 @@ interface HiddenDao {
     suspend fun deleteAlbumRow(albumId: Long)
 
     // Memberships go with the cascade, the hidden files themselves are never touched
-    @Query("DELETE FROM hidden_albums WHERE parentId = :albumId")
+    @Query("DELETE FROM hidden_albums WHERE id IN (WITH RECURSIVE sub(id) AS (SELECT id FROM hidden_albums WHERE parentId = :albumId UNION SELECT a.id FROM hidden_albums a JOIN sub ON a.parentId = sub.id) SELECT id FROM sub)")
     suspend fun deleteFoldersOf(albumId: Long)
 
     @Query("SELECT parentId FROM hidden_albums WHERE id = :albumId")

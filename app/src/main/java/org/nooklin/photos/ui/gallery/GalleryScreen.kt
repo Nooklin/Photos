@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui.gallery
 
+import androidx.compose.foundation.gestures.scrollBy
 import org.nooklin.photos.ui.common.MenuSectionHeader
 import androidx.activity.compose.BackHandler
 import org.nooklin.photos.ui.common.scrollToItemCentered
@@ -445,6 +446,7 @@ fun GalleryScreen(
                             .dragToSelect(
                                 enabled = isSelecting,
                                 hitTest = hitTestSquareGrid,
+                                scrollBy = { gridState.scrollBy(it) },
                                 orderedKeys = {
                                     orderedKeys(gridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is Long }
                                 },
@@ -487,6 +489,7 @@ fun GalleryScreen(
                             .dragToSelect(
                                 enabled = isSelecting,
                                 hitTest = hitTestSquareGrid,
+                                scrollBy = { gridState.scrollBy(it) },
                                 orderedKeys = {
                                     orderedKeys(gridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is Long }
                                 },
@@ -546,6 +549,7 @@ fun GalleryScreen(
                         .dragToSelect(
                             enabled = isSelecting,
                             hitTest = hitTestStaggeredGrid,
+                            scrollBy = { staggeredGridState.scrollBy(it) },
                             orderedKeys = {
                                 orderedKeys(staggeredGridState.layoutInfo.visibleItemsInfo.map { it.index to it.key }) { it is Long }
                             },
