@@ -22,8 +22,15 @@ class MediaRepository(
         }
         return raw
             .filterNot { it.id in recycledIds }
-            .map { it.copy(isFavorite = it.id in favoriteIds, dateAdded = sortDates[it.id] ?: it.dateAdded) }
-            .sortedByDescending { it.dateAdded }
+            .map {
+                val taken = it.dateTaken?.div(1000)?.takeIf { s -> s > 0 }
+                it.copy(
+                    isFavorite = it.id in favoriteIds,
+                    dateAdded = sortDates[it.id] ?: it.dateAdded,
+                    sortDate = sortDates[it.id] ?: taken ?: it.dateAdded
+                )
+            }
+            .sortedByDescending { it.sortDate }
     }
 
     suspend fun toggleFavorite(item: MediaItem) {

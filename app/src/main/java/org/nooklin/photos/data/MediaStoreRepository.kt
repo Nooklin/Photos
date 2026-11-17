@@ -27,7 +27,8 @@ data class MediaItem(
     val mimeType: String? = null,
     val captureFrameRate: Float? = null,
     val isFavorite: Boolean = false,
-    val dateTaken: Long? = null
+    val dateTaken: Long? = null,
+    val sortDate: Long = dateAdded
 ) {
     val isScreenshot: Boolean
         get() = bucketName?.contains("screenshot", ignoreCase = true) == true

@@ -9,7 +9,7 @@ import org.nooklin.photos.R
 import org.nooklin.photos.appString
 
 fun groupItemsByDate(items: List<MediaItem>, groupBy: GroupBy): Map<String, List<MediaItem>> =
-    if (groupBy == GroupBy.NONE) emptyMap() else DateLabeler(groupBy).let { labeler -> items.groupBy { labeler.label(it.dateAdded * 1000L) } }
+    if (groupBy == GroupBy.NONE) emptyMap() else DateLabeler(groupBy).let { labeler -> items.groupBy { labeler.label(it.sortDate * 1000L) } }
 
 fun groupHiddenItemsByDate(items: List<HiddenItem>, groupBy: GroupBy): Map<String, List<HiddenItem>> =
     if (groupBy == GroupBy.NONE) emptyMap() else DateLabeler(groupBy).let { labeler -> items.groupBy { labeler.label(it.sortDate) } }

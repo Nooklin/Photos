@@ -251,7 +251,7 @@ fun PhotoViewerScreen(
                     .chromeGate(chromeVisible) { chromeVisible = true },
                 title = {
                     currentItem?.let { item ->
-                        val millis = item.dateAdded * 1000L
+                        val millis = item.sortDate * 1000L
                         DateTimePill(
                             dateLabel = formatDayMonth(millis),
                             timeLabel = formatTime(millis),

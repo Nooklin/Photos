@@ -355,7 +355,7 @@ fun PhotoEditorScreen(
                     isSaving = false
                     if (copyUri != null) {
                         // Sorted just before the original (+1 second) so the copy sits beside it
-                        LocalMetadataStore(context).setSortDate(ContentUris.parseId(copyUri), target.item.dateAdded + 1)
+                        LocalMetadataStore(context).setSortDate(ContentUris.parseId(copyUri), target.item.sortDate + 1)
                         LocalMetadataStore(context).addEditedCopy(ContentUris.parseId(copyUri))
                         Toast.makeText(context, appString(R.string.photo_editor_saved_as_a_new_photo), Toast.LENGTH_LONG).show()
                         onSaved()

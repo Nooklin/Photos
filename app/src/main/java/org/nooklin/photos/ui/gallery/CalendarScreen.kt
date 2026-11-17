@@ -67,7 +67,7 @@ fun CalendarScreen(
 ) {
     CalendarContent(
         items = items,
-        timeMillis = { it.dateAdded * 1000L },
+        timeMillis = { it.sortDate * 1000L },
         zoomKey = { it.id },
         onBack = onBack,
         onOpenDay = onOpenDay

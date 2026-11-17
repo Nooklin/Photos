@@ -63,14 +63,14 @@ private fun buildPeriods(items: List<MediaItem>, months: Boolean): List<Timeline
     val format = SimpleDateFormat(if (months) "MMM yyyy" else "yyyy", Locale.getDefault())
     val groups = LinkedHashMap<Int, MutableList<MediaItem>>()
     for (item in items) {
-        calendar.timeInMillis = item.dateAdded * 1000L
+        calendar.timeInMillis = item.sortDate * 1000L
         val key = calendar.get(Calendar.YEAR) * 100 + if (months) calendar.get(Calendar.MONTH) else 0
         groups.getOrPut(key) { mutableListOf() }.add(item)
     }
     return groups.map { (key, group) ->
         TimelinePeriod(
             year = key / 100,
-            label = format.format(Date(group.first().dateAdded * 1000L)),
+            label = format.format(Date(group.first().sortDate * 1000L)),
             cover = group.firstOrNull { !it.isVideo } ?: group.first(),
             count = group.size,
             firstItemId = group.first().id

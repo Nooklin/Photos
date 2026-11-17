@@ -599,7 +599,7 @@ class HiddenMediaRepository(
             originals.copy(OriginalsStore.hiddenKey(fileName), OriginalsStore.mediaKey(ContentUris.parseId(newUri)))
             originals.delete(OriginalsStore.hiddenKey(fileName))
             // MediaStore stamps the new row with today, so the old library date goes back as a sort date
-            entry.dateAdded?.let { localMetadataStore.setSortDate(ContentUris.parseId(newUri), it) }
+            if (entry.originalTaken == null) entry.dateAdded?.let { localMetadataStore.setSortDate(ContentUris.parseId(newUri), it) }
             file.delete()
             File(thumbsDir, fileName).delete()
             hiddenDao.deleteMedia(fileName)
