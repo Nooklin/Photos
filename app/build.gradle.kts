@@ -23,8 +23,8 @@ android {
         applicationId = "org.nooklin.photos"
         minSdk = 33
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.3.2"
+        versionCode = 8
+        versionName = "1.3.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

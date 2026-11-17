@@ -675,6 +675,9 @@
     <string name="changelog_cat_backup">Back-up en import</string>
     <string name="changelog_cat_viewer">Viewer</string>
     <string name="changelog_cat_settings_design">Instellingen en ontwerp</string>
+    <string name="changelog_version_133">Versie 1.3.3</string>
+    <string name="changelog_133_1">Home sorteert albums op dezelfde manier als de Albums pagina.</string>
+    <string name="changelog_133_2">Items worden gesorteerd op de datum die de viewer toont. Items zonder opgeslagen datum springen niet meer naar boven.</string>
     <string name="changelog_version_132">Versie 1.3.2</string>
     <string name="changelog_version_131">Versie 1.3.1</string>
     <string name="changelog_cat_home">Home</string>
@@ -719,7 +722,6 @@
     <string name="album_sort_size">Grootte (aantal items)</string>
     <string name="album_sort_manual">Handmatig</string>
     <string name="album_reorder_hint">Houd een album ingedrukt en sleep het naar een andere plek</string>
-    <string name="album_home_sort">Albums op Home</string>
     <string name="album_home_rows">Albumrijen op Home</string>
     <string name="album_rows_one">1 rij</string>
     <string name="album_rows_two">2 rijen</string>

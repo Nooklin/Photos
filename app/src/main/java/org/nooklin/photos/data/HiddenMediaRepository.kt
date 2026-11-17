@@ -20,6 +20,8 @@ import org.nooklin.photos.data.local.LocalMetadataStore
 import org.nooklin.photos.data.local.NooklinDatabase
 import java.io.File
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -89,6 +91,24 @@ class HiddenMediaRepository(
     } catch (e: Exception) {
         destination.delete()
         false
+    }
+
+    // same date the viewer shows: exif capture time, else the file date
+    suspend fun backfillTakenDates() = withContext(Dispatchers.IO) {
+        for (entry in hiddenDao.allMedia()) {
+            if (entry.originalTaken != null) continue
+            val file = File(hiddenDir, entry.fileName)
+            if (!file.exists()) continue
+            val exifDate = if (entry.isVideo) null else readExif(file)
+                ?.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)?.let {
+                    try {
+                        SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).parse(it)?.time
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+            hiddenDao.setTaken(entry.fileName, exifDate ?: file.lastModified())
+        }
     }
 
     suspend fun backfillVideoThumbnails(): Boolean = withContext(Dispatchers.IO) {

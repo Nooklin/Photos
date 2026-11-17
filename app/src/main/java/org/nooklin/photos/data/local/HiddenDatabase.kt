@@ -92,6 +92,9 @@ interface HiddenDao {
     @Query("UPDATE hidden_media SET width = :width, height = :height WHERE fileName = :fileName")
     suspend fun setSize(fileName: String, width: Int, height: Int)
 
+    @Query("UPDATE hidden_media SET originalTaken = :taken WHERE fileName = :fileName")
+    suspend fun setTaken(fileName: String, taken: Long)
+
     @Query("UPDATE hidden_media SET mimeType = :mimeType WHERE fileName = :fileName")
     suspend fun setMimeType(fileName: String, mimeType: String)
 

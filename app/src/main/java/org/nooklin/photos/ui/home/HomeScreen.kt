@@ -134,7 +134,7 @@ fun HomeScreen(
     val previewColumns = gridColumns.coerceAtLeast(2) // the small Home preview never goes to one huge column
 
     val homeAlbums = remember(albums, albumOrder) {
-        albums.sortedAlbums(albumOrder.homeSort, albumOrder.manual, { it.id }, { it.name }, { it.itemCount })
+        albums.sortedAlbums(albumOrder.sort, albumOrder.manual, { it.id }, { it.name }, { it.itemCount })
     }
 
     val homeDiscovered = remember(discoveredAlbums) { discoveredAlbums.sortedByDescending { it.itemCount }.take(10) }

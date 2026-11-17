@@ -1,0 +1,3 @@
+Version 1.3.3
+- Home sorts albums like the Albums page
+- Hidden Section: items sorted by the date the viewer shows

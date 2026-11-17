@@ -129,7 +129,6 @@ private fun readAlbumOrder(prefs: Preferences, hidden: Boolean): AlbumOrder {
         folderSort = albumSortOf(prefs[stringPreferencesKey(p + "folder_sort")], AlbumSort.NAME),
         manual = prefs[stringPreferencesKey(p + "album_manual_order")]
             ?.split(',')?.mapNotNull { it.toLongOrNull() } ?: emptyList(),
-        homeSort = albumSortOf(prefs[stringPreferencesKey(p + "home_album_sort")], AlbumSort.SIZE),
         homeRows = (prefs[intPreferencesKey(p + "home_album_rows")] ?: 1).coerceIn(1, 2)
     )
 }
@@ -139,7 +138,6 @@ private fun writeAlbumOrder(prefs: MutablePreferences, hidden: Boolean, order: A
     prefs[stringPreferencesKey(p + "album_sort")] = order.sort.name
     prefs[stringPreferencesKey(p + "folder_sort")] = order.folderSort.name
     prefs[stringPreferencesKey(p + "album_manual_order")] = order.manual.joinToString(",")
-    prefs[stringPreferencesKey(p + "home_album_sort")] = order.homeSort.name
     prefs[intPreferencesKey(p + "home_album_rows")] = order.homeRows.coerceIn(1, 2)
 }
 

@@ -26,6 +26,11 @@ import org.nooklin.photos.ui.theme.Spacing
 
 private class ChangelogCategory(@param:StringRes val title: Int, val items: List<Int>)
 
+private val changelog133 = listOf(
+    ChangelogCategory(R.string.changelog_cat_albums, listOf(R.string.changelog_133_1)),
+    ChangelogCategory(R.string.common_hidden_section, listOf(R.string.changelog_133_2))
+)
+
 private val changelog132 = listOf(
     ChangelogCategory(R.string.changelog_cat_albums, listOf(R.string.changelog_132_1)),
     ChangelogCategory(R.string.changelog_cat_home, listOf(R.string.changelog_132_2)),
@@ -96,6 +101,7 @@ fun SettingsChangelogScreen(onBack: () -> Unit) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             listOf(
+                R.string.changelog_version_133 to changelog133,
                 R.string.changelog_version_132 to changelog132,
                 R.string.changelog_version_131 to changelog131,
                 R.string.changelog_version_130 to changelog130,

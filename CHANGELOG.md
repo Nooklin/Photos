@@ -2,6 +2,14 @@
 
 All notable changes to Nooklin Photos, newest first. Each GitHub release has its own notes with the APK hashes: https://github.com/Nooklin/Photos/releases
 
+## Version 1.3.3
+
+### Albums
+- Home now sorts albums the same way as the Albums page. The separate Home sort setting is gone.
+
+### Hidden Section
+- Items are sorted by the same date the viewer shows (capture date, otherwise file date). Items without a stored date no longer jump to the top.
+
 ## Version 1.3.2
 
 ### Albums

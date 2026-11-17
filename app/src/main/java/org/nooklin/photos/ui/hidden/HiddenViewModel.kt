@@ -154,6 +154,7 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
             delay(40)
             _uiState.update { it.copy(isLoading = true) }
             repository.purgeExpired()
+            repository.backfillTakenDates()
             val items = repository.listHidden()
             val deleted = repository.listDeleted()
             val albums = repository.listAlbumsWithPreview(items)

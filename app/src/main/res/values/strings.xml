@@ -677,6 +677,9 @@
     <string name="changelog_cat_backup">Backup and import</string>
     <string name="changelog_cat_viewer">Viewer</string>
     <string name="changelog_cat_settings_design">Settings and design</string>
+    <string name="changelog_version_133">Version 1.3.3</string>
+    <string name="changelog_133_1">Home sorts albums the same way as the Albums page.</string>
+    <string name="changelog_133_2">Items are sorted by the date the viewer shows. Items without a stored date no longer jump to the top.</string>
     <string name="changelog_version_132">Version 1.3.2</string>
     <string name="changelog_version_131">Version 1.3.1</string>
     <string name="changelog_cat_home">Home</string>
@@ -721,7 +724,6 @@
     <string name="album_sort_size">Size (items)</string>
     <string name="album_sort_manual">Manual</string>
     <string name="album_reorder_hint">Long-press an album and drag it to a new place</string>
-    <string name="album_home_sort">Albums on Home</string>
     <string name="album_home_rows">Album rows on Home</string>
     <string name="album_rows_one">1 row</string>
     <string name="album_rows_two">2 rows</string>

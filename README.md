@@ -83,12 +83,9 @@
 <h2 align="center">✨ Features</h2>
 
 - Photo and video grid with a full-screen viewer (swipe, pinch-zoom, video playback)
-- Albums, favorites, screenshots, videos, panoramas (wide landscape pictures only)
-- Automatic albums for Camera, Screenshots, Downloads and WhatsApp that fill themselves, and can be hidden in Settings
-- Folders inside albums, up to 6 levels deep; importing a folder or zip keeps its structure, in the library and in the Hidden Section
-- Customize Home: choose and reorder the sections on Home, also in the Hidden Section; the Library card scrolls sideways with the number of rows you set
-- Recently Deleted with 30-day expiry, with a menu for Recover All and Delete All
-- Hidden Section, locked with your device biometric or PIN, with its own private Recently Deleted; selecting and sharing work the same as in the library
+- Albums, favorites, screenshots, videos, panoramas
+- Recently Deleted with 30-day expiry
+- Hidden folder, locked with your device biometric or PIN, with its own private Recently Deleted
 - Photo editor: rotate, flip, straighten, perspective, crop, styles and adjustments
 - Video editor: trim with a strip of frames, the same styles and crop (without perspective); a filter or crop is saved as a new clip
 - Photo info sheet with EXIF data
@@ -98,8 +95,6 @@
 - Metadata removal when sharing (choose what is removed: location, camera and device, date and time, description and other)
 - Calendar view and a Years, Months, All timeline in the Library
 - Select and a menu in every group of photos and albums (Media Types, Utilities, albums, the Albums and Hidden albums overviews, Search, pets), all in the same style
-- Long press opens a menu with a preview (Select, Add to Album, Copy, Duplicate, Hide); swipe over photos to select several, and the grid keeps scrolling while you hold at the top or bottom
-- Duplicate puts the copy next to the original
 - Open photos and videos from other apps (a library photo or video opens in the normal viewer), and pick a photo or video for other apps
 - Optional on-device People grouping (off by default)
 - Light, dark or system theme; square or aspect-ratio grid
@@ -113,7 +108,6 @@
 - Face and pet analysis runs fully on the device, using bundled models.
 - App data is excluded from Android backup and device transfer.
 - Photos leave the device only when you share, print or send them to another app yourself.
-- The Hidden Section PIN is stored as a PBKDF2 hash, and hidden photos are not cached outside their private folder.
 
 <p align="center"><img src="https://raw.githubusercontent.com/Nooklin/.github/main/profile/assets/divider.svg" width="100%" height="6" alt="" /></p>
 
@@ -136,7 +130,6 @@ Some features do nothing until you set them up:
 - Search matches file names only.
 - Duplicates are matched by a visual fingerprint (a perceptual hash), so edited or very similar photos can be grouped. You always choose what to keep.
 - Panoramas are detected by aspect ratio, which is a heuristic.
-- Folders go 6 levels deep at most; deeper folders in an import are placed in the 6th level.
 - Print and Use as Wallpaper work on one photo at a time, not on videos or several photos. Use as Wallpaper hands the photo to an app you choose.
 - The apps row in the share sheet lists the apps that accept a share. The app asks for no permission to see all apps, it only asks Android which apps take an image or video share.
 - Scrolling in very large libraries (10k+ photos) has not been tested yet.

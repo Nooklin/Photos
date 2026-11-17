@@ -7,7 +7,6 @@ data class AlbumOrder(
     val sort: AlbumSort = AlbumSort.NAME,
     val folderSort: AlbumSort = AlbumSort.NAME,
     val manual: List<Long> = emptyList(),
-    val homeSort: AlbumSort = AlbumSort.SIZE,
     val homeRows: Int = 1
 )
 

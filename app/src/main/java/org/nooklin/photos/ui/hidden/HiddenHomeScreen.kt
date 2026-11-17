@@ -123,7 +123,7 @@ fun HiddenHomeScreen(
     )
 
     val homeAlbums = remember(albums, albumOrder) {
-        albums.sortedAlbums(albumOrder.homeSort, albumOrder.manual, { it.id }, { it.name }, { it.itemCount })
+        albums.sortedAlbums(albumOrder.sort, albumOrder.manual, { it.id }, { it.name }, { it.itemCount })
     }
 
     var albumsExpanded by remember { mutableStateOf(true) }
