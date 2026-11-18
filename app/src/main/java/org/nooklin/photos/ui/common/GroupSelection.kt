@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui.common
 
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -272,6 +273,14 @@ fun GroupSelectableCell(
             )
         }
         content()
+        if (item?.isFavorite == true) {
+            Icon(
+                imageVector = Icons.Filled.Favorite,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.align(Alignment.BottomStart).padding(4.dp)
+            )
+        }
         if (selected) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
             SelectionBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))

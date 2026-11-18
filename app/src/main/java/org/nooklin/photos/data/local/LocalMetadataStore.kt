@@ -99,6 +99,15 @@ class LocalMetadataStore(private val context: Context) {
         } ?: emptyList()
     }
 
+    // one edit for the whole batch, a selection of many items must not race itself
+    suspend fun setFavorites(changes: Map<Long, Boolean>) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[Keys.FAVORITE_IDS]?.toMutableSet() ?: mutableSetOf()
+            changes.forEach { (id, favorite) -> if (favorite) current.add(id.toString()) else current.remove(id.toString()) }
+            prefs[Keys.FAVORITE_IDS] = current
+        }
+    }
+
     suspend fun setFavorite(mediaId: Long, favorite: Boolean) {
         context.dataStore.edit { prefs ->
             val current = prefs[Keys.FAVORITE_IDS]?.toMutableSet() ?: mutableSetOf()

@@ -84,7 +84,14 @@ internal fun NavGraphBuilder.viewerRoutes(
         val libraryItems = remember(uiState.allItems, uiState.filter, uiState.hideScreenshots, uiState.sortOrder) {
             StableList(uiState.visibleItems)
         }
-        val viewerItems = viewerItemsOverride ?: libraryItems
+        // override lists are snapshots, take the favorite state from the live library
+        val viewerItems = remember(viewerItemsOverride, uiState.allItems, libraryItems) {
+            val override = viewerItemsOverride
+            if (override == null) libraryItems else {
+                val live = uiState.allItems.associate { it.id to it.isFavorite }
+                StableList(override.value.map { live[it.id]?.let { f -> if (f == it.isFavorite) it else it.copy(isFavorite = f) } ?: it })
+            }
+        }
         PhotoViewerScreen(
             items = viewerItems,
             zoomLaunch = capturedZoomLaunch,
@@ -113,7 +120,13 @@ internal fun NavGraphBuilder.viewerRoutes(
     composable("hiddenviewer/{index}") { entry ->
         val index = entry.arguments?.getString("index")?.toIntOrNull() ?: 0
         HiddenPhotoViewerScreen(
-            items = StableList(hiddenViewerItemsOverride ?: hiddenUiState.items),
+            items = remember(hiddenViewerItemsOverride, hiddenUiState.items) {
+                val override = hiddenViewerItemsOverride
+                if (override == null) StableList(hiddenUiState.items) else {
+                    val live = hiddenUiState.items.associate { it.file.name to it.isFavorite }
+                    StableList(override.map { live[it.file.name]?.let { f -> if (f == it.isFavorite) it else it.copy(isFavorite = f) } ?: it })
+                }
+            },
             zoomLaunch = capturedZoomLaunch,
             darkTheme = resolvedDarkTheme,
             startIndex = index,

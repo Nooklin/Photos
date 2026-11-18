@@ -1,0 +1,9 @@
+Version 1.3.6
+- Other apps can pick Hidden photos behind the lock
+- Search screen matches the app style
+- Bulk favorite adds or removes
+- Album menu hidden while selecting
+- Sharper portrait thumbnails
+- Thumbnails load in the background
+- Thumbnail store, filled in the background
+- More reliable favorites

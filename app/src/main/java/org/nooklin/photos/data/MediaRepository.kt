@@ -33,6 +33,10 @@ class MediaRepository(
             .sortedByDescending { it.sortDate }
     }
 
+    suspend fun setFavorites(changes: Map<Long, Boolean>) {
+        localMetadataStore.setFavorites(changes)
+    }
+
     suspend fun toggleFavorite(item: MediaItem) {
         localMetadataStore.setFavorite(item.id, !item.isFavorite)
     }

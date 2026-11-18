@@ -143,11 +143,26 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it.copy(sortOrder = sortOrder) }
     }
 
+    // Taps in a short time (a whole selection) become one write. The current state is read from the library,
+    // not from the item that was passed, which can be an old copy from a list the viewer or an album holds.
+    private val pendingFavorites = LinkedHashMap<Long, Boolean>()
+    private var favoriteIndex: Map<Long, Boolean>? = null
+    private var favoriteFlush: Job? = null
+
     fun toggleFavorite(item: MediaItem) {
-        viewModelScope.launch {
-            repository.toggleFavorite(item)
-            val favorite = !item.isFavorite
-            updateItemsLocally { items -> items.map { if (it.id == item.id) it.copy(isFavorite = favorite) else it } }
+        val index = favoriteIndex ?: _uiState.value.allItems.associate { it.id to it.isFavorite }.also { favoriteIndex = it }
+        val current = pendingFavorites[item.id] ?: index[item.id] ?: item.isFavorite
+        pendingFavorites[item.id] = !current
+        if (favoriteFlush?.isActive == true) return
+        favoriteFlush = viewModelScope.launch {
+            while (pendingFavorites.isNotEmpty()) {
+                delay(30)
+                val changes = LinkedHashMap(pendingFavorites)
+                pendingFavorites.clear()
+                favoriteIndex = null
+                repository.setFavorites(changes)
+                updateItemsLocally { items -> items.map { changes[it.id]?.let { favorite -> it.copy(isFavorite = favorite) } ?: it } }
+            }
         }
     }
 

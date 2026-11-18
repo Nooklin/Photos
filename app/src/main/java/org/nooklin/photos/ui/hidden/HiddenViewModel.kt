@@ -225,10 +225,20 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private val pendingFavorites = HashMap<String, Boolean>()
+
+    // state comes from the live list, the passed item can be an old copy held by a viewer or album list
     fun toggleFavorite(item: HiddenItem) {
+        val name = item.file.name
+        val current = pendingFavorites[name]
+            ?: _uiState.value.items.firstOrNull { it.file.name == name }?.isFavorite
+            ?: item.isFavorite
+        val target = !current
+        pendingFavorites[name] = target
         viewModelScope.launch {
-            repository.toggleFavorite(item.file.name, !item.isFavorite)
+            repository.toggleFavorite(name, target)
             refresh()
+            pendingFavorites.remove(name)
         }
     }
 
