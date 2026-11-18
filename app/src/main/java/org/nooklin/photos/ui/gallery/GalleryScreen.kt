@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.gallery
 
+import org.nooklin.photos.ui.common.favoriteTargets
+import org.nooklin.photos.ui.common.favoriteLabelRes
 import org.nooklin.photos.ui.common.AddToAlbumDialog
 import org.nooklin.photos.ui.common.asTargets
 import androidx.compose.foundation.gestures.scrollBy
@@ -333,11 +335,11 @@ fun GalleryScreen(
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text(appString(R.string.common_favorite)) },
+                                        text = { Text(appString(items.filter { it.id in selectedIds }.favoriteLabelRes { it.isFavorite })) },
                                         leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
                                         onClick = {
                                             actionsMenuExpanded = false
-                                            items.filter { it.id in selectedIds }.forEach { onToggleFavorite(it) }
+                                            items.filter { it.id in selectedIds }.favoriteTargets { it.isFavorite }.forEach { onToggleFavorite(it) }
                                             exitSelection()
                                         }
                                     )

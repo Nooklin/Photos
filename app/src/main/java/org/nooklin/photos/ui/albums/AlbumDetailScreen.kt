@@ -205,8 +205,8 @@ fun AlbumDetailScreen(
                     }
                 },
                 actions = {
-                    if (groupActions != null && photos.isNotEmpty()) GroupSelectionActions(selection, photos, groupActions)
-                    if (onFolderSort != null && folders.size >= 2) AlbumSortButton(folderSort, withManual = false, onSort = onFolderSort)
+                    if (!selection.isSelecting && onFolderSort != null && folders.size >= 2) AlbumSortButton(folderSort, withManual = false, onSort = onFolderSort)
+if (!selection.isSelecting) {
                     Box {
                         CircleIconButton(
                             icon = Icons.Filled.Add,
@@ -239,6 +239,8 @@ fun AlbumDetailScreen(
                             }
                         }
                     }
+}
+if (!selection.isSelecting) {
                     Box {
                         CircleIconButton(
                             icon = Icons.Filled.MoreVert,
@@ -295,6 +297,8 @@ fun AlbumDetailScreen(
                             }
                         }
                     }
+}
+                    if (groupActions != null && photos.isNotEmpty()) GroupSelectionActions(selection, photos, groupActions)
                 }
             )
         }

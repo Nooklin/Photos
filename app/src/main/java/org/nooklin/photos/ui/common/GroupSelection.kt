@@ -313,12 +313,12 @@ fun GroupSelectionActions(selection: GroupSelection, items: List<MediaItem>, act
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text(appString(R.string.common_favorite)) },
+                    text = { Text(appString(chosen.favoriteLabelRes { it.isFavorite })) },
                     leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
                     enabled = chosen.isNotEmpty(),
                     onClick = {
                         menuExpanded = false
-                        chosen.forEach { actions.onToggleFavorite(it) }
+                        chosen.favoriteTargets { it.isFavorite }.forEach { actions.onToggleFavorite(it) }
                         selection.exit()
                     }
                 )

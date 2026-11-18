@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.hidden
 
+import org.nooklin.photos.ui.common.favoriteTargets
+import org.nooklin.photos.ui.common.favoriteLabelRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.filled.Search
@@ -391,11 +393,11 @@ fun HiddenGalleryScreen(
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text(appString(R.string.common_favorite)) },
+                                        text = { Text(appString(items.filter { it.file.name in selectedNames }.favoriteLabelRes { it.isFavorite })) },
                                         leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
                                         onClick = {
                                             actionsMenuExpanded = false
-                                            items.filter { it.file.name in selectedNames }.forEach { onToggleFavorite(it) }
+                                            items.filter { it.file.name in selectedNames }.favoriteTargets { it.isFavorite }.forEach { onToggleFavorite(it) }
                                             exitSelection()
                                         }
                                     )

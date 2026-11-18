@@ -1,5 +1,8 @@
 package org.nooklin.photos.ui
 
+import kotlinx.coroutines.delay
+import org.nooklin.photos.ui.hidden.HiddenExternalPickScreen
+import org.nooklin.photos.ui.hidden.HiddenPinGate
 import androidx.compose.ui.graphics.toArgb
 import org.nooklin.photos.data.HiddenAlbumWithPreview
 import org.nooklin.photos.data.HiddenItem
@@ -254,6 +257,42 @@ fun NooklinPhotosApp(
     val albumEntities by albumEntitiesState
     val albumMembershipsState = albumViewModel.memberships.collectAsStateWithLifecycle()
     val albumMemberships by albumMembershipsState
+    // newest thumbnails load in the background, so a big import is not slow on the first scroll
+    LaunchedEffect(uiState.visibleItems.size, albumMemberships, gridColumns) {
+        if (uiState.visibleItems.isEmpty()) return@LaunchedEffect
+        delay(1500)
+        val cellPx = context.resources.displayMetrics.widthPixels / gridColumns.coerceAtLeast(1)
+        val warm = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val newest = uiState.visibleItems.take(240)
+            // the newest 60 of every album and folder, so they are ready when one is opened
+            val members = albumMemberships.groupBy { it.albumId }.values.flatMap { list ->
+                val ids = list.map { it.mediaId }.toSet()
+                uiState.visibleItems.asSequence().filter { it.id in ids }.take(60).toList()
+            }
+            (newest + members).distinctBy { it.id }
+        }
+        org.nooklin.photos.ui.common.ThumbnailWarmup.start(context, warm, cellPx)
+    }
+    // the whole library into the thumbnail store, in the app now and by a job when the app is closed
+    LaunchedEffect(uiState.allItems.size) {
+        if (uiState.allItems.isEmpty()) return@LaunchedEffect
+        delay(3000)
+        org.nooklin.photos.ui.common.ThumbnailWarmup.startFillStore(context, uiState.allItems)
+        org.nooklin.photos.ThumbnailJobService.schedule(context)
+    }
+    LaunchedEffect(hiddenUiState.isAuthenticated, hiddenUiState.items, hiddenUiState.albumMembership, gridColumns) {
+        if (!hiddenUiState.isAuthenticated || hiddenUiState.items.isEmpty()) return@LaunchedEffect
+        delay(1500)
+        val cellPx = context.resources.displayMetrics.widthPixels / gridColumns.coerceAtLeast(1)
+        val files = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val byName = hiddenUiState.items.associateBy { it.file.name }
+            val members = hiddenUiState.albumMembership.groupBy({ it.first }, { it.second }).values.flatMap { names ->
+                names.mapNotNull { byName[it] }.sortedByDescending { it.sortDate }.take(60)
+            }
+            (hiddenUiState.items.sortedByDescending { it.sortDate }.take(240) + members).distinctBy { it.file.name }.map { it.thumbnailFile }
+        }
+        org.nooklin.photos.ui.common.ThumbnailWarmup.startHidden(context, files, cellPx)
+    }
     val petEntities by petViewModel.pets.collectAsStateWithLifecycle()
     val petMembershipsState = petViewModel.memberships.collectAsStateWithLifecycle()
     val petMemberships by petMembershipsState
@@ -574,12 +613,39 @@ fun NooklinPhotosApp(
         }
 
         if (externalRequest is org.nooklin.photos.ExternalRequest.Pick) {
-            ExternalPickScreen(
-                items = uiState.visibleItems.filter { if (it.isVideo) externalRequest.videos else externalRequest.images },
-                allowMultiple = externalRequest.allowMultiple,
-                columns = gridColumns.coerceAtLeast(3),
-                onResult = onExternalFinish
-            )
+            var hiddenPicking by remember { mutableStateOf(false) }
+            if (hiddenPicking) {
+                when {
+                    !hiddenUiState.isAuthenticated -> HiddenFolderGate(
+                        onAuthenticated = { hiddenViewModel.onAuthenticated() },
+                        onCancelled = { hiddenPicking = false }
+                    )
+                    hiddenPinSet == null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                    hiddenPinSet == true && !hiddenUiState.pinVerified -> HiddenPinGate(
+                        verifyPin = settingsViewModel::verifyHiddenPin,
+                        verifyRecoveryCode = settingsViewModel::verifyHiddenPinRecoveryCode,
+                        setNewPin = settingsViewModel::setHiddenPin,
+                        onUnlocked = { hiddenViewModel.onPinVerified() },
+                        onCancel = { hiddenPicking = false }
+                    )
+                    else -> HiddenExternalPickScreen(
+                        items = hiddenUiState.items.filter { if (it.isVideo) externalRequest.videos else externalRequest.images },
+                        allowMultiple = externalRequest.allowMultiple,
+                        columns = gridColumns.coerceAtLeast(3),
+                        stripExif = removeExifOnShare,
+                        onBack = { hiddenPicking = false },
+                        onResult = onExternalFinish
+                    )
+                }
+            } else {
+                ExternalPickScreen(
+                    items = uiState.visibleItems.filter { if (it.isVideo) externalRequest.videos else externalRequest.images },
+                    allowMultiple = externalRequest.allowMultiple,
+                    columns = gridColumns.coerceAtLeast(3),
+                    onOpenHidden = if (hiddenImageSharingEnabled) ({ hiddenPicking = true }) else null,
+                    onResult = onExternalFinish
+                )
+            }
             return@CompositionLocalProvider
         }
 

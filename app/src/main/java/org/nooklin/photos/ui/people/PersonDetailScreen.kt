@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.people
 
+import org.nooklin.photos.ui.common.favoriteTargets
+import org.nooklin.photos.ui.common.favoriteLabelRes
 import org.nooklin.photos.ui.common.AddToAlbumDialog
 import org.nooklin.photos.ui.common.asTargets
 import org.nooklin.photos.ui.common.GroupActions
@@ -177,11 +179,11 @@ fun PersonDetailScreen(
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                     DropdownMenuItem(
-                                        text = { Text(appString(R.string.common_favorite)) },
+                                        text = { Text(appString(photos.filter { it.id in selectedIds }.favoriteLabelRes { it.isFavorite })) },
                                         leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
                                         onClick = {
                                             actionsMenuExpanded = false
-                                            photos.filter { it.id in selectedIds }.forEach { onToggleFavorite(it) }
+                                            photos.filter { it.id in selectedIds }.favoriteTargets { it.isFavorite }.forEach { onToggleFavorite(it) }
                                             exitSelection()
                                         }
                                     )

@@ -71,6 +71,7 @@
     <string name="category_nothing_here_yet">Nothing here yet</string>
     <string name="common_more">More</string>
     <string name="common_favorite">Favorite</string>
+    <string name="common_remove_favorite">Remove from favorites</string>
     <string name="common_unhide">Unhide</string>
     <string name="common_add_to_album">Add to Album</string>
     <string name="hidden_album_detail_remove_from_this_album">Remove from this album</string>
@@ -204,6 +205,7 @@
     <string name="photo_viewer_add">Add</string>
     <string name="search_search_by_filename">Search by filename</string>
     <string name="search_no_matches">No matches</string>
+    <string name="external_pick_hidden_failed">Could not prepare the photo</string>
     <string name="search_filter_photos">Photos</string>
     <string name="backup_notice_thank_you_for_installing_nooklin">Thank you for installing Nooklin Photos.</string>
     <string name="backup_notice_below_you_will_find_some">Below you will find some very important information you SHOULD READ!</string>
@@ -690,6 +692,14 @@
     <string name="changelog_cat_backup">Backup and import</string>
     <string name="changelog_cat_viewer">Viewer</string>
     <string name="changelog_cat_settings_design">Settings and design</string>
+    <string name="changelog_version_135">Version 1.3.5</string>
+    <string name="changelog_135_1">Other apps, like Nooklin Wallpaper, can pick a photo from the Hidden Section behind the same lock. This needs sharing of Hidden images to be on.</string>
+    <string name="changelog_135_2">The search screen now matches the look of the rest of the app.</string>
+    <string name="changelog_135_3">Selecting several items and choosing Favorite now makes them all favorites. When they are all favorites already, the same menu item removes them.</string>
+    <string name="changelog_135_4">In an album, the album menu is hidden while you select items, so only the menu for the selected items is left.</string>
+    <string name="changelog_135_5">Portrait thumbnails in smaller grid cells are sharper.</string>
+    <string name="changelog_135_6">The newest thumbnails, also those in albums, folders and the Hidden Section, now load in the background, so scrolling is not slow after a big import.</string>
+    <string name="changelog_135_7">Thumbnails of the whole library are now kept in the app (up to 1 GB, oldest removed first) and filled in the background, also when the app is closed and the battery is not low. Scrolling stays fast after a restart or a big import.</string>
     <string name="changelog_version_134">Version 1.3.4</string>
     <string name="changelog_134_1">The + button always opens a menu: New Album, or New Folder and Add Item.</string>
     <string name="changelog_134_2">Add to album: choose an existing album or folder on a full page, with search. Also in the Hidden Section.</string>

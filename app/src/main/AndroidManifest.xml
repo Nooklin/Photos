@@ -47,6 +47,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.NooklinPhotos">
 
+        <service
+            android:name=".ThumbnailJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

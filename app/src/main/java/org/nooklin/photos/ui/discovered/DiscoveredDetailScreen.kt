@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.discovered
 
+import org.nooklin.photos.ui.common.favoriteTargets
+import org.nooklin.photos.ui.common.favoriteLabelRes
 import org.nooklin.photos.ui.common.AddToAlbumDialog
 import org.nooklin.photos.ui.common.asTargets
 import org.nooklin.photos.ui.common.MenuSectionHeader
@@ -242,11 +244,11 @@ fun DiscoveredDetailScreen(
                             ) {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                                     DropdownMenuItem(
-                                        text = { Text(appString(R.string.common_favorite)) },
+                                        text = { Text(appString(filtered.filter { it.id in selectedIds }.favoriteLabelRes { it.isFavorite })) },
                                         leadingIcon = { MenuIcon(Icons.Filled.FavoriteBorder) },
                                         onClick = {
                                             actionsMenuExpanded = false
-                                            filtered.filter { it.id in selectedIds }.forEach { onToggleFavorite(it) }
+                                            filtered.filter { it.id in selectedIds }.favoriteTargets { it.isFavorite }.forEach { onToggleFavorite(it) }
                                             exitSelection()
                                         }
                                     )

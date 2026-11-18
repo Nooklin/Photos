@@ -69,6 +69,7 @@
     <string name="category_nothing_here_yet">Hier staat nog niets</string>
     <string name="common_more">Meer</string>
     <string name="common_favorite">Favoriet</string>
+    <string name="common_remove_favorite">Uit favorieten halen</string>
     <string name="common_unhide">Zichtbaar maken</string>
     <string name="common_add_to_album">Toevoegen aan album</string>
     <string name="hidden_album_detail_remove_from_this_album">Uit dit album verwijderen</string>
@@ -202,6 +203,7 @@
     <string name="photo_viewer_add">Voeg toe</string>
     <string name="search_search_by_filename">Zoek op bestandsnaam</string>
     <string name="search_no_matches">Geen resultaten</string>
+    <string name="external_pick_hidden_failed">De foto kon niet worden klaargezet</string>
     <string name="search_filter_photos">Foto\'s</string>
     <string name="backup_notice_thank_you_for_installing_nooklin">Bedankt voor het installeren van Nooklin Photos.</string>
     <string name="backup_notice_below_you_will_find_some">Hieronder staat belangrijke informatie die je MOET LEZEN!</string>
@@ -688,6 +690,14 @@
     <string name="changelog_cat_backup">Back-up en import</string>
     <string name="changelog_cat_viewer">Viewer</string>
     <string name="changelog_cat_settings_design">Instellingen en ontwerp</string>
+    <string name="changelog_version_135">Versie 1.3.5</string>
+    <string name="changelog_135_1">Andere apps, zoals Nooklin Wallpaper, kunnen een foto kiezen uit het Verborgen gedeelte achter dezelfde vergrendeling. Dit werkt alleen als delen van Verborgen afbeeldingen aan staat.</string>
+    <string name="changelog_135_2">Het zoekscherm past nu bij de rest van de app.</string>
+    <string name="changelog_135_3">Meerdere items selecteren en Favoriet kiezen maakt ze nu allemaal favoriet. Zijn ze al allemaal favoriet, dan haalt dezelfde keuze ze eruit.</string>
+    <string name="changelog_135_4">In een album verdwijnt het albummenu zodra je items selecteert, zodat alleen het menu voor de geselecteerde items overblijft.</string>
+    <string name="changelog_135_5">Portretthumbnails in kleinere rastercellen zijn scherper.</string>
+    <string name="changelog_135_6">De nieuwste thumbnails, ook die in albums, folders en het Verborgen gedeelte, laden nu op de achtergrond, zodat scrollen niet traag is na een grote import.</string>
+    <string name="changelog_135_7">Thumbnails van de hele bibliotheek worden nu in de app bewaard (tot 1 GB, oudste eerst verwijderd) en op de achtergrond gevuld, ook als de app dicht is en de batterij niet bijna leeg is. Scrollen blijft snel na een herstart of een grote import.</string>
     <string name="changelog_version_134">Versie 1.3.4</string>
     <string name="changelog_134_1">De + knop opent altijd een menu: Nieuw album, of Nieuwe folder en Item toevoegen.</string>
     <string name="changelog_134_2">Toevoegen aan album: kies een bestaand album of folder op een volledige pagina, met zoeken. Ook in het Verborgen gedeelte.</string>

@@ -92,11 +92,12 @@ fun createExifStrippedShareUriFromFile(
     isVideo: Boolean,
     stripExif: Boolean = true,
     mimeType: String? = null,
+    baseName: String = "share_${System.currentTimeMillis()}",
     cancelled: () -> Boolean = { false }
 ): Uri? {
     val extension = if (mimeType != null) fileExtensionFor(mimeType, isVideo) else file.extension.ifEmpty { "jpg" }
     val options = stripOptions(context)
-    return copyToShareCache(context, extension, strip = stripExif && options.any, isVideo = isVideo, options = options, cancelled = cancelled) { file.inputStream() }
+    return copyToShareCache(context, extension, strip = stripExif && options.any, baseName = baseName, isVideo = isVideo, options = options, cancelled = cancelled) { file.inputStream() }
 }
 
 private fun copyToShareCache(

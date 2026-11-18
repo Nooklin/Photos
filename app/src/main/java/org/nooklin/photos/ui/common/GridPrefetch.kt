@@ -25,6 +25,7 @@ fun PrefetchAhead(gridState: LazyGridState, items: List<MediaItem>, columns: Int
         var lastIndex = -1
         val pending = ArrayList<coil3.request.Disposable>()
         snapshotFlow {
+            ThumbnailWarmup.noteScroll()
             // the photo cells currently visible (headers have no Long key in the list), as first and last list index
             val visible = gridState.layoutInfo.visibleItemsInfo.mapNotNull { info -> (info.key as? Long)?.let { indexById[it] } }
             if (visible.isEmpty()) null else Triple(visible.min(), visible.max(), gridState.layoutInfo.visibleItemsInfo.first().size.width)

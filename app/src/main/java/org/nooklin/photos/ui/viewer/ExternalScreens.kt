@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui.viewer
 
+import androidx.compose.material.icons.filled.Lock
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -82,6 +83,7 @@ fun ExternalPickScreen(
     items: List<MediaItem>,
     allowMultiple: Boolean,
     columns: Int,
+    onOpenHidden: (() -> Unit)? = null,
     onResult: (List<Uri>?) -> Unit
 ) {
     BackHandler { onResult(null) }
@@ -97,6 +99,11 @@ fun ExternalPickScreen(
                     }
                 },
                 actions = {
+                    if (onOpenHidden != null) {
+                        IconButton(onClick = onOpenHidden) {
+                            Icon(Icons.Filled.Lock, contentDescription = appString(R.string.common_hidden_section))
+                        }
+                    }
                     if (allowMultiple && selected.isNotEmpty()) {
                         TextButton(onClick = {
                             val byId = items.associateBy { it.id }
