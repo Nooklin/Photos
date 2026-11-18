@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.gallery
 
+import org.nooklin.photos.ui.common.AddToAlbumDialog
+import org.nooklin.photos.ui.common.asTargets
 import androidx.compose.foundation.gestures.scrollBy
 import org.nooklin.photos.ui.common.MenuSectionHeader
 import androidx.activity.compose.BackHandler
@@ -654,34 +656,15 @@ fun GalleryScreen(
     }
 
     if (showAddToAlbumDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddToAlbumDialog = false; actionItemId = null },
-            shape = GlassPill.shape,
-            containerColor = GlassPill.adaptivePopupBackground,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text(appString(R.string.common_add_to_album)) },
-            text = {
-                if (existingAlbums.isEmpty()) {
-                    Text(appString(R.string.common_no_albums_yet_create_one))
-                } else {
-                    Column {
-                        existingAlbums.forEach { album ->
-                            PillListRow(
-                                label = album.name,
-                                onClick = {
-                                    items.filter { it.id in actionIds }.forEach { onAddToAlbum(album.id, it) }
-                                    showAddToAlbumDialog = false
-                                    exitSelection()
-                                }
-                            )
-                        }
-                    }
-                }
+        val targets = remember(existingAlbums) { existingAlbums.asTargets() }
+        AddToAlbumDialog(
+            albums = targets,
+            onPick = { id ->
+                items.filter { it.id in actionIds }.forEach { onAddToAlbum(id, it) }
+                showAddToAlbumDialog = false
+                exitSelection()
             },
-            confirmButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false; actionItemId = null }) { Text(appString(R.string.common_cancel)) }
-            }
+            onDismiss = { showAddToAlbumDialog = false; actionItemId = null }
         )
     }
 

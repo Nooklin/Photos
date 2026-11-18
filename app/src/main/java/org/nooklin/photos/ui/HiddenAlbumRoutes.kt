@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui
 
+import org.nooklin.photos.ui.albums.AlbumMergeScreen
+import org.nooklin.photos.ui.albums.AlbumWithPreview
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -90,6 +92,7 @@ internal fun NavGraphBuilder.hiddenAlbumRoutes(
             onDeleteAlbums = { ids -> ids.forEach { hiddenViewModel.deleteAlbum(it) } },
             onRenameAlbum = { id, name -> hiddenViewModel.renameAlbum(id, name) },
             onCreateFolder = { parentId, name -> hiddenViewModel.createFolder(parentId, name) },
+            onMergeAlbum = { id -> navController.navigate("hiddenalbums/$id/merge") },
             onBack = { navController.popBackStack() }
         )
     }
@@ -122,6 +125,8 @@ internal fun NavGraphBuilder.hiddenAlbumRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { targetAlbumId, item -> hiddenViewModel.addToAlbum(targetAlbumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
+            onMergeRequested = { navController.navigate("hiddenalbums/$albumId/merge") },
             onRemoveFromAlbum = { item -> hiddenViewModel.removeFromAlbum(albumId, item.file.name) },
             onRenameAlbum = { newName -> hiddenViewModel.renameAlbum(albumId, newName) },
             onDeleteAlbum = {
@@ -150,6 +155,29 @@ internal fun NavGraphBuilder.hiddenAlbumRoutes(
             onSetCover = { fileName -> hiddenViewModel.setAlbumCover(albumId, fileName) },
             shareEnabled = hiddenImageSharingEnabled,
             removeExifOnShare = removeExifOnShare
+        )
+    }
+    composable("hiddenalbums/{albumId}/merge") { entry ->
+        val albumId = entry.arguments?.getString("albumId")?.toLongOrNull() ?: -1L
+        val album = hiddenUiState.albums.find { it.id == albumId }
+        // a folder of the album itself can't be the target
+        val candidates = remember(hiddenUiState.albums, albumId) {
+            val excluded = hashSetOf(albumId)
+            var added = true
+            while (added) added = excluded.addAll(hiddenUiState.albums.filter { it.parentId in excluded }.map { it.id })
+            hiddenUiState.albums.filter { it.id !in excluded }
+                .map { AlbumWithPreview(it.id, it.name, it.itemCount, emptyList(), it.parentId) }
+        }
+        AlbumMergeScreen(
+            sourceAlbumId = albumId,
+            sourceAlbumName = album?.name ?: appString(R.string.nooklin_photos_app_album),
+            candidates = candidates,
+            onMerge = { targetAlbumId ->
+                hiddenViewModel.mergeAlbums(albumId, targetAlbumId) {
+                    navController.popBackStack(ROUTE_HIDDEN_ALBUMS, inclusive = false)
+                }
+            },
+            onBack = { navController.popBackStack() }
         )
     }
     composable("hiddenalbums/{albumId}/pick") { entry ->

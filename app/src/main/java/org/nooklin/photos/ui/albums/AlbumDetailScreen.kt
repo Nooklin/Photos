@@ -35,7 +35,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.material.icons.filled.CreateNewFolder
 import org.nooklin.photos.ui.common.AlbumThumbnail
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -133,6 +132,7 @@ fun AlbumDetailScreen(
     var deleteFolder by remember { mutableStateOf<AlbumWithPreview?>(null) }
     var showDeleteAlbumConfirm by remember { mutableStateOf(false) }
     var showNewFolderDialog by remember { mutableStateOf(false) }
+    var addMenuExpanded by remember { mutableStateOf(false) }
     var showCoverPicker by remember { mutableStateOf(false) }
     var showSlideshow by remember { mutableStateOf(false) }
     // Big photo at the top: the chosen cover, else the newest photo (the list is sorted newest first)
@@ -207,11 +207,38 @@ fun AlbumDetailScreen(
                 actions = {
                     if (groupActions != null && photos.isNotEmpty()) GroupSelectionActions(selection, photos, groupActions)
                     if (onFolderSort != null && folders.size >= 2) AlbumSortButton(folderSort, withManual = false, onSort = onFolderSort)
-                    CircleIconButton(
-                        icon = Icons.Filled.Add,
-                        contentDescription = appString(R.string.common_add_photos),
-                        onClick = onAddPhotos
-                    )
+                    Box {
+                        CircleIconButton(
+                            icon = Icons.Filled.Add,
+                            contentDescription = appString(R.string.common_add_photos),
+                            onClick = { addMenuExpanded = true }
+                        )
+                        DropdownMenu(
+                            expanded = addMenuExpanded,
+                            onDismissRequest = { addMenuExpanded = false },
+                            shape = GlassPill.shape,
+                            containerColor = GlassPill.adaptivePopupBackground
+                        ) {
+                            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                if (canCreateFolder) {
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.folder_new)) },
+                                        onClick = {
+                                            addMenuExpanded = false
+                                            showNewFolderDialog = true
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text(appString(R.string.album_add_item)) },
+                                    onClick = {
+                                        addMenuExpanded = false
+                                        onAddPhotos()
+                                    }
+                                )
+                            }
+                        }
+                    }
                     Box {
                         CircleIconButton(
                             icon = Icons.Filled.MoreVert,
@@ -242,16 +269,6 @@ fun AlbumDetailScreen(
                                         showCoverPicker = true
                                     }
                                 )
-                                if (canCreateFolder) {
-                                    DropdownMenuItem(
-                                        text = { Text(appString(R.string.folder_new)) },
-                                        leadingIcon = { MenuIcon(Icons.Filled.CreateNewFolder) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            showNewFolderDialog = true
-                                        }
-                                    )
-                                }
                                 if (!isFolder) {
                                     DropdownMenuItem(
                                         text = { Text(appString(R.string.common_merge_into)) },

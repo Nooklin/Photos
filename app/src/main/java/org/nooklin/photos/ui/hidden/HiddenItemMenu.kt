@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui.hidden
 
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -33,6 +34,7 @@ fun HiddenItemMenu(
     onAddToAlbum: () -> Unit,
     onDismiss: () -> Unit,
     onShare: (() -> Unit)? = null,
+    onDuplicate: (() -> Unit)? = null,
     extra: CardAction? = null
 ) {
     val context = LocalContext.current
@@ -57,6 +59,7 @@ fun HiddenItemMenu(
         rows = buildList {
             add(CardAction(appString(R.string.common_select), Icons.Filled.CheckCircle, onClick = closing(onSelect)))
             add(CardAction(appString(R.string.common_add_to_album), Icons.Filled.PhotoAlbum, onClick = closing(onAddToAlbum)))
+            if (onDuplicate != null) add(CardAction(appString(R.string.photo_viewer_duplicate), Icons.Filled.ContentCopy, onClick = closing(onDuplicate)))
             if (extra != null) add(CardAction(extra.label, extra.icon, extra.enabled, extra.destructive, extra.onDisabledClick, closing(extra.onClick)))
         }
     ) {

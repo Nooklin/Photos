@@ -88,6 +88,7 @@ fun AlbumsScreen(
     onBack: () -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var addMenuExpanded by remember { mutableStateOf(false) }
     val selection = rememberGroupSelection()
     var menuExpanded by remember { mutableStateOf(false) }
     var showShare by remember { mutableStateOf(false) }
@@ -172,11 +173,29 @@ fun AlbumsScreen(
                                 onOrderChange { it.copy(sort = mode) }
                             }
                         }
-                        CircleIconButton(
-                            icon = Icons.Filled.Add,
-                            contentDescription = appString(R.string.albums_new_album),
-                            onClick = { showCreateDialog = true }
-                        )
+                        Box {
+                            CircleIconButton(
+                                icon = Icons.Filled.Add,
+                                contentDescription = appString(R.string.albums_new_album),
+                                onClick = { addMenuExpanded = true }
+                            )
+                            DropdownMenu(
+                                expanded = addMenuExpanded,
+                                onDismissRequest = { addMenuExpanded = false },
+                                shape = GlassPill.shape,
+                                containerColor = GlassPill.adaptivePopupBackground
+                            ) {
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.albums_new_album_2)) },
+                                        onClick = {
+                                            addMenuExpanded = false
+                                            showCreateDialog = true
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             )

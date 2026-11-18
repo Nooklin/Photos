@@ -30,3 +30,36 @@ private fun luminance(pixel: Int): Int {
 }
 
 fun hammingDistance(a: Long, b: Long): Int = java.lang.Long.bitCount(a xor b)
+
+fun <K> groupSimilarHashes(items: List<Pair<K, Long>>, threshold: Int = 5): List<List<K>> {
+    val parent = HashMap<K, K>()
+    fun find(x: K): K {
+        var root = x
+        while (true) {
+            val next = parent[root] ?: break
+            if (next == root) break
+            root = next
+        }
+        return root
+    }
+    val matched = LinkedHashSet<K>()
+    var shift = 0
+    for (bits in intArrayOf(11, 11, 11, 11, 10, 10)) {
+        val mask = (1L shl bits) - 1
+        for (bucket in items.groupBy { (it.second ushr shift) and mask }.values) {
+            for (i in bucket.indices) {
+                for (j in i + 1 until bucket.size) {
+                    if (hammingDistance(bucket[i].second, bucket[j].second) <= threshold) {
+                        val a = find(bucket[i].first)
+                        val b = find(bucket[j].first)
+                        if (a != b) parent[a] = b
+                        matched.add(bucket[i].first)
+                        matched.add(bucket[j].first)
+                    }
+                }
+            }
+        }
+        shift += bits
+    }
+    return matched.groupBy { find(it) }.values.sortedByDescending { it.size }
+}

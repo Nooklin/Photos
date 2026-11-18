@@ -1,0 +1,7 @@
+Version 1.3.4
+- + menu in albums and folders: New Folder and Add Item
+- Add to album: choose an existing album or folder on a full page with search
+- Hidden Section: search, timeline bar, merge albums, duplicate item, duplicates page
+- Hidden video thumbnails are no longer black
+- Search filters, On this day
+- Hidden: original name in info, edits saved as copy

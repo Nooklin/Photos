@@ -1,5 +1,14 @@
 package org.nooklin.photos.ui
 
+import org.nooklin.photos.ui.gallery.OnThisDayScreen
+import org.nooklin.photos.ui.gallery.DuplicatesScreen
+import org.nooklin.photos.ui.gallery.DuplicateInfo
+import org.nooklin.photos.ui.common.freshImageRequest
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import org.nooklin.photos.ui.hidden.HiddenSearchScreen
 import org.nooklin.photos.ui.albums.AlbumOrderViewModel
 import android.content.Context
 import androidx.compose.foundation.background
@@ -118,6 +127,8 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
                 onOpenRecentlyDeleted = { navController.navigate(ROUTE_HIDDEN_RECYCLE_BIN) },
                 onOpenRecentlySaved = { navController.navigate(ROUTE_HIDDEN_RECENTLY_SAVED) },
                 onOpenCalendar = { navController.navigate(ROUTE_HIDDEN_CALENDAR) },
+                onOpenDuplicates = { navController.navigate(ROUTE_HIDDEN_DUPLICATES) },
+                onOpenOnThisDay = { navController.navigate(ROUTE_HIDDEN_ON_THIS_DAY) },
                 onItemClick = { index -> hiddenViewerItemsOverride = null; openViewerZoomed(hiddenUiState.items[index].file.absolutePath, "hiddenviewer/$index") },
                 onBack = { navController.popBackStack() }
             )
@@ -146,6 +157,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) },
             onBack = { navController.popBackStack() },
             showFilterMenu = true,
@@ -156,7 +168,68 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             sortOrder = hiddenUiState.sortOrder,
             onSortOrderChange = hiddenViewModel::setSortOrder,
             gridStyle = gridStyle,
-            groupBy = groupBy
+            groupBy = groupBy,
+            onOpenSearch = { navController.navigate(ROUTE_HIDDEN_SEARCH) }
+        )
+    }
+    composable(ROUTE_HIDDEN_DUPLICATES) {
+        var groups by remember { mutableStateOf(emptyList<List<HiddenItem>>()) }
+        LaunchedEffect(hiddenUiState.items) {
+            hiddenViewModel.findDuplicateGroups(hiddenUiState.items) { found -> groups = found }
+        }
+        val liveGroups = remember(groups, hiddenUiState.items) {
+            val names = hiddenUiState.items.map { it.file.name }.toSet()
+            groups.map { group -> group.filter { it.file.name in names } }.filter { it.size >= 2 }
+        }
+        DuplicatesScreen(
+            groups = liveGroups,
+            info = { item ->
+                DuplicateInfo(item.file.name, item.width, item.height, item.file.length()) { modifier ->
+                    AsyncImage(
+                        model = freshImageRequest(context, item.thumbnailFile, item.thumbnailFile.lastModified()),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = modifier
+                    )
+                }
+            },
+            onBack = { navController.popBackStack() },
+            onOpenGroup = { group, startIndex ->
+                hiddenViewerItemsOverride = group
+                openViewerZoomed(group[startIndex].file.absolutePath, "hiddenviewer/$startIndex")
+            },
+            onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) }
+        )
+    }
+    composable(ROUTE_HIDDEN_ON_THIS_DAY) {
+        OnThisDayScreen(
+            items = hiddenUiState.items,
+            timeMillis = { it.sortDate },
+            zoomKey = { it.file.absolutePath },
+            gridColumns = gridColumns,
+            onBack = { navController.popBackStack() },
+            onItemClick = { all, index ->
+                hiddenViewerItemsOverride = all
+                openViewerZoomed(all[index].file.absolutePath, "hiddenviewer/$index")
+            }
+        ) { item, modifier ->
+            AsyncImage(
+                model = freshImageRequest(context, item.thumbnailFile, item.thumbnailFile.lastModified()),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = modifier
+            )
+        }
+    }
+    composable(ROUTE_HIDDEN_SEARCH) {
+        HiddenSearchScreen(
+            items = hiddenUiState.items,
+            gridColumns = gridColumns,
+            onBack = { navController.popBackStack() },
+            onItemClick = { item, results ->
+                hiddenViewerItemsOverride = results
+                openViewerZoomed(item.file.absolutePath, "hiddenviewer/${results.indexOf(item)}")
+            }
         )
     }
     composable(ROUTE_HIDDEN_FAVORITES) {
@@ -177,6 +250,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) },
             onBack = { navController.popBackStack() }
         )
@@ -201,6 +275,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }
@@ -218,6 +293,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) },
             onBack = { navController.popBackStack() }
         )
@@ -242,6 +318,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }
@@ -261,6 +338,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) },
             onBack = { navController.popBackStack() }
         )
@@ -285,6 +363,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }
@@ -303,6 +382,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) },
             onBack = { navController.popBackStack() }
         )
@@ -327,6 +407,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }
@@ -345,6 +426,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) },
             onBack = { navController.popBackStack() }
         )
@@ -369,6 +451,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }
@@ -387,6 +470,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) },
             onBack = { navController.popBackStack() }
         )
@@ -411,6 +495,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }
@@ -429,6 +514,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) },
             onBack = { navController.popBackStack() }
         )
@@ -453,6 +539,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }
@@ -474,6 +561,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
             onUnhide = { item -> hiddenViewModel.unhide(item.file.name) },
             onMoveToRecycleBin = { item -> hiddenViewModel.trash(item.file.name) },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) },
             onBack = { navController.popBackStack() }
         )
@@ -501,6 +589,7 @@ internal fun NavGraphBuilder.hiddenBrowseRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }

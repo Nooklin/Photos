@@ -1,5 +1,16 @@
 package org.nooklin.photos.ui.hidden
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.alpha
+import kotlinx.coroutines.delay
+import org.nooklin.photos.ui.gallery.TimelineBar
+import org.nooklin.photos.ui.gallery.TimelineMode
+import org.nooklin.photos.ui.common.AddToAlbumDialog
+import org.nooklin.photos.ui.common.asHiddenTargets
 import org.nooklin.photos.ui.common.SelectionCountBar
 import androidx.compose.material3.FabPosition
 import androidx.compose.material.icons.filled.IosShare
@@ -136,7 +147,9 @@ fun HiddenGalleryScreen(
     gridStyle: GridStyle = GridStyle.SQUARE,
     groupBy: GroupBy = GroupBy.NONE,
     shareEnabled: Boolean = false,
-    removeExifOnShare: Boolean = true
+    removeExifOnShare: Boolean = true,
+    onOpenSearch: (() -> Unit)? = null,
+    onDuplicate: ((HiddenItem) -> Unit)? = null
 ) {
     val gridStyle = if (gridColumns == 1) GridStyle.ORIGINAL else gridStyle
     val groupBy = if (gridColumns == 1) GroupBy.NONE else groupBy
@@ -155,6 +168,38 @@ fun HiddenGalleryScreen(
     var heroMenuExpanded by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
     val staggeredGridState = rememberLazyStaggeredGridState()
+    var timelineMode by rememberSaveable { mutableStateOf(TimelineMode.ALL) }
+    var focusYear by remember { mutableStateOf<Int?>(null) }
+    var pendingJump by remember { mutableStateOf<HiddenItem?>(null) }
+    var recentlyScrolled by remember { mutableStateOf(false) }
+    val scrolling = gridState.isScrollInProgress || staggeredGridState.isScrollInProgress
+    LaunchedEffect(scrolling) {
+        if (scrolling) {
+            recentlyScrolled = true
+        } else {
+            delay(2000)
+            recentlyScrolled = false
+        }
+    }
+    val timelineBarVisible = !isSelecting && (timelineMode != TimelineMode.ALL || recentlyScrolled)
+    val timelineBarAlpha by animateFloatAsState(if (timelineBarVisible) 1f else 0f, label = "timelineBar")
+    LaunchedEffect(timelineMode, pendingJump) {
+        val target = pendingJump
+        if (timelineMode == TimelineMode.ALL && target != null) {
+            val grouped = gridStyle == GridStyle.SQUARE && groupBy != GroupBy.NONE
+            val index = zoomLazyIndexOf(
+                target.file.absolutePath,
+                items.map { it.file.absolutePath },
+                if (grouped) groupHiddenItemsByDate(items, groupBy).map { (_, group) -> group.map { it.file.absolutePath } } else null
+            )
+            if (index != null) {
+                // one back from the photo so the date header stays in view
+                val scrollTo = (if (grouped) index - 1 else index).coerceAtLeast(0)
+                if (gridStyle == GridStyle.SQUARE) gridState.scrollToItem(scrollTo) else staggeredGridState.scrollToItem(scrollTo)
+            }
+            pendingJump = null
+        }
+    }
     ScrollToPendingZoomKey(
         lazyIndexOf = { key ->
             zoomLazyIndexOf(
@@ -192,6 +237,7 @@ fun HiddenGalleryScreen(
             onDelete = { isSelecting = true; selectedNames = setOf(item.file.name); showDeleteConfirm = true },
             onAddToAlbum = { isSelecting = true; selectedNames = setOf(item.file.name); showAddToAlbumDialog = true },
             onShare = if (shareEnabled) ({ shareHidden(listOf(item)) {} }) else null,
+            onDuplicate = onDuplicate?.let { duplicate -> { duplicate(item) } },
             onDismiss = { menuItem = null }
         )
     }
@@ -388,7 +434,28 @@ fun HiddenGalleryScreen(
         },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            if (isSelecting && !hasHero) SelectionCountBar(selectedNames.size)
+            if (isSelecting && !hasHero) {
+                SelectionCountBar(selectedNames.size)
+            } else if (!isSelecting && onOpenSearch != null) {
+                Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(56.dp)) {
+                    if (timelineBarAlpha > 0f) {
+                        TimelineBar(
+                            selected = timelineMode,
+                            onSelect = { timelineMode = it },
+                            modifier = Modifier.align(Alignment.Center).alpha(timelineBarAlpha)
+                        )
+                    }
+                    Box(Modifier.align(Alignment.CenterEnd)) {
+                        CircleIconButton(
+                            icon = Icons.Filled.Search,
+                            contentDescription = appString(R.string.gallery_search),
+                            onClick = onOpenSearch,
+                            size = 56.dp,
+                            outerPadding = 0.dp
+                        )
+                    }
+                }
+            }
         }
     ) { padding ->
         if (items.isEmpty()) {
@@ -398,6 +465,23 @@ fun HiddenGalleryScreen(
             ) {
                 EmptyState(message = appString(R.string.hidden_gallery_no_hidden_items), actionLabel = appString(R.string.common_back), onAction = onBack)
             }
+            return@Scaffold
+        }
+        if (timelineMode != TimelineMode.ALL) {
+            HiddenTimelineOverview(
+                items = items,
+                mode = timelineMode,
+                focusYear = focusYear,
+                onOpenYear = { year ->
+                    focusYear = year
+                    timelineMode = TimelineMode.MONTHS
+                },
+                onOpenMonth = { first ->
+                    pendingJump = first
+                    timelineMode = TimelineMode.ALL
+                },
+                modifier = Modifier.padding(padding)
+            )
             return@Scaffold
         }
         val itemNames = remember(items) { items.mapTo(HashSet()) { it.file.name } }
@@ -649,52 +733,25 @@ fun HiddenGalleryScreen(
     }
 
     if (showAddToAlbumDialog) {
-        var newAlbumName by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showAddToAlbumDialog = false },
-            shape = GlassPill.shape,
-            containerColor = GlassPill.adaptivePopupBackground,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text(appString(R.string.common_add_to_hidden_album)) },
-            text = {
-                Column {
-                    GlassPillTextField(
-                        value = newAlbumName,
-                        onValueChange = { newAlbumName = it },
-                        placeholder = appString(R.string.common_new_album_name)
-                    )
-                    if (existingAlbums.isNotEmpty()) {
-                        Text(appString(R.string.common_or_choose_existing), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-                        existingAlbums.forEach { album ->
-                            PillListRow(
-                                label = album.name,
-                                onClick = {
-                                    items.filter { it.file.name in selectedNames }.forEach { onAddToAlbum(album.id, it) }
-                                    showAddToAlbumDialog = false
-                                    exitSelection()
-                                }
-                            )
-                        }
-                    }
+        val targets = remember(existingAlbums) { existingAlbums.asHiddenTargets() }
+        AddToAlbumDialog(
+            albums = targets,
+            title = appString(R.string.common_add_to_hidden_album),
+            confirmLabel = appString(R.string.common_create_add),
+            onPick = { id ->
+                items.filter { it.file.name in selectedNames }.forEach { onAddToAlbum(id, it) }
+                showAddToAlbumDialog = false
+                exitSelection()
+            },
+            onNew = { newName ->
+                val toAdd = items.filter { it.file.name in selectedNames }
+                onCreateAlbum(newName) { newId ->
+                    toAdd.forEach { onAddToAlbum(newId, it) }
                 }
+                showAddToAlbumDialog = false
+                exitSelection()
             },
-            confirmButton = {
-                TextButton(
-                    enabled = newAlbumName.isNotBlank(),
-                    onClick = {
-                        val toAdd = items.filter { it.file.name in selectedNames }
-                        onCreateAlbum(newAlbumName) { newId ->
-                            toAdd.forEach { onAddToAlbum(newId, it) }
-                        }
-                        showAddToAlbumDialog = false
-                        exitSelection()
-                    }
-                ) { Text(appString(R.string.common_create_add)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
-            }
+            onDismiss = { showAddToAlbumDialog = false }
         )
     }
 }

@@ -129,6 +129,7 @@ internal fun NavGraphBuilder.viewerRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }
@@ -151,6 +152,7 @@ internal fun NavGraphBuilder.viewerRoutes(
                 navController.navigate("hiddeneditor/$editIndex")
             },
             onAddToAlbum = { albumId, item -> hiddenViewModel.addToAlbum(albumId, item.file.name) },
+            onDuplicate = { item -> hiddenViewModel.duplicate(item) },
             onCreateAlbum = { name, onCreated -> hiddenViewModel.createAlbum(name, onCreated) }
         )
     }
@@ -198,6 +200,7 @@ internal fun NavGraphBuilder.viewerRoutes(
                 target = EditTarget.HiddenFileTarget(item.file, item.thumbnailFile, item.isVideo),
                 darkTheme = resolvedDarkTheme,
                 onHiddenSizeChanged = { w, h -> hiddenViewModel.updateSize(item.file.name, w, h) },
+                onHiddenEditSaved = { newName, w, h -> hiddenViewModel.registerEditedCopy(item.file.name, newName, w, h) },
                 onBack = { navController.popBackStack() },
                 onSaved = {
                     hiddenViewModel.refresh()

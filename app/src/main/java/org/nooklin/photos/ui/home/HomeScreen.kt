@@ -1,6 +1,7 @@
 package org.nooklin.photos.ui.home
 
 
+import androidx.compose.material.icons.filled.Event
 import org.nooklin.photos.data.local.AlbumOrder
 import org.nooklin.photos.data.local.sortedAlbums
 import org.nooklin.photos.ui.albums.HomeAlbumRows
@@ -129,7 +130,8 @@ fun HomeScreen(
     onOpenCategory: (MediaCategory) -> Unit,
     onItemClick: (Int, Rect, ImageBitmap?) -> Unit,
     duplicatesMlEnabled: Boolean = false,
-    onOpenCalendar: () -> Unit = {}
+    onOpenCalendar: () -> Unit = {},
+    onOpenOnThisDay: () -> Unit = {}
 ) {
     val previewColumns = gridColumns.coerceAtLeast(2) // the small Home preview never goes to one huge column
 
@@ -208,7 +210,8 @@ fun HomeScreen(
                             onOpenRecentlyDeleted = onOpenRecentlyDeleted,
                             onOpenCategory = onOpenCategory,
                             duplicatesMlEnabled = duplicatesMlEnabled,
-                            onOpenCalendar = onOpenCalendar
+                            onOpenCalendar = onOpenCalendar,
+                            onOpenOnThisDay = onOpenOnThisDay
                         )
                     }
                     HomeSection.SETTINGS -> item {
@@ -413,7 +416,8 @@ private fun UtilitiesBlock(
     onOpenRecentlyDeleted: () -> Unit,
     onOpenCategory: (MediaCategory) -> Unit,
     duplicatesMlEnabled: Boolean,
-    onOpenCalendar: () -> Unit
+    onOpenCalendar: () -> Unit,
+    onOpenOnThisDay: () -> Unit
 ) {
     FlatBlock {
         Column {
@@ -425,7 +429,8 @@ private fun UtilitiesBlock(
                     onOpenRecentlyDeleted = onOpenRecentlyDeleted,
                     onOpenCategory = onOpenCategory,
                     duplicatesMlEnabled = duplicatesMlEnabled,
-                    onOpenCalendar = onOpenCalendar
+                    onOpenCalendar = onOpenCalendar,
+                    onOpenOnThisDay = onOpenOnThisDay
                 )
             }
         }
@@ -505,7 +510,8 @@ private fun UtilitiesGrid(
     onOpenRecentlyDeleted: () -> Unit,
     onOpenCategory: (MediaCategory) -> Unit,
     duplicatesMlEnabled: Boolean,
-    onOpenCalendar: () -> Unit
+    onOpenCalendar: () -> Unit,
+    onOpenOnThisDay: () -> Unit
 ) {
     val rows = mutableListOf<CategoryItem>()
     for (key in order) {
@@ -515,6 +521,7 @@ private fun UtilitiesGrid(
             "RECENTLY_SAVED" -> rows += CategoryItem(MediaCategory.RECENTLY_SAVED.label, Icons.Filled.History) { onOpenCategory(MediaCategory.RECENTLY_SAVED) }
             "RECENTLY_DELETED" -> rows += CategoryItem(appString(R.string.common_recently_deleted), Icons.Filled.Delete, onOpenRecentlyDeleted)
             "CALENDAR" -> rows += CategoryItem(appString(R.string.home_calendar), Icons.Filled.CalendarMonth, onOpenCalendar)
+            "ON_THIS_DAY" -> rows += CategoryItem(appString(R.string.home_on_this_day), Icons.Filled.Event, onOpenOnThisDay)
             "DUPLICATES" -> if (duplicatesMlEnabled) {
                 rows += CategoryItem(MediaCategory.DUPLICATES.label, Icons.Filled.ContentCopy) { onOpenCategory(MediaCategory.DUPLICATES) }
             }

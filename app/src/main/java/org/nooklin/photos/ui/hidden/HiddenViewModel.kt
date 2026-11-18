@@ -2,11 +2,14 @@ package org.nooklin.photos.ui.hidden
 
 import android.app.Application
 import android.app.PendingIntent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +29,8 @@ import org.nooklin.photos.data.runImport
 import org.nooklin.photos.data.scanImportFolder
 import org.nooklin.photos.data.scanImportZip
 import org.nooklin.photos.data.local.LocalMetadataStore
+import org.nooklin.photos.ml.computeDHash
+import org.nooklin.photos.ml.groupSimilarHashes
 import org.nooklin.photos.ui.MediaFilter
 import org.nooklin.photos.ui.SortOrder
 
@@ -186,6 +191,40 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private val hashCache = HashMap<String, Long>()
+
+    fun findDuplicateGroups(items: List<HiddenItem>, onResult: (List<List<HiddenItem>>) -> Unit) {
+        viewModelScope.launch {
+            val groups = withContext(Dispatchers.Default) {
+                val photos = items.filter { !it.isVideo }
+                val hashes = photos.mapNotNull { item ->
+                    val key = item.file.name
+                    val hash = hashCache[key] ?: BitmapFactory.decodeFile(item.thumbnailFile.absolutePath)?.let { bmp ->
+                        computeDHash(bmp).also { bmp.recycle() }
+                    }?.also { hashCache[key] = it }
+                    if (hash == null || hash == 0L || hash == -1L) null else key to hash
+                }
+                val byName = photos.associateBy { it.file.name }
+                groupSimilarHashes(hashes).map { names -> names.mapNotNull { byName[it] } }.filter { it.size >= 2 }
+            }
+            onResult(groups)
+        }
+    }
+
+    fun registerEditedCopy(sourceName: String, newName: String, width: Int, height: Int) {
+        viewModelScope.launch {
+            repository.registerEditedCopy(sourceName, newName, width, height)
+            refresh()
+        }
+    }
+
+    fun duplicate(item: HiddenItem) {
+        viewModelScope.launch {
+            repository.duplicate(item.file.name)
+            refresh()
+        }
+    }
+
     fun toggleFavorite(item: HiddenItem) {
         viewModelScope.launch {
             repository.toggleFavorite(item.file.name, !item.isFavorite)
@@ -280,6 +319,14 @@ class HiddenViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             repository.deleteAlbum(albumId)
             refresh()
+        }
+    }
+
+    fun mergeAlbums(sourceAlbumId: Long, targetAlbumId: Long, onMerged: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.mergeAlbums(sourceAlbumId, targetAlbumId)
+            refresh()
+            onMerged()
         }
     }
 

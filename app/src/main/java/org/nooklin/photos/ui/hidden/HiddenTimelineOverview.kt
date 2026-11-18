@@ -1,0 +1,133 @@
+package org.nooklin.photos.ui.hidden
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import org.nooklin.photos.R
+import org.nooklin.photos.appString
+import org.nooklin.photos.data.HiddenItem
+import org.nooklin.photos.ui.common.freshImageRequest
+import org.nooklin.photos.ui.gallery.TimelineMode
+import org.nooklin.photos.ui.theme.AppText
+
+private class HiddenPeriod(
+    val year: Int,
+    val label: String,
+    val cover: HiddenItem,
+    val count: Int,
+    val first: HiddenItem
+)
+
+private fun buildPeriods(items: List<HiddenItem>, months: Boolean): List<HiddenPeriod> {
+    val calendar = Calendar.getInstance()
+    val format = SimpleDateFormat(if (months) "MMM yyyy" else "yyyy", Locale.getDefault())
+    val groups = LinkedHashMap<Int, MutableList<HiddenItem>>()
+    for (item in items) {
+        calendar.timeInMillis = item.sortDate
+        val key = calendar.get(Calendar.YEAR) * 100 + if (months) calendar.get(Calendar.MONTH) else 0
+        groups.getOrPut(key) { mutableListOf() }.add(item)
+    }
+    return groups.map { (key, group) ->
+        HiddenPeriod(
+            year = key / 100,
+            label = format.format(Date(group.first().sortDate)),
+            cover = group.firstOrNull { !it.isVideo } ?: group.first(),
+            count = group.size,
+            first = group.first()
+        )
+    }
+}
+
+@Composable
+fun HiddenTimelineOverview(
+    items: List<HiddenItem>,
+    mode: TimelineMode,
+    focusYear: Int?,
+    onOpenYear: (Int) -> Unit,
+    onOpenMonth: (first: HiddenItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val months = mode == TimelineMode.MONTHS
+    val periods = remember(items, months) { buildPeriods(items, months) }
+    val gridState = remember(months) { LazyGridState() }
+    LaunchedEffect(months, focusYear) {
+        if (months && focusYear != null) {
+            val index = periods.indexOfFirst { it.year == focusYear }
+            if (index >= 0) gridState.scrollToItem(index)
+        }
+    }
+    val context = LocalContext.current
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Fixed(if (months) 3 else 2),
+        contentPadding = PaddingValues(start = 2.dp, top = 2.dp, end = 2.dp, bottom = 96.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier.fillMaxSize()
+    ) {
+        items(periods, key = { it.label }) { period ->
+            Box(
+                Modifier
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(role = Role.Button) { if (months) onOpenMonth(period.first) else onOpenYear(period.year) }
+            ) {
+                AsyncImage(
+                    model = freshImageRequest(context, period.cover.thumbnailFile, period.cover.thumbnailFile.lastModified()),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))))
+                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                ) {
+                    Column {
+                        Text(
+                            period.label,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (months) 15.sp else 22.sp
+                        )
+                        Text(appString(R.string.common_items, period.count), color = Color.White, fontSize = AppText.Caption)
+                    }
+                }
+            }
+        }
+    }
+}

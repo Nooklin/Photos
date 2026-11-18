@@ -1,5 +1,10 @@
 package org.nooklin.photos.ui.gallery
 
+import org.nooklin.photos.ui.common.GlassPillTextField
+import org.nooklin.photos.ui.common.yearOf
+import androidx.compose.foundation.layout.Column
+import org.nooklin.photos.ui.common.SearchFilterRow
+import org.nooklin.photos.ui.common.SearchFilterState
 import org.nooklin.photos.ui.common.rememberGroupSelection
 import org.nooklin.photos.ui.common.GroupSelectionActions
 import org.nooklin.photos.ui.common.GroupSelectableCell
@@ -60,11 +65,16 @@ fun SearchScreen(
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
 
-    val results = remember(query, items) {
-        if (query.isBlank()) {
+    val filters = remember { SearchFilterState() }
+    val years = remember(items) { items.map { yearOf(it.sortDate * 1000L) }.distinct().sortedDescending() }
+    val results = remember(query, items, filters.photosOnly, filters.videosOnly, filters.favoritesOnly, filters.year) {
+        if (query.isBlank() && !filters.active) {
             emptyList()
         } else {
-            items.filter { item -> item.displayName?.contains(query, ignoreCase = true) == true }
+            items.filter { item ->
+                (query.isBlank() || item.displayName?.contains(query.trim(), ignoreCase = true) == true) &&
+                    filters.matches(item.isVideo, item.isFavorite, item.sortDate * 1000L)
+            }
         }
     }
 
@@ -78,13 +88,13 @@ fun SearchScreen(
     Scaffold(
         modifier = Modifier.zoomBackdropSource(),
         topBar = {
+            Column {
             TopAppBar(
                 title = {
-                    OutlinedTextField(
+                    GlassPillTextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text(appString(R.string.search_search_by_filename)) },
-                        singleLine = true,
+                        placeholder = appString(R.string.search_search_by_filename),
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
@@ -97,9 +107,11 @@ fun SearchScreen(
                     if (groupActions != null && results.isNotEmpty()) GroupSelectionActions(selection, results, groupActions)
                 }
             )
+            SearchFilterRow(filters, years)
+            }
         }
     ) { padding ->
-        if (query.isBlank()) {
+        if (query.isBlank() && !filters.active) {
             Box(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center

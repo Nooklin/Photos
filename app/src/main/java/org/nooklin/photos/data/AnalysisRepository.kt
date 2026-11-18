@@ -6,7 +6,7 @@ import kotlinx.coroutines.withContext
 import org.nooklin.photos.data.local.NooklinDatabase
 import org.nooklin.photos.data.local.PhotoHashEntity
 import org.nooklin.photos.data.local.PhotoTagEntity
-import org.nooklin.photos.ml.hammingDistance
+import org.nooklin.photos.ml.groupSimilarHashes
 
 class AnalysisRepository(context: Context) {
     private val dao = NooklinDatabase.getInstance(context).photoAnalysisDao()
@@ -45,36 +45,7 @@ class AnalysisRepository(context: Context) {
 
     suspend fun findDuplicateGroups(validMediaIds: Set<Long>): List<List<Long>> = withContext(Dispatchers.IO) {
         val hashes = dao.allHashes().filter { it.mediaId in validMediaIds && it.dHash != 0L && it.dHash != -1L }
-        val parent = HashMap<Long, Long>()
-        fun find(x: Long): Long {
-            var root = x
-            while (true) {
-                val next = parent[root] ?: break
-                if (next == root) break
-                root = next
-            }
-            return root
-        }
-        val matched = mutableSetOf<Long>()
-        var shift = 0
-        for (bits in intArrayOf(11, 11, 11, 11, 10, 10)) {
-            val mask = (1L shl bits) - 1
-            for (bucket in hashes.groupBy { (it.dHash ushr shift) and mask }.values) {
-                for (i in bucket.indices) {
-                    for (j in i + 1 until bucket.size) {
-                        if (hammingDistance(bucket[i].dHash, bucket[j].dHash) <= HAMMING_THRESHOLD) {
-                            val a = find(bucket[i].mediaId)
-                            val b = find(bucket[j].mediaId)
-                            if (a != b) parent[a] = b
-                            matched.add(bucket[i].mediaId)
-                            matched.add(bucket[j].mediaId)
-                        }
-                    }
-                }
-            }
-            shift += bits
-        }
-        matched.groupBy { find(it) }.values.sortedByDescending { it.size }
+        groupSimilarHashes(hashes.map { it.mediaId to it.dHash }, HAMMING_THRESHOLD)
     }
 
     private companion object {

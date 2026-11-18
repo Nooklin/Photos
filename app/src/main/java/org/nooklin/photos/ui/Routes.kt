@@ -19,9 +19,13 @@ internal const val ROUTE_HIDDEN_PANORAMAS = "hiddenpanoramas"
 internal const val ROUTE_HIDDEN_SCREEN_RECORDINGS = "hiddenscreenrecordings"
 internal const val ROUTE_HIDDEN_RECENTLY_SAVED = "hiddenrecentlysaved"
 internal const val ROUTE_HIDDEN_CALENDAR = "hiddencalendar"
+internal const val ROUTE_HIDDEN_SEARCH = "hiddensearch"
+internal const val ROUTE_HIDDEN_DUPLICATES = "hiddenduplicates"
 internal const val ROUTE_SETTINGS = "settings"
 internal const val ROUTE_SEARCH = "search"
 internal const val ROUTE_CALENDAR = "calendar"
+internal const val ROUTE_ON_THIS_DAY = "onthisday"
+internal const val ROUTE_HIDDEN_ON_THIS_DAY = "hiddenonthisday"
 internal const val ROUTE_DUPLICATES = "duplicates"
 internal const val ROUTE_DISCOVERED = "discovered"
 internal const val ROUTE_PEOPLE = "people"
@@ -39,8 +43,8 @@ internal val ZOOM_GRID_ROUTES = setOf(
     ROUTE_HIDDEN, ROUTE_HIDDEN_LIBRARY, ROUTE_HIDDEN_FAVORITES, ROUTE_HIDDEN_VIDEOS,
     ROUTE_HIDDEN_SLOW_MOTION, ROUTE_HIDDEN_RAW, ROUTE_HIDDEN_SCREENSHOTS,
     ROUTE_HIDDEN_PANORAMAS, ROUTE_HIDDEN_SCREEN_RECORDINGS,
-    ROUTE_HIDDEN_RECENTLY_SAVED, ROUTE_HIDDEN_RECYCLE_BIN, "hiddenalbums/{albumId}",
-    "discovered/{tagId}", "pets/{petId}", "people/{personId}", ROUTE_SEARCH, ROUTE_CALENDAR
+    ROUTE_HIDDEN_RECENTLY_SAVED, ROUTE_HIDDEN_RECYCLE_BIN, ROUTE_HIDDEN_SEARCH, "hiddenalbums/{albumId}",
+    "discovered/{tagId}", "pets/{petId}", "people/{personId}", ROUTE_SEARCH, ROUTE_CALENDAR, ROUTE_ON_THIS_DAY, ROUTE_HIDDEN_ON_THIS_DAY
 )
 
 internal fun isZoomPair(a: String?, b: String?): Boolean =

@@ -154,6 +154,7 @@ internal fun NavGraphBuilder.mainRoutes(
                 navController.navigate(if (category == MediaCategory.DUPLICATES) ROUTE_DUPLICATES else "category/${category.name}")
             },
             onOpenCalendar = { navController.navigate(ROUTE_CALENDAR) },
+            onOpenOnThisDay = { navController.navigate(ROUTE_ON_THIS_DAY) },
             onItemClick = { index, bounds, backdrop ->
                 capturedZoomLaunch = ZoomLaunch(bounds, backdrop, ZoomSources.snapshotBounds())
                 viewerItemsOverride = null

@@ -1,5 +1,8 @@
 package org.nooklin.photos.ui
 
+import org.nooklin.photos.ui.gallery.OnThisDayScreen
+import org.nooklin.photos.ui.common.GridThumbnail
+import org.nooklin.photos.ui.gallery.DuplicateInfo
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -169,6 +172,11 @@ internal fun NavGraphBuilder.utilityRoutes(
         }
         DuplicatesScreen(
             groups = groups,
+            info = { item ->
+                DuplicateInfo(item.id.toString(), item.width, item.height, item.sizeBytes) { modifier ->
+                    GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = modifier)
+                }
+            },
             onBack = { navController.popBackStack() },
             onOpenGroup = { group, startIndex ->
                 viewerItemsOverride = StableList(group)
@@ -176,6 +184,21 @@ internal fun NavGraphBuilder.utilityRoutes(
             },
             onMoveToRecycleBin = { item -> viewModel.moveToRecycleBin(item) }
         )
+    }
+    composable(ROUTE_ON_THIS_DAY) {
+        OnThisDayScreen(
+            items = uiState.visibleItems,
+            timeMillis = { it.sortDate * 1000L },
+            zoomKey = { it.id },
+            gridColumns = gridColumns,
+            onBack = { navController.popBackStack() },
+            onItemClick = { all, index ->
+                viewerItemsOverride = StableList(all)
+                openViewerZoomed(all[index].id, "viewer/$index")
+            }
+        ) { item, modifier ->
+            GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = modifier)
+        }
     }
     composable(ROUTE_CALENDAR) {
         CalendarScreen(

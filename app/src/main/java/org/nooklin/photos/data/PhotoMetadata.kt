@@ -124,7 +124,7 @@ fun buildMetadata(
     )
 }
 
-fun buildFileMetadata(file: File, isVideo: Boolean): PhotoMetadata {
+fun buildFileMetadata(file: File, isVideo: Boolean, displayName: String? = null): PhotoMetadata {
     val exif = if (!isVideo) readExif(file) else null
     val dimensions = if (!isVideo) {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -142,7 +142,7 @@ fun buildFileMetadata(file: File, isVideo: Boolean): PhotoMetadata {
 
     return buildMetadata(
         exif = exif,
-        name = file.name,
+        name = displayName ?: file.name,
         sizeBytes = file.length(),
         width = dimensions?.first,
         height = dimensions?.second,

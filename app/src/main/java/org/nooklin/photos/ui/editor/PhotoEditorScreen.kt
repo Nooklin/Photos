@@ -1,5 +1,6 @@
 package org.nooklin.photos.ui.editor
 
+import java.io.File
 import androidx.compose.ui.text.font.FontWeight
 import android.app.Activity
 import android.graphics.Bitmap
@@ -144,7 +145,8 @@ fun PhotoEditorScreen(
     onSaved: () -> Unit,
     // a deleted edit leaves nothing to show, so the caller can leave the viewer too instead of landing on it.
     onDeleted: () -> Unit = onSaved,
-    onHiddenSizeChanged: (width: Int, height: Int) -> Unit = { _, _ -> }
+    onHiddenSizeChanged: (width: Int, height: Int) -> Unit = { _, _ -> },
+    onHiddenEditSaved: (newFileName: String, width: Int, height: Int) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
     val screenBackground = if (darkTheme) Color.Black else MaterialTheme.colorScheme.background
@@ -364,46 +366,48 @@ fun PhotoEditorScreen(
                     }
                 }
                 is EditTarget.HiddenFileTarget -> {
+                    val newName = "edit_${System.currentTimeMillis()}.${target.file.extension}"
+                    val newFile = File(target.file.parentFile, newName)
+                    val newThumb = File(target.thumbnailFile.parentFile, newName)
                     val success = withContext(Dispatchers.IO) {
                         try {
-                            if (!originals.stashIfAbsent(originalKey) { target.file.inputStream() }) {
-                                return@withContext false
+                            val saved = newFile.outputStream().use { output ->
+                                transformed.compress(compressFormatFor(target.file.extension), 95, output)
                             }
-                            val format = compressFormatFor(target.file.extension)
-                            target.file.outputStream().use { output ->
-                                transformed.compress(format, 95, output)
-                            } && run {
-                                val longerSide = maxOf(transformed.width, transformed.height)
-                                val scale = 512f / longerSide
-                                val thumbBitmap = if (scale < 1f) {
-                                    Bitmap.createScaledBitmap(
-                                        transformed,
-                                        (transformed.width * scale).toInt().coerceAtLeast(1),
-                                        (transformed.height * scale).toInt().coerceAtLeast(1),
-                                        true
-                                    )
-                                } else {
-                                    transformed
-                                }
-                                val thumbSaved = target.thumbnailFile.outputStream().use { output ->
-                                    thumbBitmap.compress(Bitmap.CompressFormat.JPEG, 85, output)
-                                }
-                                if (thumbBitmap !== transformed) thumbBitmap.recycle()
-                                thumbSaved
+                            val longerSide = maxOf(transformed.width, transformed.height)
+                            val scale = 512f / longerSide
+                            val thumbBitmap = if (scale < 1f) {
+                                Bitmap.createScaledBitmap(
+                                    transformed,
+                                    (transformed.width * scale).toInt().coerceAtLeast(1),
+                                    (transformed.height * scale).toInt().coerceAtLeast(1),
+                                    true
+                                )
+                            } else {
+                                transformed
                             }
+                            val thumbSaved = newThumb.outputStream().use { output ->
+                                thumbBitmap.compress(Bitmap.CompressFormat.JPEG, 85, output)
+                            }
+                            if (thumbBitmap !== transformed) thumbBitmap.recycle()
+                            if (!saved || !thumbSaved) {
+                                newFile.delete()
+                                newThumb.delete()
+                            }
+                            saved && thumbSaved
                         } catch (e: Exception) {
+                            newFile.delete()
+                            newThumb.delete()
                             false
                         }
                     }
                     isSaving = false
                     if (success) {
-                        val loader = context.imageLoader
-                        for (path in listOf(target.file.absolutePath, target.thumbnailFile.absolutePath)) {
-                            loader.memoryCache?.remove(MemoryCache.Key(path))
-                            loader.diskCache?.remove(path)
-                        }
-                        onHiddenSizeChanged(transformed.width, transformed.height)
+                        onHiddenEditSaved(newName, transformed.width, transformed.height)
+                        Toast.makeText(context, appString(R.string.photo_editor_saved_as_a_new_photo), Toast.LENGTH_LONG).show()
                         onSaved()
+                    } else {
+                        Toast.makeText(context, appString(R.string.photo_editor_could_not_save_the_edit), Toast.LENGTH_LONG).show()
                     }
                 }
             }

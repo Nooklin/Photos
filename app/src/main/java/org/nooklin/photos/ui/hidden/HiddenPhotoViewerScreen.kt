@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.hidden
 
+import org.nooklin.photos.ui.common.AddToAlbumDialog
+import org.nooklin.photos.ui.common.asHiddenTargets
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import org.nooklin.photos.ui.common.VideoControlBar
@@ -132,6 +134,7 @@ fun HiddenPhotoViewerScreen(
     onTrash: (HiddenItem) -> Unit,
     onEdit: (HiddenItem) -> Unit,
     onAddToAlbum: (albumId: Long, item: HiddenItem) -> Unit,
+    onDuplicate: ((HiddenItem) -> Unit)? = null,
     onCreateAlbum: (name: String, onCreated: (Long) -> Unit) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -192,7 +195,7 @@ fun HiddenPhotoViewerScreen(
     LaunchedEffect(currentItem) {
         val item = currentItem
         pillMetadata = if (item != null) {
-            withContext(Dispatchers.IO) { buildFileMetadata(item.file, item.isVideo) }
+            withContext(Dispatchers.IO) { buildFileMetadata(item.file, item.isVideo, item.originalName) }
         } else null
     }
 
@@ -200,7 +203,7 @@ fun HiddenPhotoViewerScreen(
     LaunchedEffect(showInfo, currentItem) {
         val item = currentItem
         if (showInfo && item != null) {
-            metadata = withContext(Dispatchers.IO) { buildFileMetadata(item.file, item.isVideo) }
+            metadata = withContext(Dispatchers.IO) { buildFileMetadata(item.file, item.isVideo, item.originalName) }
         }
     }
 
@@ -275,6 +278,13 @@ fun HiddenPhotoViewerScreen(
                                     onClick = {
                                         menuExpanded = false
                                         showAddToAlbumDialog = true
+                                    }
+                                )
+                                if (onDuplicate != null) DropdownMenuItem(
+                                    text = { Text(appString(R.string.photo_viewer_duplicate)) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        currentItem?.let { onDuplicate(it) }
                                     }
                                 )
                             }
@@ -560,48 +570,22 @@ fun HiddenPhotoViewerScreen(
     }
 
     if (showAddToAlbumDialog && currentItem != null) {
-        var newAlbumName by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showAddToAlbumDialog = false },
-            shape = GlassPill.shape,
-            containerColor = popupBackground,
-            titleContentColor = chromeColor,
-            textContentColor = chromeColor,
-            title = { Text(appString(R.string.common_add_to_hidden_album)) },
-            text = {
-                Column {
-                    GlassPillTextField(
-                        value = newAlbumName,
-                        onValueChange = { newAlbumName = it },
-                        placeholder = appString(R.string.common_new_album_name)
-                    )
-                    if (existingAlbums.isNotEmpty()) {
-                        Text(appString(R.string.common_or_choose_existing), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-                        existingAlbums.forEach { album ->
-                            PillListRow(
-                                label = album.name,
-                                contentColor = chromeColor,
-                                onClick = {
-                                    onAddToAlbum(album.id, currentItem)
-                                    showAddToAlbumDialog = false
-                                }
-                            )
-                        }
-                    }
-                }
+        val targets = remember(existingAlbums) { existingAlbums.asHiddenTargets() }
+        AddToAlbumDialog(
+            albums = targets,
+            backgroundColor = popupBackground,
+            contentColor = chromeColor,
+            title = appString(R.string.common_add_to_hidden_album),
+            confirmLabel = appString(R.string.common_create_add),
+            onPick = { id ->
+                onAddToAlbum(id, currentItem)
+                showAddToAlbumDialog = false
             },
-            confirmButton = {
-                TextButton(
-                    enabled = newAlbumName.isNotBlank(),
-                    onClick = {
-                        onCreateAlbum(newAlbumName) { newId -> onAddToAlbum(newId, currentItem) }
-                        showAddToAlbumDialog = false
-                    }
-                ) { Text(appString(R.string.common_create_add)) }
+            onNew = { newName ->
+                onCreateAlbum(newName) { newId -> onAddToAlbum(newId, currentItem) }
+                showAddToAlbumDialog = false
             },
-            dismissButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
-            }
+            onDismiss = { showAddToAlbumDialog = false }
         )
     }
 }

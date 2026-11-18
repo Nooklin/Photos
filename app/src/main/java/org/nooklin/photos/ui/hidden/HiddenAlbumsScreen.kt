@@ -83,12 +83,14 @@ fun HiddenAlbumsScreen(
     onDeleteAlbums: (Set<Long>) -> Unit,
     onRenameAlbum: (Long, String) -> Unit,
     onCreateFolder: (Long, String) -> Unit,
+    onMergeAlbum: ((Long) -> Unit)? = null,
     order: AlbumOrder,
     previewsOff: Boolean,
     onOrderChange: ((AlbumOrder) -> AlbumOrder) -> Unit,
     onBack: () -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var addMenuExpanded by remember { mutableStateOf(false) }
     val selection = rememberGroupSelection()
     var menuExpanded by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
@@ -162,11 +164,29 @@ fun HiddenAlbumsScreen(
                                 onOrderChange { it.copy(sort = mode) }
                             }
                         }
-                        CircleIconButton(
-                            icon = Icons.Filled.Add,
-                            contentDescription = appString(R.string.hidden_albums_new_hidden_album),
-                            onClick = { showCreateDialog = true }
-                        )
+                        Box {
+                            CircleIconButton(
+                                icon = Icons.Filled.Add,
+                                contentDescription = appString(R.string.hidden_albums_new_hidden_album),
+                                onClick = { addMenuExpanded = true }
+                            )
+                            DropdownMenu(
+                                expanded = addMenuExpanded,
+                                onDismissRequest = { addMenuExpanded = false },
+                                shape = GlassPill.shape,
+                                containerColor = GlassPill.adaptivePopupBackground
+                            ) {
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.hidden_albums_new_hidden_album)) },
+                                        onClick = {
+                                            addMenuExpanded = false
+                                            showCreateDialog = true
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             )
@@ -245,7 +265,7 @@ fun HiddenAlbumsScreen(
                             onShare = null,
                             onRename = { renameAlbum = album },
                             onNewFolder = { folderParentId = album.id },
-                            onMerge = null,
+                            onMerge = onMergeAlbum?.let { merge -> { merge(album.id) } },
                             onDelete = { contextDeleteId = album.id },
                             onSelect = { selection.start(album.id) }
                         )

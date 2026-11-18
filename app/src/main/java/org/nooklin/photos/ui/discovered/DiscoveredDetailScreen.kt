@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.discovered
 
+import org.nooklin.photos.ui.common.AddToAlbumDialog
+import org.nooklin.photos.ui.common.asTargets
 import org.nooklin.photos.ui.common.MenuSectionHeader
 import org.nooklin.photos.ui.common.GroupActions
 import org.nooklin.photos.ui.common.GroupItemMenu
@@ -372,34 +374,15 @@ fun DiscoveredDetailScreen(
     }
 
     if (showAddToAlbumDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddToAlbumDialog = false },
-            shape = GlassPill.shape,
-            containerColor = GlassPill.adaptivePopupBackground,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text(appString(R.string.common_add_to_album)) },
-            text = {
-                if (existingAlbums.isEmpty()) {
-                    Text(appString(R.string.common_no_albums_yet_create_one))
-                } else {
-                    Column {
-                        existingAlbums.forEach { album ->
-                            PillListRow(
-                                label = album.name,
-                                onClick = {
-                                    filtered.filter { it.id in selectedIds }.forEach { onAddToAlbum(album.id, it) }
-                                    showAddToAlbumDialog = false
-                                    exitSelection()
-                                }
-                            )
-                        }
-                    }
-                }
+        val targets = remember(existingAlbums) { existingAlbums.asTargets() }
+        AddToAlbumDialog(
+            albums = targets,
+            onPick = { id ->
+                filtered.filter { it.id in selectedIds }.forEach { onAddToAlbum(id, it) }
+                showAddToAlbumDialog = false
+                exitSelection()
             },
-            confirmButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
-            }
+            onDismiss = { showAddToAlbumDialog = false }
         )
     }
 

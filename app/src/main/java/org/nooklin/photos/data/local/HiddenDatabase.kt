@@ -127,6 +127,16 @@ interface HiddenDao {
     @Query("UPDATE OR IGNORE hidden_album_membership SET albumId = :targetAlbumId WHERE albumId = :sourceAlbumId")
     suspend fun reassignMembership(sourceAlbumId: Long, targetAlbumId: Long)
 
+    @Query("UPDATE hidden_albums SET parentId = :targetAlbumId WHERE parentId = :sourceAlbumId")
+    suspend fun moveFolders(sourceAlbumId: Long, targetAlbumId: Long)
+
+    @Transaction
+    suspend fun mergeAlbums(sourceAlbumId: Long, targetAlbumId: Long) {
+        reassignMembership(sourceAlbumId, targetAlbumId)
+        moveFolders(sourceAlbumId, targetAlbumId)
+        deleteAlbumRow(sourceAlbumId)
+    }
+
     @Transaction
     suspend fun deleteAlbum(albumId: Long) {
         parentOf(albumId)?.let { reassignMembership(albumId, it) }

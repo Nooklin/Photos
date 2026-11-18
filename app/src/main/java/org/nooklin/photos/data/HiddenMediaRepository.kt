@@ -25,6 +25,7 @@ import java.util.Locale
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import android.media.MediaMetadataRetriever
 import android.media.ThumbnailUtils
 import android.util.Size
 import android.graphics.ImageDecoder
@@ -83,14 +84,55 @@ class HiddenMediaRepository(
     internal val thumbsDir: File
         get() = File(context.filesDir, "hidden_thumbs").apply { mkdirs() }
 
-    internal fun generateVideoThumbnail(videoFile: File, destination: File): Boolean = try {
-        val bitmap = ThumbnailUtils.createVideoThumbnail(videoFile, Size(512, 512), null)
-        destination.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+    private fun brightness(bitmap: Bitmap): Int {
+        val small = Bitmap.createScaledBitmap(bitmap, 16, 16, true)
+        var sum = 0L
+        for (y in 0 until 16) for (x in 0 until 16) {
+            val px = small.getPixel(x, y)
+            sum += (((px shr 16) and 0xFF) * 299 + ((px shr 8) and 0xFF) * 587 + (px and 0xFF) * 114) / 1000
+        }
+        if (small !== bitmap) small.recycle()
+        return (sum / 256).toInt()
+    }
+
+    // first frame is often black (fade in), so try a few spots and keep the first bright one
+    internal fun generateVideoThumbnail(videoFile: File, destination: File): Boolean {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(videoFile.absolutePath)
+            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            val spots = listOf(0.5, 0.25, 0.1, 0.75, 0.9, 0.0).map { (durationMs * 1000 * it).toLong() }
+            var best: Bitmap? = null
+            var bestLuma = -1
+            for (timeUs in spots) {
+                val frame = retriever.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 512, 512) ?: continue
+                val luma = brightness(frame)
+                if (luma > bestLuma) {
+                    best?.recycle()
+                    best = frame
+                    bestLuma = luma
+                } else {
+                    frame.recycle()
+                }
+                if (bestLuma >= 30) break
+            }
+            val result = best ?: return false
+            destination.outputStream().use { result.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+            result.recycle()
+            true
+        } catch (e: Exception) {
+            destination.delete()
+            false
+        } finally {
+            retriever.release()
+        }
+    }
+
+    private fun isDark(thumbnail: File): Boolean {
+        val bitmap = BitmapFactory.decodeFile(thumbnail.absolutePath) ?: return false
+        val dark = brightness(bitmap) < 30
         bitmap.recycle()
-        true
-    } catch (e: Exception) {
-        destination.delete()
-        false
+        return dark
     }
 
     // same date the viewer shows: exif capture time, else the file date
@@ -113,12 +155,17 @@ class HiddenMediaRepository(
 
     suspend fun backfillVideoThumbnails(): Boolean = withContext(Dispatchers.IO) {
         var created = false
+        val marker = File(context.filesDir, "hidden_thumbs_bright")
+        val fixDark = !marker.exists()
         for (entry in hiddenDao.allMedia()) {
             if (!entry.isVideo) continue
             val video = File(hiddenDir, entry.fileName)
             val thumbnail = File(thumbsDir, entry.fileName)
-            if (video.exists() && !thumbnail.exists() && generateVideoThumbnail(video, thumbnail)) created = true
+            if (!video.exists()) continue
+            val missing = !thumbnail.exists()
+            if ((missing || (fixDark && isDark(thumbnail))) && generateVideoThumbnail(video, thumbnail)) created = true
         }
+        if (fixDark) marker.createNewFile()
         created
     }
 
@@ -326,6 +373,69 @@ class HiddenMediaRepository(
         if (actualType != null) hiddenDao.setMimeType(fileName, actualType)
     }
 
+    // the edit is a new file next to the original, in the same albums
+    suspend fun registerEditedCopy(sourceName: String, newName: String, width: Int, height: Int) = withContext(Dispatchers.IO) {
+        val entry = hiddenDao.allMedia().find { it.fileName == sourceName } ?: return@withContext
+        val source = File(hiddenDir, sourceName)
+        val file = File(hiddenDir, newName)
+        if (!file.exists()) return@withContext
+        file.setLastModified(source.lastModified())
+        val original = entry.originalName
+        val editedName = if (original != null) {
+            original.substringBeforeLast('.', original) + " (edited)." + file.extension
+        } else null
+        hiddenDao.insertMedia(
+            entry.copy(
+                fileName = newName,
+                hiddenAt = System.currentTimeMillis(),
+                isFavorite = false,
+                deletedAt = null,
+                width = width,
+                height = height,
+                mimeType = mediaKind(newName, null) ?: entry.mimeType,
+                originalName = editedName
+            )
+        )
+        hiddenDao.allMemberships().filter { it.fileName == sourceName }.forEach {
+            hiddenDao.addMembership(HiddenAlbumMembershipEntity(it.albumId, newName))
+        }
+    }
+
+    suspend fun duplicate(fileName: String): String? = withContext(Dispatchers.IO) {
+        val entry = hiddenDao.allMedia().find { it.fileName == fileName } ?: return@withContext null
+        val source = File(hiddenDir, fileName)
+        if (!source.exists()) return@withContext null
+        val destination = File(hiddenDir, "copy_${System.currentTimeMillis()}_$fileName")
+        val copied = try {
+            source.copyTo(destination)
+            true
+        } catch (e: Exception) {
+            false
+        }
+        if (!copied) {
+            destination.delete()
+            return@withContext null
+        }
+        destination.setLastModified(source.lastModified())
+        val sourceThumb = File(thumbsDir, fileName)
+        if (sourceThumb.exists()) {
+            try {
+                sourceThumb.copyTo(File(thumbsDir, destination.name))
+            } catch (e: Exception) {
+            }
+        }
+        hiddenDao.insertMedia(
+            entry.copy(
+                fileName = destination.name,
+                hiddenAt = System.currentTimeMillis(),
+                isFavorite = false,
+                deletedAt = null,
+                originalName = "copy_${System.currentTimeMillis()}_${entry.originalName ?: fileName}"
+            )
+        )
+        destination.name
+    }
+
     suspend fun toggleFavorite(fileName: String, favorite: Boolean) {
         hiddenDao.setFavorite(fileName, favorite)
     }
@@ -345,6 +455,10 @@ class HiddenMediaRepository(
 
     suspend fun deleteAlbum(albumId: Long) {
         hiddenDao.deleteAlbum(albumId)
+    }
+
+    suspend fun mergeAlbums(sourceAlbumId: Long, targetAlbumId: Long) {
+        hiddenDao.mergeAlbums(sourceAlbumId, targetAlbumId)
     }
 
     suspend fun addToAlbum(albumId: Long, fileName: String) {

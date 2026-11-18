@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.hidden
 
+import org.nooklin.photos.ui.common.AddToAlbumDialog
+import org.nooklin.photos.ui.common.asHiddenTargets
 import org.nooklin.photos.data.local.AlbumSort
 import org.nooklin.photos.ui.albums.AlbumSortButton
 import androidx.compose.material.icons.filled.IosShare
@@ -108,6 +110,8 @@ fun HiddenAlbumDetailScreen(
     onUnhide: (HiddenItem) -> Unit,
     onMoveToRecycleBin: (HiddenItem) -> Unit,
     onAddToAlbum: (albumId: Long, item: HiddenItem) -> Unit,
+    onDuplicate: ((HiddenItem) -> Unit)? = null,
+    onMergeRequested: (() -> Unit)? = null,
     onRemoveFromAlbum: (HiddenItem) -> Unit,
     onRenameAlbum: (String) -> Unit,
     onDeleteAlbum: () -> Unit,
@@ -139,6 +143,7 @@ fun HiddenAlbumDetailScreen(
     var deleteFolder by remember { mutableStateOf<HiddenAlbumWithPreview?>(null) }
     var showDeleteAlbumConfirm by remember { mutableStateOf(false) }
     var showNewFolderDialog by remember { mutableStateOf(false) }
+    var addMenuExpanded by remember { mutableStateOf(false) }
     var showCoverPicker by remember { mutableStateOf(false) }
     var showSlideshow by remember { mutableStateOf(false) }
     // Big photo at the top: the chosen cover, else the newest photo
@@ -184,6 +189,7 @@ fun HiddenAlbumDetailScreen(
             onDelete = { isSelecting = true; selectedNames = setOf(item.file.name); showDeleteConfirm = true },
             onAddToAlbum = { isSelecting = true; selectedNames = setOf(item.file.name); showAddToAlbumDialog = true },
             onShare = if (shareEnabled) ({ shareHidden(listOf(item)) {} }) else null,
+            onDuplicate = onDuplicate?.let { duplicate -> { duplicate(item) } },
             onDismiss = { menuItem = null },
             extra = CardAction(appString(R.string.hidden_album_detail_remove_from_this_album), Icons.Filled.RemoveCircleOutline) {
                 onRemoveFromAlbum(item)
@@ -287,11 +293,38 @@ fun HiddenAlbumDetailScreen(
                         PillButton(text = appString(R.string.common_cancel), color = GlassPill.destructiveText, onClick = { exitSelection() })
                     } else {
                         if (onFolderSort != null && folders.size >= 2) AlbumSortButton(folderSort, withManual = false, onSort = onFolderSort)
+                        Box {
                         CircleIconButton(
                             icon = Icons.Filled.Add,
                             contentDescription = appString(R.string.common_add_photos),
-                            onClick = onAddPhotos
+                            onClick = { addMenuExpanded = true }
                         )
+                        DropdownMenu(
+                            expanded = addMenuExpanded,
+                            onDismissRequest = { addMenuExpanded = false },
+                            shape = GlassPill.shape,
+                            containerColor = GlassPill.adaptivePopupBackground
+                        ) {
+                            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                                if (canCreateFolder) {
+                                    DropdownMenuItem(
+                                        text = { Text(appString(R.string.folder_new)) },
+                                        onClick = {
+                                            addMenuExpanded = false
+                                            showNewFolderDialog = true
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text(appString(R.string.album_add_item)) },
+                                    onClick = {
+                                        addMenuExpanded = false
+                                        onAddPhotos()
+                                    }
+                                )
+                            }
+                        }
+                    }
                         CircleIconButton(
                             icon = Icons.Filled.MoreVert,
                             contentDescription = appString(R.string.common_more_options),
@@ -319,12 +352,12 @@ fun HiddenAlbumDetailScreen(
                                         showCoverPicker = true
                                     }
                                 )
-                                if (canCreateFolder) {
+                                if (!isFolder && onMergeRequested != null) {
                                     DropdownMenuItem(
-                                        text = { Text(appString(R.string.folder_new)) },
+                                        text = { Text(appString(R.string.common_merge_into)) },
                                         onClick = {
                                             menuExpanded = false
-                                            showNewFolderDialog = true
+                                            onMergeRequested()
                                         }
                                     )
                                 }
@@ -578,34 +611,17 @@ fun HiddenAlbumDetailScreen(
     }
 
     if (showAddToAlbumDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddToAlbumDialog = false },
-            shape = GlassPill.shape,
-            containerColor = GlassPill.adaptivePopupBackground,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = { Text(appString(R.string.common_add_to_hidden_album)) },
-            text = {
-                if (existingAlbums.isEmpty()) {
-                    Text(appString(R.string.hidden_album_detail_no_other_hidden_albums_yet))
-                } else {
-                    Column {
-                        existingAlbums.forEach { album ->
-                            PillListRow(
-                                label = album.name,
-                                onClick = {
-                                    items.filter { it.file.name in selectedNames }.forEach { onAddToAlbum(album.id, it) }
-                                    showAddToAlbumDialog = false
-                                    exitSelection()
-                                }
-                            )
-                        }
-                    }
-                }
+        val targets = remember(existingAlbums) { existingAlbums.asHiddenTargets() }
+        AddToAlbumDialog(
+            albums = targets,
+            title = appString(R.string.common_add_to_hidden_album),
+            emptyMessage = appString(R.string.hidden_album_detail_no_other_hidden_albums_yet),
+            onPick = { id ->
+                items.filter { it.file.name in selectedNames }.forEach { onAddToAlbum(id, it) }
+                showAddToAlbumDialog = false
+                exitSelection()
             },
-            confirmButton = {
-                TextButton(onClick = { showAddToAlbumDialog = false }) { Text(appString(R.string.common_cancel)) }
-            }
+            onDismiss = { showAddToAlbumDialog = false }
         )
     }
 }

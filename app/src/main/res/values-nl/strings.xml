@@ -128,6 +128,12 @@
     <string name="duplicates_confirm_title">Duplicaten naar Recent verwijderd?</string>
     <string name="duplicates_confirm_text">%1$d foto\'s in %2$d groepen worden naar Recent verwijderd gezet.\n\nIn elke groep blijft de gekozen foto staan, standaard die met de meeste pixels en daarna het grootste bestand.\n\nJe kunt ze 30 dagen herstellen.</string>
     <string name="home_calendar">Kalender</string>
+    <string name="home_on_this_day">Op deze dag</string>
+    <string name="on_this_day_empty">Geen foto\'s van deze dag in eerdere jaren</string>
+    <plurals name="on_this_day_years_ago">
+        <item quantity="one">%d jaar geleden</item>
+        <item quantity="other">%d jaar geleden</item>
+    </plurals>
     <string name="home_see_all">Alles bekijken</string>
     <string name="album_remove_from_album">Uit album halen</string>
     <string name="hide_access_title">Verbergen zonder extra vragen</string>
@@ -196,6 +202,7 @@
     <string name="photo_viewer_add">Voeg toe</string>
     <string name="search_search_by_filename">Zoek op bestandsnaam</string>
     <string name="search_no_matches">Geen resultaten</string>
+    <string name="search_filter_photos">Foto\'s</string>
     <string name="backup_notice_thank_you_for_installing_nooklin">Bedankt voor het installeren van Nooklin Photos.</string>
     <string name="backup_notice_below_you_will_find_some">Hieronder staat belangrijke informatie die je MOET LEZEN!</string>
     <string name="backup_notice_if_you_use_the_hidden">Gebruik je de Verborgen sectie van deze app? Lees dit dan aandachtig.</string>
@@ -555,6 +562,12 @@
 
     <!-- Folders inside albums (1.2.0) -->
     <string name="folder_new">Nieuwe folder</string>
+    <string name="album_add_item">Item toevoegen</string>
+    <string name="album_choose_existing">Kies bestaand album</string>
+    <string name="album_pick_title">Kies een album</string>
+    <string name="album_pick_search">Zoek albums</string>
+    <string name="album_pick_none">Geen albums gevonden</string>
+    <string name="album_place_here">Hier plaatsen</string>
     <string name="folder_name">Foldernaam</string>
     <string name="folder_rename">Folder hernoemen</string>
     <string name="folder_delete">Folder verwijderen</string>
@@ -675,6 +688,18 @@
     <string name="changelog_cat_backup">Back-up en import</string>
     <string name="changelog_cat_viewer">Viewer</string>
     <string name="changelog_cat_settings_design">Instellingen en ontwerp</string>
+    <string name="changelog_version_134">Versie 1.3.4</string>
+    <string name="changelog_134_1">De + knop opent altijd een menu: Nieuw album, of Nieuwe folder en Item toevoegen.</string>
+    <string name="changelog_134_2">Toevoegen aan album: kies een bestaand album of folder op een volledige pagina, met zoeken. Ook in het Verborgen gedeelte.</string>
+    <string name="changelog_134_3">Zoeken op bestandsnaam in de Verborgen bibliotheek.</string>
+    <string name="changelog_134_4">Tijdlijnbalk met jaren en maanden in de Verborgen bibliotheek, zoals in de gewone bibliotheek.</string>
+    <string name="changelog_134_5">Albums samenvoegen in het Verborgen gedeelte, en een item dupliceren.</string>
+    <string name="changelog_134_6">Dubbelen pagina in het Verborgen gedeelte, om gelijkaardige foto\'s te vinden en op te ruimen.</string>
+    <string name="changelog_134_7">Videothumbnails in het Verborgen gedeelte zijn niet langer zwart.</string>
+    <string name="changelog_134_8">De Verborgen infosheet toont de originele bestandsnaam. Zoeken vindt ook de interne naam.</string>
+    <string name="changelog_134_9">Een foto bewerken in het Verborgen gedeelte slaat nu een kopie op naast het origineel, zoals in de bibliotheek.</string>
+    <string name="changelog_134_10">Zoekfilters: combineer de zoekterm met Foto\'s, Video\'s, Favorieten en een jaar. Ook in het Verborgen gedeelte.</string>
+    <string name="changelog_134_11">Op deze dag: foto\'s van deze datum in eerdere jaren. Ook in het Verborgen gedeelte.</string>
     <string name="changelog_version_133">Versie 1.3.3</string>
     <string name="changelog_133_1">Home sorteert albums op dezelfde manier als de Albums pagina.</string>
     <string name="changelog_133_2">Items worden gesorteerd op de datum die de viewer toont. Items zonder opgeslagen datum springen niet meer naar boven.</string>

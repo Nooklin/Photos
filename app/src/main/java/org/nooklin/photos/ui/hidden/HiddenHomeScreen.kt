@@ -1,6 +1,9 @@
 package org.nooklin.photos.ui.hidden
 
 
+import androidx.compose.material.icons.filled.Event
+import org.nooklin.photos.data.MediaCategory
+import androidx.compose.material.icons.filled.ContentCopy
 import org.nooklin.photos.data.local.AlbumOrder
 import org.nooklin.photos.data.local.sortedAlbums
 import org.nooklin.photos.ui.albums.HomeAlbumRows
@@ -111,6 +114,8 @@ fun HiddenHomeScreen(
     onOpenRecentlyDeleted: () -> Unit,
     onOpenRecentlySaved: () -> Unit,
     onOpenCalendar: () -> Unit = {},
+    onOpenDuplicates: () -> Unit = {},
+    onOpenOnThisDay: () -> Unit = {},
     onItemClick: (Int) -> Unit,
     onBack: () -> Unit
 ) {
@@ -269,7 +274,9 @@ fun HiddenHomeScreen(
                                     "FAVORITES" to HiddenCategoryRowSpec(appString(R.string.common_favorites), Icons.Filled.Favorite, onOpenFavorites),
                                     "RECENTLY_DELETED" to HiddenCategoryRowSpec(appString(R.string.common_recently_deleted), Icons.Filled.Delete, onOpenRecentlyDeleted),
                                     "RECENTLY_SAVED" to HiddenCategoryRowSpec(appString(R.string.common_recently_saved), Icons.Filled.History, onOpenRecentlySaved),
-                                    "CALENDAR" to HiddenCategoryRowSpec(appString(R.string.home_calendar), Icons.Filled.CalendarMonth, onOpenCalendar)
+                                    "CALENDAR" to HiddenCategoryRowSpec(appString(R.string.home_calendar), Icons.Filled.CalendarMonth, onOpenCalendar),
+                                    "DUPLICATES" to HiddenCategoryRowSpec(MediaCategory.DUPLICATES.label, Icons.Filled.ContentCopy, onOpenDuplicates),
+                                    "ON_THIS_DAY" to HiddenCategoryRowSpec(appString(R.string.home_on_this_day), Icons.Filled.Event, onOpenOnThisDay)
                                 ).let { specs -> utilitiesOrder.mapNotNull { specs[it] } }
                             )
                         }

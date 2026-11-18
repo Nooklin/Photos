@@ -1,5 +1,7 @@
 package org.nooklin.photos.ui.viewer
 
+import org.nooklin.photos.ui.common.AddToAlbumDialog
+import org.nooklin.photos.ui.common.asTargets
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import org.nooklin.photos.ui.common.VideoControlBar
@@ -565,19 +567,20 @@ fun PhotoViewerScreen(
             }
 
             if (showAddToAlbumDialog && currentItem != null) {
+                val targets = remember(existingAlbums) { existingAlbums.asTargets() }
                 AddToAlbumDialog(
-                    existingAlbums = existingAlbums,
+                    albums = targets,
                     backgroundColor = popupBackground,
                     contentColor = chromeColor,
-                    onDismiss = { showAddToAlbumDialog = false },
-                    onConfirmExisting = { albumId ->
+                    onPick = { albumId ->
                         showAddToAlbumDialog = false
                         onAddToAlbum(albumId, currentItem)
                     },
-                    onConfirmNew = { newAlbumName ->
+                    onNew = { newAlbumName ->
                         showAddToAlbumDialog = false
                         onCreateAlbumAndAdd(newAlbumName, currentItem)
-                    }
+                    },
+                    onDismiss = { showAddToAlbumDialog = false }
                 )
             }
 
@@ -598,59 +601,6 @@ fun PhotoViewerScreen(
             }
         }
     }
-}
-
-@Composable
-private fun AddToAlbumDialog(
-    existingAlbums: List<AlbumWithPreview>,
-    backgroundColor: Color,
-    contentColor: Color,
-    onDismiss: () -> Unit,
-    onConfirmExisting: (albumId: Long) -> Unit,
-    onConfirmNew: (String) -> Unit
-) {
-    var newAlbumName by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = GlassPill.shape,
-        containerColor = backgroundColor,
-        titleContentColor = contentColor,
-        textContentColor = contentColor,
-        title = { Text(appString(R.string.common_add_to_album)) },
-        text = {
-            Column {
-                GlassPillTextField(
-                    value = newAlbumName,
-                    onValueChange = { newAlbumName = it },
-                    placeholder = appString(R.string.common_new_album_name)
-                )
-                if (existingAlbums.isNotEmpty()) {
-                    Text(appString(R.string.common_or_choose_existing), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-                    LazyColumn {
-                        items(existingAlbums, key = { it.id }) { album ->
-                            PillListRow(
-                                label = album.name,
-                                contentColor = contentColor,
-                                onClick = { onConfirmExisting(album.id) }
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { if (newAlbumName.isNotBlank()) onConfirmNew(newAlbumName) },
-                enabled = newAlbumName.isNotBlank()
-            ) {
-                Text(appString(R.string.photo_viewer_add))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(appString(R.string.common_cancel)) }
-        }
-    )
 }
 
 @Composable

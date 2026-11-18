@@ -52,25 +52,34 @@ import org.nooklin.photos.ui.common.EmptyState
 import org.nooklin.photos.ui.theme.Spacing
 import org.nooklin.photos.ui.theme.AppText
 
-private fun bestOf(group: List<MediaItem>): MediaItem =
+class DuplicateInfo(
+    val key: String,
+    val width: Int?,
+    val height: Int?,
+    val sizeBytes: Long?,
+    val thumbnail: @Composable (Modifier) -> Unit
+)
+
+private fun <T> bestOf(group: List<T>, info: (T) -> DuplicateInfo): T =
     group.maxWith(
-        compareBy<MediaItem>({ (it.width ?: 0).toLong() * (it.height ?: 0) }, { it.sizeBytes ?: 0L })
+        compareBy<T>({ (info(it).width ?: 0).toLong() * (info(it).height ?: 0) }, { info(it).sizeBytes ?: 0L })
     )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DuplicatesScreen(
-    groups: List<List<MediaItem>>,
+fun <T> DuplicatesScreen(
+    groups: List<List<T>>,
+    info: (T) -> DuplicateInfo,
     onBack: () -> Unit,
-    onOpenGroup: (group: List<MediaItem>, startIndex: Int) -> Unit,
-    onMoveToRecycleBin: (MediaItem) -> Unit
+    onOpenGroup: (group: List<T>, startIndex: Int) -> Unit,
+    onMoveToRecycleBin: (T) -> Unit
 ) {
     val context = LocalContext.current
-    val keepChoice = remember { mutableStateMapOf<Long, Long>() }
+    val keepChoice = remember { mutableStateMapOf<String, String>() }
     var confirmAll by remember { mutableStateOf(false) }
 
-    fun keepOf(group: List<MediaItem>): MediaItem =
-        group.find { it.id == keepChoice[group.minOf { item -> item.id }] } ?: bestOf(group)
+    fun keepOf(group: List<T>): T =
+        group.find { info(it).key == keepChoice[group.minOf { item -> info(item).key }] } ?: bestOf(group, info)
 
     Scaffold(
         topBar = {
@@ -100,10 +109,10 @@ fun DuplicatesScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(groups, key = { group -> group.minOf { it.id } }) { group ->
-                val groupKey = group.minOf { it.id }
+            items(groups, key = { group -> group.minOf { info(it).key } }) { group ->
+                val groupKey = group.minOf { info(it).key }
                 val keep = keepOf(group)
-                val best = bestOf(group)
+                val best = bestOf(group, info)
                 Surface(
                     color = GlassPill.adaptiveGlassBackground,
                     shape = RoundedCornerShape(20.dp),
@@ -120,7 +129,8 @@ fun DuplicatesScreen(
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(group, key = { it.id }) { item ->
+                            items(group, key = { info(it).key }) { item ->
+                                val details = info(item)
                                 Column(Modifier.size(width = 132.dp, height = 172.dp)) {
                                     Box(
                                         Modifier
@@ -128,8 +138,8 @@ fun DuplicatesScreen(
                                             .clip(RoundedCornerShape(10.dp))
                                             .clickable(role = Role.Button) { onOpenGroup(group, group.indexOf(item)) }
                                     ) {
-                                        GridThumbnail(uri = item.uri, dateModified = item.dateModified, modifier = Modifier.fillMaxSize())
-                                        val isKept = item.id == keep.id
+                                        details.thumbnail(Modifier.fillMaxSize())
+                                        val isKept = details.key == info(keep).key
                                         Icon(
                                             if (isKept) Icons.Filled.RadioButtonChecked else Icons.Filled.RadioButtonUnchecked,
                                             contentDescription = null,
@@ -138,10 +148,10 @@ fun DuplicatesScreen(
                                                 .align(Alignment.TopEnd)
                                                 .padding(Spacing.Sm)
                                                 .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(50))
-                                                .clickable(role = Role.Button) { keepChoice[groupKey] = item.id }
+                                                .clickable(role = Role.Button) { keepChoice[groupKey] = details.key }
                                                 .padding(2.dp)
                                         )
-                                        if (item.id == best.id) {
+                                        if (details.key == info(best).key) {
                                             Text(
                                                 appString(R.string.duplicates_best),
                                                 color = Color.White,
@@ -154,8 +164,8 @@ fun DuplicatesScreen(
                                             )
                                         }
                                     }
-                                    val sizeText = item.sizeBytes?.let { Formatter.formatShortFileSize(context, it) }
-                                    val resolution = if (item.width != null && item.height != null) "${item.width} x ${item.height}" else null
+                                    val sizeText = details.sizeBytes?.let { Formatter.formatShortFileSize(context, it) }
+                                    val resolution = if (details.width != null && details.height != null) "${details.width} x ${details.height}" else null
                                     Text(
                                         listOfNotNull(resolution, sizeText).joinToString(" · "),
                                         fontSize = AppText.Caption,
@@ -167,7 +177,7 @@ fun DuplicatesScreen(
                             }
                         }
                         TextButton(
-                            onClick = { group.filter { it.id != keep.id }.forEach(onMoveToRecycleBin) },
+                            onClick = { group.filter { info(it).key != info(keep).key }.forEach(onMoveToRecycleBin) },
                             modifier = Modifier.padding(horizontal = 8.dp)
                         ) {
                             Text(appString(R.string.duplicates_keep_selected, group.size - 1), color = GlassPill.destructiveText)
@@ -188,7 +198,7 @@ fun DuplicatesScreen(
                 confirmAll = false
                 groups.forEach { group ->
                     val keep = keepOf(group)
-                    group.filter { it.id != keep.id }.forEach(onMoveToRecycleBin)
+                    group.filter { info(it).key != info(keep).key }.forEach(onMoveToRecycleBin)
                 }
             },
             onDismiss = { confirmAll = false }
